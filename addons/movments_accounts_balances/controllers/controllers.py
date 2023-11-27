@@ -212,9 +212,9 @@ class AccountBalance(models.Model):
     # journal_id = 5  # Replace with the ID of the payment journal
     # payment_date = fields.Date.today()
     # payment_method_id = 1  # Replace with the actual payment method ID
-    # payment_id = self.env['custom.model'].create_payment_for_bills(bills_ids, journal_id, payment_date, payment_method_id)
+    # payment_id = self.env['custom.model'].create_bill_payment(bills_ids, journal_id, payment_date, payment_method_id)
     @api.model
-    def create_payment_for_bills(self, bills_ids, journal_id, payment_date, payment_method_id):
+    def create_bill_payment(self, bills_ids, journal_id, payment_date, payment_method_id):
         Payment = self.env['account.payment']
         Bill = self.env['account.move']
         bills = Bill.browse(bills_ids)
