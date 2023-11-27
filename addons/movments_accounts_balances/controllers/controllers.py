@@ -106,29 +106,37 @@ class AccountBalance(models.Model):
         ]
 
         # Retrieve bills based on the criteria
-        bill = self.env['account.move'].search(domain, order='invoice_date')
+        bill = self.env['account.move'].search(domain, order='invoice_date', limit=1)
 
+        if not bill:
+            return {'error': 'Bill not found'}
+    
         # Prepare a list to store bill data
         bill_data = []
 
-        # for bill in bills:
-        # Retrieve invoice lines for each bill
-        invoice_lines = bill.invoice_line_ids
-        selected_account_id = (
-                invoice_lines and invoice_lines[0].account_id.name or False
-        )
+        # Prepare a list to store invoice line data
+        invoice_line_data = []
+        for line in bill.invoice_line_ids:
+            invoice_line_data.append({
+                'line_id': line.id,
+                'account_id': line.account_id.id,
+                'account_name': line.account_id.name,
+                'quantity': line.quantity,
+                'price_unit': line.price_unit,
+                'analytic_account_id': line.analytic_account_id.id if line.analytic_account_id else False,
+                'analytic_account_name': line.analytic_account_id.name if line.analytic_account_id else '',
+            })
 
         # Assemble bill data
-        bill_data.append({
+        bill_data = {
             'id': bill.id,
-            'bill_number': bill.id,
+            'bill_number': bill.ref,
             'bill_date': bill.invoice_date,
             'supplier_id': bill.partner_id.name,
             'amount': bill.amount_total,
             'state': bill.payment_state,
-            'selected_account_id': selected_account_id,
-            # Add more bill details here as needed
-        })
+            'invoice_lines': invoice_line_data,
+        }
 
         # Create a dictionary with a "bill_info" key
         response = {'bill_info': bill_data}
@@ -198,6 +206,115 @@ class AccountBalance(models.Model):
             return "Bill deleted successfully."
         except Exception as e:
             return "Failed to delete bill: {}".format(e)
+        
+    #Example usage: 
+    # bills_ids = [1, 2, 3]  # Replace with the actual IDs of the bills
+    # journal_id = 5  # Replace with the ID of the payment journal
+    # payment_date = fields.Date.today()
+    # payment_method_id = 1  # Replace with the actual payment method ID
+    # payment_id = self.env['custom.model'].create_payment_for_bills(bills_ids, journal_id, payment_date, payment_method_id)
+    @api.model
+    def create_payment_for_bills(self, bills_ids, journal_id, payment_date, payment_method_id):
+        Payment = self.env['account.payment']
+        Bill = self.env['account.move']
+        bills = Bill.browse(bills_ids)
+
+        total_amount = sum(bill.amount_residual for bill in bills)
+        payment_vals = {
+            'amount': total_amount,
+            'payment_date': payment_date,
+            'communication': 'Payment for multiple bills',
+            'partner_id': bills[0].partner_id.id,  # Assuming all bills are for the same partner
+            'partner_type': 'supplier',
+            'payment_type': 'outbound',
+            'payment_method_id': payment_method_id,
+            'journal_id': journal_id
+        }
+
+        payment = Payment.create(payment_vals)
+        payment.post()
+
+        # Reconcile each bill with the payment
+        for bill in bills:
+            payment.register_payment(bill.invoice_payments_widget)
+
+        return payment.id
+    
+    @api.model
+    def get_bill_payment_by_journal_entry_id(self, journal_entry_id):
+        Payment = self.env['account.payment']
+        # Search for payment associated with the given journal entry
+        payment = Payment.search([('move_id', '=', journal_entry_id)], limit=1)
+        if payment:
+            return payment
+        else:
+            return "No payment found for the provided journal entry ID."
+        
+    #Used to create payment_method and payment_journal for a bank or a credit card - to be used for bill payment
+    # Example usage: 
+    # journal_name = "Vendor Payments Journal"
+    # account_id = 1000  # Replace with the actual ID of your Chart of Account
+    # journal_type = "bank"  # or "cash" depending on your requirements
+    # payment_method_name = "Manual Outbound Payment"
+    # journal_id, payment_method_id = self.env['custom.model'].setup_payment_journal(journal_name, account_id, journal_type, payment_method_name)
+    
+    @api.model
+    def setup_payment_journal(self, journal_name, account_id, journal_type, payment_method_name):
+        AccountJournal = self.env['account.journal']
+        AccountPaymentMethod = self.env['account.payment.method']
+
+        # Create or find the journal
+        journal = AccountJournal.search([('name', '=', journal_name)], limit=1)
+        if not journal:
+            journal = AccountJournal.create({
+                'name': journal_name,
+                'type': journal_type,  # 'bank' or 'cash'
+                'code': journal_name[:5].upper(),
+                'default_debit_account_id': account_id,
+                'default_credit_account_id': account_id,
+            })
+
+        # Create or find the payment method
+        payment_method = AccountPaymentMethod.search([('name', '=', payment_method_name)], limit=1)
+        if not payment_method:
+            payment_method = AccountPaymentMethod.create({
+                'name': payment_method_name,
+                'payment_type': 'outbound',  # 'inbound' for customer payments, 'outbound' for supplier payments
+                'code': payment_method_name[:10].upper(),
+            })
+
+        # Link the payment method to the journal
+        journal.write({'outbound_payment_method_ids': [(4, payment_method.id)]})
+
+        return journal.id, payment_method.id
+    
+    @api.model
+    def cancel_and_delete_bill_payment(self, payment_id):
+        Payment = self.env['account.payment']
+        payment = Payment.browse(payment_id)
+
+        if not payment:
+            return "Payment not found."
+
+        # Attempt to cancel the payment if it's not already in a cancellable state
+        if payment.state not in ['draft', 'cancelled']:
+            try:
+                # Attempt to cancel the payment
+                payment.action_cancel()
+            except exceptions.UserError as e:
+                return "Failed to cancel payment: {}".format(e)
+            except Exception as e:
+                return "Unexpected error occurred: {}".format(e)
+
+        # Check again if the payment is in a cancellable state after attempting cancellation
+        if payment.state in ['draft', 'cancelled']:
+            try:
+                payment.unlink()
+                return "Payment deleted successfully."
+            except Exception as e:
+                return "Failed to delete payment: {}".format(e)
+        else:
+            return "Payment cannot be deleted as it is not in draft or cancelled state."
 
 
 
