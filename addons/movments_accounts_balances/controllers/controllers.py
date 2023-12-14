@@ -316,6 +316,125 @@ class AccountBalance(models.Model):
         else:
             return "Payment cannot be deleted as it is not in draft or cancelled state."
 
+    @api.model
+    def create_ar_invoice(self, invoice_vals, partner_id, invoice_date, invoice_date_due, ref, narration):
+        """
+        Create an AR invoice based on the provided data.
+
+        :param invoice_vals: List of dictionaries containing invoice line data.
+        :param partner_id: Partner ID for the invoice.
+        :param invoice_date: Invoice date.
+        :param invoice_date_due: Due date for the invoice.
+        :param ref: Reference for the invoice.
+        :param narration: Narration for the entire invoice.
+        :return: The created AR invoice record.
+        """
+        # Prepare the invoice lines
+        invoice_lines = []
+        for line in invoice_vals:
+            invoice_line_vals = {
+                'name': line.get('description', ''),
+                'quantity': line.get('quantity', 1.0),
+                'price_unit': line.get('price_unit', 0.0),
+                'account_id': line.get('account_id'),
+                'analytic_account_id': line.get('analytic_account_id', False),
+                'product_id': line.get('product_id', False),
+            }
+            invoice_lines.append((0, 0, invoice_line_vals))
+
+        # Create a new AR invoice record
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',  # This differentiates AR (customer) invoices from AP (vendor) bills
+            'partner_id': partner_id,
+            'invoice_date': invoice_date,
+            'invoice_date_due': invoice_date_due,
+            'ref': ref,
+            'narration': narration,
+            'invoice_line_ids': invoice_lines,
+        })
+
+        return invoice
+    
+    @api.model
+    def get_ar_invoice(self, invoice_id):
+        """
+        Retrieve an AR invoice based on the provided invoice ID.
+
+        :param invoice_id: ID of the invoice to retrieve.
+        :return: A dictionary containing the AR invoice data or an error message.
+        """
+        # Define search criteria to filter AR invoices
+        domain = [
+            ('id', '=', invoice_id),
+            ('move_type', '=', 'out_invoice'),  # AR invoices have the move_type 'out_invoice'
+        ]
+
+        # Retrieve the AR invoice based on the criteria
+        invoice = self.env['account.move'].search(domain, limit=1)
+
+        if not invoice:
+            return {'error': 'AR invoice not found'}
+
+        # Prepare a list to store invoice line data
+        invoice_line_data = []
+        for line in invoice.invoice_line_ids:
+            invoice_line_data.append({
+                'line_id': line.id,
+                'product_id': line.product_id.id if line.product_id else False,
+                'product_name': line.product_id.name if line.product_id else '',
+                'account_id': line.account_id.id,
+                'account_name': line.account_id.name,
+                'quantity': line.quantity,
+                'price_unit': line.price_unit,
+                'analytic_account_id': line.analytic_account_id.id if line.analytic_account_id else False,
+                'analytic_account_name': line.analytic_account_id.name if line.analytic_account_id else '',
+            })
+
+        # Assemble AR invoice data
+        ar_invoice_data = {
+            'id': invoice.id,
+            'invoice_number': invoice.name,
+            'invoice_date': invoice.invoice_date,
+            'due_date': invoice.invoice_date_due,
+            'partner_id': invoice.partner_id.id,
+            'partner_name': invoice.partner_id.name,
+            'amount_total': invoice.amount_total,
+            'state': invoice.state,
+            'invoice_lines': invoice_line_data,
+        }
+
+        # Create a dictionary with an "ar_invoice_info" key
+        response = {'ar_invoice_info': ar_invoice_data}
+
+        return response
+    
+    @api.model
+    def delete_ar_invoice(self, invoice_id):
+        """
+        Delete an AR invoice based on the provided invoice ID.
+
+        :param invoice_id: ID of the invoice to delete.
+        :return: A success message or an error message.
+        """
+        # Retrieve the AR invoice based on the ID
+        invoice = self.env['account.move'].search([
+            ('id', '=', invoice_id),
+            ('move_type', '=', 'out_invoice')  # AR invoices have the move_type 'out_invoice'
+        ], limit=1)
+
+        if not invoice:
+            return "AR invoice not found."
+
+        # Check if the invoice is in the 'draft' or 'cancel' state
+        if invoice.state not in ['draft', 'cancel']:
+            return "Invoice must be in 'draft' or 'cancel' state to be deleted."
+
+        try:
+            invoice.unlink()  # Delete the invoice
+            return "AR invoice deleted successfully."
+        except Exception as e:
+            return "Failed to delete AR invoice: {}".format(e)
+
 
 
 
