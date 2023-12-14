@@ -4,6 +4,10 @@ from odoo.exceptions import ValidationError
 
 class AccountBalance(models.Model):
     _inherit = 'account.account'
+    
+    # Define constants for One2many and Many2many operations
+    #In Odoo, the ORM provides a set of commands for managing One2many and Many2many relationships. These commands are indeed represented by numbers, which can be somewhat cryptic
+    O2M_REPLACE = 6
 
     @api.model
     def get_all_accounts(self):
@@ -434,7 +438,107 @@ class AccountBalance(models.Model):
             return "AR invoice deleted successfully."
         except Exception as e:
             return "Failed to delete AR invoice: {}".format(e)
+        
+    @api.model
+    def create_ar_invoice_payment(self, invoice_id, journal_id, payment_date, payment_amount, payment_method_id):
+        """
+        Create a payment for an AR invoice based on the provided data.
 
+        :param invoice_id: ID of the AR invoice to pay.
+        :param journal_id: ID of the payment journal.
+        :param payment_date: Date of the payment.
+        :param payment_amount: Amount of the payment.
+        :param payment_method_id: ID of the payment method.
+        :return: The created payment record or an error message.
+        """
+        # Retrieve the AR invoice based on the ID
+        invoice = self.env['account.move'].browse(invoice_id)
+
+        if not invoice or invoice.move_type != 'out_invoice':
+            return {'error': 'AR invoice not found or is not a customer invoice.'}
+
+        # Check if the invoice is in the 'posted' state
+        if invoice.state != 'posted':
+            return {'error': 'Invoice must be in "posted" state to register a payment.'}
+
+        # Create the payment
+        payment = self.env['account.payment'].create({
+            'payment_type': 'inbound',
+            'partner_type': 'customer',
+            'partner_id': invoice.partner_id.id,
+            'amount': payment_amount,
+            'payment_date': payment_date,
+            'journal_id': journal_id,
+            'payment_method_id': payment_method_id,
+            'invoice_ids': [(self.O2M_REPLACE, 0, [invoice_id])],
+            'communication': invoice.name,
+        })
+
+        # Post the payment to validate it
+        payment.post()
+
+        return {'success': 'Payment created and validated successfully.', 'payment_id': payment.id}
+    
+    @api.model
+    def get_ar_invoice_payment_by_journal_entry_id(self, journal_entry_id):
+        """
+        Retrieve an AR invoice payment based on the provided journal entry ID.
+
+        :param journal_entry_id: ID of the journal entry associated with the payment.
+        :return: A dictionary containing the payment data or an error message.
+        """
+        Payment = self.env['account.payment']
+        # Search for payment associated with the given journal entry
+        payment = Payment.search([('move_id', '=', journal_entry_id), ('payment_type', '=', 'inbound')], limit=1)
+        if payment:
+            # Prepare payment data
+            payment_data = {
+                'payment_id': payment.id,
+                'journal_id': payment.journal_id.id,
+                'payment_date': payment.payment_date,
+                'payment_amount': payment.amount,
+                'partner_id': payment.partner_id.id,
+                'partner_name': payment.partner_id.name,
+                'communication': payment.communication,
+                'state': payment.state,
+            }
+            return {'payment_info': payment_data}
+        else:
+            return {'error': 'No AR invoice payment found for the provided journal entry ID.'}
+
+    @api.model
+    def cancel_and_delete_ar_invoice_payment(self, payment_id):
+        """
+        Cancel and delete an AR invoice payment based on the provided payment ID.
+
+        :param payment_id: ID of the payment to cancel and delete.
+        :return: A success message or an error message.
+        """
+        Payment = self.env['account.payment']
+        payment = Payment.browse(payment_id)
+
+        if not payment:
+            return "Payment not found."
+
+        # Attempt to cancel the payment if it's not already in a cancellable state
+        if payment.state not in ['draft', 'cancelled']:
+            try:
+                # Attempt to cancel the payment
+                payment.action_cancel()
+            except exceptions.UserError as e:
+                return "Failed to cancel payment: {}".format(e)
+            except Exception as e:
+                return "Unexpected error occurred: {}".format(e)
+
+        # Check again if the payment is in a cancellable state after attempting cancellation
+        if payment.state in ['draft', 'cancelled']:
+            try:
+                payment.unlink()  # Delete the payment
+                return "Payment deleted successfully."
+            except Exception as e:
+                return "Failed to delete payment: {}".format(e)
+        else:
+            return "Payment cannot be deleted as it is not in draft or cancelled state."
 
 
 
