@@ -539,3 +539,110 @@ class AccountBalance(models.Model):
             return "Account deleted successfully."
         except Exception as e:
             return "Failed to delete account: {}".format(e)
+
+
+
+class ResPartner(models.Model):
+    _inherit = 'res.partner'
+
+
+    @api.model
+    def create_partner(self, name, is_company, company_id, email, phone, category_ids):
+        """
+        Create a partner (customer or vendor) within Odoo's CRM module.
+
+        Args:
+        - name (str): The name of the partner.
+        - is_company (bool): True if the partner is a company, False if an individual.
+        - company_id (int): ID of the company this partner is associated with.
+        - email (str, optional): Email address of the partner.
+        - phone (str, optional): Phone number of the partner.
+        - tag_ids (list, optional): List of tag IDs for categorization.
+
+        Returns:
+        dict: Dictionary containing a key 'partner_info' with list of created partner details.
+
+        Raises:
+        ValidationError: If any validation fails.
+        """
+        # Check for duplicate partner using name and company_id
+        if self.search([('name', '=', name), ('company_id', '=', company_id)], limit=1):
+            raise ValidationError("A partner with this name already exists in the selected company.")
+
+        # Partner values to create
+        partner_vals = {
+            'name': name,
+            'is_company': is_company,
+            'company_id': company_id,
+            'email': email or None,
+            'phone': phone or None,
+            'category_id': [(6, 0, category_ids)] if category_ids else False,
+        }
+
+        # Create new partner record
+        new_partner = self.create(partner_vals)
+
+        # Prepare partner data for response
+        partner_data = [{
+            'id': new_partner.id,
+            'name': new_partner.name,
+            'is_company': new_partner.is_company,
+            'email': new_partner.email,
+            'phone': new_partner.phone,
+            'company_id': new_partner.company_id.id,
+        }]
+
+        response = {'partner_info': partner_data}
+        return response
+
+    @api.model
+    def get_partner(self, partner_id):
+        """
+        Retrieves a partner by ID within Odoo's CRM module.
+
+        Args:
+        - partner_id (int): The ID of the partner to retrieve.
+
+        Returns:
+        dict: Dictionary containing a key 'partner_info' with details of the retrieved partner.
+
+        Raises:
+        ValidationError: If the partner does not exist.
+        """
+        partner = self.browse(partner_id)
+        if not partner.exists():
+            raise ValidationError("Partner with ID {} does not exist.".format(partner_id))
+
+        partner_data = {
+            'id': partner.id,
+            'name': partner.name,
+            'is_company': partner.is_company,
+            'email': partner.email,
+            'phone': partner.phone,
+            'company_id': partner.company_id.id,
+        }
+        response = {'partner_info': partner_data}
+        return response
+
+    @api.model
+    def delete_partner(self, partner_id):
+        """
+        Deletes a partner from Odoo's CRM module.
+
+        Args:
+        - partner_id (int): The ID of the partner to be deleted.
+
+        Returns:
+        str: Success or error message.
+        """
+        Partner = self.env['res.partner']
+        partner = Partner.search([('id', '=', partner_id)])
+
+        if not partner:
+            return "Partner not found."
+
+        try:
+            partner.unlink()  # Delete the partner
+            return "Partner deleted successfully."
+        except Exception as e:
+            return "Failed to delete partner: {}".format(e)
