@@ -71,6 +71,35 @@ class AccountBalance(models.Model):
         return partner_data
 
     @api.model
+    def get_all_customers(self):
+        # Define the domain to filter partners based on the customer tag
+        domain = [('category_id.name', '=', 'Customer')]
+        # domain = []
+
+        # Search for partners based on the domain
+        customers = self.env['res.partner'].search(domain)
+
+        # Prepare the partner data
+        customer_data = [{'id': customer.id, 'name': customer.name} for customer in customers]
+
+        # Return the customer data
+        return customer_data
+
+    @api.model
+    def get_all_vendors(self):
+        # Define the domain to filter partners based on the vendor tag
+        domain = [('category_id.name', '=', 'Vendor')]
+
+        # Search for partners based on the domain
+        vendors = self.env['res.partner'].search(domain)
+
+        # Prepare the partner data
+        vendor_data = [{'id': vendor.id, 'name': vendor.name} for vendor in vendors]
+
+        # Return the vendor data
+        return vendor_data    
+
+    @api.model
     def get_balance(self, account_id, end_date):
         # Define search criteria to filter account move lines
         domain = [('account_id', '=', account_id),
