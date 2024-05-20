@@ -117,6 +117,27 @@ class AccountBalance(models.Model):
 
         # Return the general ledger data
         return {'balance_info': balance_info}
+    
+    @api.model
+    def get_balance_by_customer(self, customer_id, end_date):
+        # Define search criteria to filter account move lines based on the customer
+        domain = [
+            ('partner_id', '=', customer_id),
+            ('date', '<=', end_date)
+        ]
+
+        # Retrieve account move lines based on the criteria
+        move_line = self.env['account.move.line'].search(domain, order='date DESC', limit=1)
+
+        # Prepare balance info
+        balance_info = [{
+            'customer_id': customer_id,
+            'date': end_date,
+            'balance': move_line.balance,
+        }] if move_line else []
+
+        # Return the balance data
+        return {'balance_info': balance_info}
 
     @api.model
     def general_ledger_report(self, account_id, start_date, end_date):
