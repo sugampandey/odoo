@@ -246,6 +246,57 @@ class AccountBalance(models.Model):
             'ledger_data': ledger_data,
         }
 
+    @api.model
+    def general_ledger_report_by_analytic(self, analytic_account_id, start_date, end_date):
+        # Define the domain to filter analytic lines based on the analytic account and date range
+        analytic_domain = [
+            ('account_id', '=', analytic_account_id),
+            ('date', '>=', start_date),
+            ('date', '<=', end_date)
+        ]
+
+        # Search for analytic lines that match the domain
+        analytic_lines = self.env['account.analytic.line'].search(analytic_domain)
+
+        ledger_data = []
+
+        for analytic_line in analytic_lines:
+            # Get the related move line
+            move_line = analytic_line.move_line_id
+
+            if not move_line:
+                continue
+
+            partner_type = None
+            if move_line.partner_id:
+                partner = move_line.partner_id
+                if partner.customer_rank > 0 and partner.supplier_rank > 0:
+                    partner_type = 'Customer/Vendor'
+                elif partner.customer_rank > 0:
+                    partner_type = 'Customer'
+                elif partner.supplier_rank > 0:
+                    partner_type = 'Vendor'
+            else:
+                partner_type = ""
+
+            # Append move line data to the ledger data list
+            ledger_data.append({
+                'date': move_line.date,
+                'debit': move_line.debit,
+                'credit': move_line.credit,
+                'account_root_id': move_line.account_root_id.id,
+                'analytic_move_id': analytic_line.id,
+                'analytic_account_amount': analytic_line.amount,
+                'analytic_account_name': analytic_line.account_id.name,
+                'partner_id': move_line.partner_id.name,
+                'partner_type': partner_type,
+            })
+
+        # Return the ledger data
+        return {
+            'ledger_data': ledger_data,
+        }    
+
     ##create/get/delete_bills
     @api.model
     def create_bill(self, ref, quantity, price_unit, account_id, analytic_account_id, partner_id,
