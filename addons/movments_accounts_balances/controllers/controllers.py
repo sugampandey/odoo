@@ -545,55 +545,109 @@ class AccountBalance(models.Model):
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
-
     @api.model
-    def create_partner(self, name, is_company, company_id, email, phone, category_ids):
+    def create_customer(self, name, is_company, company_id, email, phone):
         """
-        Create a partner (customer or vendor) within Odoo's CRM module.
+        Create a new customer in the Odoo CRM module and assign the 'Customer' category.
 
         Args:
-        - name (str): The name of the partner.
-        - is_company (bool): True if the partner is a company, False if an individual.
-        - company_id (int): ID of the company this partner is associated with.
-        - email (str, optional): Email address of the partner.
-        - phone (str, optional): Phone number of the partner.
-        - tag_ids (list, optional): List of tag IDs for categorization.
+        - name (str): The name of the customer.
+        - is_company (bool): True if the customer is a company, False if an individual.
+        - company_id (int): ID of the company this customer is associated with, if any.
+        - email (str, optional): Email address of the customer.
+        - phone (str, optional): Phone number of the customer.
 
         Returns:
-        dict: Dictionary containing a key 'partner_info' with list of created partner details.
+        dict: Dictionary containing a key 'partner_info' with the created customer details.
 
         Raises:
         ValidationError: If any validation fails.
         """
-        # Check for duplicate partner using name and company_id
-        if self.search([('name', '=', name), ('company_id', '=', company_id)], limit=1):
-            raise ValidationError("A partner with this name already exists in the selected company.")
+        # Search for or create the 'Customer' category
+        customer_category = self.env['res.partner.category'].search([('name', '=', 'Customer')], limit=1)
+        if not customer_category:
+            customer_category = self.env['res.partner.category'].create({'name': 'Customer'})
 
-        # Partner values to create
-        partner_vals = {
+        # Check for duplicate customer using name and company_id
+        if self.search([('name', '=', name), ('company_id', '=', company_id)], limit=1):
+            raise ValidationError("A customer with this name already exists in the selected company.")
+
+        # Customer values to create
+        customer_vals = {
             'name': name,
             'is_company': is_company,
             'company_id': company_id,
             'email': email or None,
             'phone': phone or None,
-            'category_id': [(6, 0, category_ids)] if category_ids else False,
+            'category_id': [(6, 0, [customer_category.id])],  # Assign the customer category
         }
 
-        # Create new partner record
-        new_partner = self.create(partner_vals)
+        # Create new customer record
+        new_customer = self.create(customer_vals)
 
-        # Prepare partner data for response
-        partner_data = [{
-            'id': new_partner.id,
-            'name': new_partner.name,
-            'is_company': new_partner.is_company,
-            'email': new_partner.email,
-            'phone': new_partner.phone,
-            'company_id': new_partner.company_id.id,
-        }]
+        # Prepare customer data for response
+        customer_data = {
+            'id': new_customer.id,
+            'name': new_customer.name,
+            'is_company': new_customer.is_company,
+            'email': new_customer.email,
+            'phone': new_customer.phone,
+            'company_id': new_customer.company_id.id if new_customer.company_id else None,
+        }
 
-        response = {'partner_info': partner_data}
-        return response
+        return {'partner_info': customer_data}
+
+    @api.model
+    def create_vendor(self, name, is_company, company_id, email, phone):
+        """
+        Create a new customer in the Odoo CRM module and assign the 'Customer' category.
+
+        Args:
+        - name (str): The name of the customer.
+        - is_company (bool): True if the customer is a company, False if an individual.
+        - company_id (int): ID of the company this customer is associated with, if any.
+        - email (str, optional): Email address of the customer.
+        - phone (str, optional): Phone number of the customer.
+
+        Returns:
+        dict: Dictionary containing a key 'partner_info' with the created customer details.
+
+        Raises:
+        ValidationError: If any validation fails.
+        """
+        # Search for or create the 'Customer' category
+        vendor_category = self.env['res.partner.category'].search([('name', '=', 'Vendor')], limit=1)
+        if not vendor_category:
+            vendor_category = self.env['res.partner.category'].create({'name': 'Vendor'})
+
+        # Check for duplicate customer using name and company_id
+        if self.search([('name', '=', name), ('company_id', '=', company_id)], limit=1):
+            raise ValidationError("A customer with this name already exists in the selected company.")
+
+        # Customer values to create
+        vendor_vals = {
+            'name': name,
+            'is_company': is_company,
+            'company_id': company_id,
+            'email': email or None,
+            'phone': phone or None,
+            'category_id': [(6, 0, [vendor_category.id])],  # Assign the customer category
+        }
+
+        # Create new customer record
+        new_vendor = self.create(vendor_vals)
+
+        # Prepare customer data for response
+        vendor_data = {
+            'id': new_vendor.id,
+            'name': new_vendor.name,
+            'is_company': new_vendor.is_company,
+            'email': new_vendor.email,
+            'phone': new_vendor.phone,
+            'company_id': new_vendor.company_id.id if new_vendor.company_id else None,
+        }
+
+        return {'partner_info': vendor_data}
 
     @api.model
     def get_partner(self, partner_id):
