@@ -71,6 +71,35 @@ class AccountBalance(models.Model):
         return partner_data
 
     @api.model
+    def get_all_customers(self):
+        # Define the domain to filter partners based on the customer tag
+        domain = [('category_id.name', '=', 'Customer')]
+        # domain = []
+
+        # Search for partners based on the domain
+        customers = self.env['res.partner'].search(domain)
+
+        # Prepare the partner data
+        customer_data = [{'id': customer.id, 'name': customer.name} for customer in customers]
+
+        # Return the customer data
+        return customer_data
+
+    @api.model
+    def get_all_vendors(self):
+        # Define the domain to filter partners based on the vendor tag
+        domain = [('category_id.name', '=', 'Vendor')]
+
+        # Search for partners based on the domain
+        vendors = self.env['res.partner'].search(domain)
+
+        # Prepare the partner data
+        vendor_data = [{'id': vendor.id, 'name': vendor.name} for vendor in vendors]
+
+        # Return the vendor data
+        return vendor_data
+
+    @api.model
     def get_balance(self, account_id, end_date):
         # Define search criteria to filter account move lines
         domain = [('account_id', '=', account_id),
@@ -87,6 +116,48 @@ class AccountBalance(models.Model):
         }] if move_line else []
 
         # Return the general ledger data
+        return {'balance_info': balance_info}
+
+    @api.model
+    def get_balance_by_customer(self, customer_id, end_date):
+        # Define search criteria to filter account move lines based on the customer
+        domain = [
+            ('partner_id', '=', customer_id),
+            ('date', '<=', end_date)
+        ]
+
+        # Retrieve account move lines based on the criteria
+        move_line = self.env['account.move.line'].search(domain, order='date DESC', limit=1)
+
+        # Prepare balance info
+        balance_info = [{
+            'customer_id': customer_id,
+            'date': end_date,
+            'balance': move_line.balance,
+        }] if move_line else []
+
+        # Return the balance data
+        return {'balance_info': balance_info}
+
+    @api.model
+    def get_balance_by_vendor(self, vendor_id, end_date):
+        # Define search criteria to filter account move lines based on the vendor
+        domain = [
+            ('partner_id', '=', vendor_id),
+            ('date', '<=', end_date)
+        ]
+
+        # Retrieve account move lines based on the criteria
+        move_line = self.env['account.move.line'].search(domain, order='date DESC', limit=1)
+
+        # Prepare balance info
+        balance_info = [{
+            'vendor_id': vendor_id,
+            'date': end_date,
+            'balance': move_line.balance,
+        }] if move_line else []
+
+        # Return the balance data
         return {'balance_info': balance_info}
 
     @api.model
@@ -135,7 +206,141 @@ class AccountBalance(models.Model):
             'ledger_data': ledger_data,
         }
 
-    ##create/get/delete_bills
+    @api.model
+    def general_ledger_report_by_vendor(self, partner_id, start_date, end_date):
+        # Define the domain to filter move lines based on the partner and date range
+        domain = [
+            ('partner_id', '=', partner_id),
+            ('date', '>=', start_date),
+            ('date', '<=', end_date)
+        ]
+
+        # Search for account move lines that match the domain
+        move_lines = self.env['account.move.line'].search(domain)
+
+        ledger_data = []
+
+        for line in move_lines:
+            # Get analytic line information related to the move line
+            analytic_info = self.env['account.analytic.line'].search([('move_line_id', '=', line.id)], limit=1)
+            analytic_account_id = analytic_info.account_id if analytic_info else ""
+            analytic_account_name = analytic_account_id.name if analytic_info else ""
+            analytic_account_amount = analytic_info.amount if analytic_info else ""
+
+            partner_type = 'Vendor' if line.partner_id else ""
+
+            # Append move line data to the ledger data list
+            ledger_data.append({
+                'date': line.date,
+                'debit': line.debit,
+                'credit': line.credit,
+                'account_root_id': line.account_root_id.id,
+                'analytic_move_id': analytic_info.id,
+                'analytic_account_amount': analytic_account_amount,
+                'analytic_account_name': analytic_account_name,
+                'partner_id': line.partner_id.name,
+                'partner_type': partner_type,
+            })
+
+        # Return the ledger data
+        return {
+            'ledger_data': ledger_data,
+        }
+
+    @api.model
+    def general_ledger_report_by_customer(self, partner_id, start_date, end_date):
+        # Define the domain to filter move lines based on the partner and date range
+        domain = [
+            ('partner_id', '=', partner_id),
+            ('date', '>=', start_date),
+            ('date', '<=', end_date)
+        ]
+
+        # Search for account move lines that match the domain
+        move_lines = self.env['account.move.line'].search(domain)
+
+        ledger_data = []
+
+        for line in move_lines:
+            # Get analytic line information related to the move line
+            analytic_info = self.env['account.analytic.line'].search([('move_line_id', '=', line.id)], limit=1)
+            analytic_account_id = analytic_info.account_id if analytic_info else ""
+            analytic_account_name = analytic_account_id.name if analytic_info else ""
+            analytic_account_amount = analytic_info.amount if analytic_info else ""
+
+            partner_type = 'Customer' if line.partner_id else ""
+
+            # Append move line data to the ledger data list
+            ledger_data.append({
+                'date': line.date,
+                'debit': line.debit,
+                'credit': line.credit,
+                'account_root_id': line.account_root_id.id,
+                'analytic_move_id': analytic_info.id,
+                'analytic_account_amount': analytic_account_amount,
+                'analytic_account_name': analytic_account_name,
+                'partner_id': line.partner_id.name,
+                'partner_type': partner_type,
+            })
+
+        # Return the ledger data
+        return {
+            'ledger_data': ledger_data,
+        }
+
+    @api.model
+    def general_ledger_report_by_analytic(self, analytic_account_id, start_date, end_date):
+        # Define the domain to filter analytic lines based on the analytic account and date range
+        analytic_domain = [
+            ('account_id', '=', analytic_account_id),
+            ('date', '>=', start_date),
+            ('date', '<=', end_date)
+        ]
+
+        # Search for analytic lines that match the domain
+        analytic_lines = self.env['account.analytic.line'].search(analytic_domain)
+
+        ledger_data = []
+
+        for analytic_line in analytic_lines:
+            # Get the related move line
+            move_line = analytic_line.move_line_id
+
+            if not move_line:
+                continue
+
+            partner_type = None
+            if move_line.partner_id:
+                partner = move_line.partner_id
+                if partner.customer_rank > 0 and partner.supplier_rank > 0:
+                    partner_type = 'Customer/Vendor'
+                elif partner.customer_rank > 0:
+                    partner_type = 'Customer'
+                elif partner.supplier_rank > 0:
+                    partner_type = 'Vendor'
+            else:
+                partner_type = ""
+
+            # Append move line data to the ledger data list
+            ledger_data.append({
+                'date': move_line.date,
+                'debit': move_line.debit,
+                'credit': move_line.credit,
+                'account_root_id': move_line.account_root_id.id,
+                'analytic_move_id': analytic_line.id,
+                'analytic_account_amount': analytic_line.amount,
+                'analytic_account_name': analytic_line.account_id.name,
+                'partner_id': move_line.partner_id.name,
+                'partner_type': partner_type,
+            })
+
+        # Return the ledger data
+        return {
+            'ledger_data': ledger_data,
+        }
+
+        ##create/get/delete_bills
+
     @api.model
     def create_bill(self, ref, quantity, price_unit, account_id, analytic_account_id, partner_id,
                     bill_date, bill_date_due, narration):
@@ -182,8 +387,6 @@ class AccountBalance(models.Model):
             'State': bill.payment_state,
         }
 
-
-
     @api.model
     def get_bill(self, bill_id):
         # Define search criteria to filter bills
@@ -220,8 +423,6 @@ class AccountBalance(models.Model):
         response = {'bill_info': bill_data}
 
         return response
-
-
 
     @api.model
     def delete_bill(self, bill_id):
@@ -286,7 +487,7 @@ class AccountBalance(models.Model):
                         payment_data = {
                             'id': r_move_line.payment_id.id,  # ID of the payment
                             'bill_id': bill.id,  # ID of the bill move associated with the payment
-                            'amount': r_move_line.debit if r_move_line.debit else r_move_line.credit, # Credit amount
+                            'amount': r_move_line.debit if r_move_line.debit else r_move_line.credit,  # Credit amount
                             'bill_date': bill.date,  # Credit amount
                             'payment_date': r_move_line.date or '',  # Date of the move line
                             'partner_id': r_move_line.partner_id.id if r_move_line.partner_id else 0,  # Partner ID
@@ -375,7 +576,6 @@ class AccountBalance(models.Model):
             return payment_data
         else:
             return {'error': "No payment found for the provided journal entry ID."}
-
 
     @api.model
     def delete_bill_payment(self, payment_id):
@@ -539,3 +739,217 @@ class AccountBalance(models.Model):
             return "Account deleted successfully."
         except Exception as e:
             return "Failed to delete account: {}".format(e)
+
+
+class ResPartner(models.Model):
+    _inherit = 'res.partner'
+
+    @api.model
+    def create_partner(self, name, is_company, company_id, email, phone, category_ids):
+        """
+        Create a partner (customer or vendor) within Odoo's CRM module.
+
+        Args:
+        - name (str): The name of the partner.
+        - is_company (bool): True if the partner is a company, False if an individual.
+        - company_id (int): ID of the company this partner is associated with.
+        - email (str, optional): Email address of the partner.
+        - phone (str, optional): Phone number of the partner.
+        - tag_ids (list, optional): List of tag IDs for categorization.
+
+        Returns:
+        dict: Dictionary containing a key 'partner_info' with list of created partner details.
+
+        Raises:
+        ValidationError: If any validation fails.
+        """
+        # Check for duplicate partner using name and company_id
+        if self.search([('name', '=', name), ('company_id', '=', company_id)], limit=1):
+            raise ValidationError("A partner with this name already exists in the selected company.")
+
+        # Partner values to create
+        partner_vals = {
+            'name': name,
+            'is_company': is_company,
+            'company_id': company_id,
+            'email': email or None,
+            'phone': phone or None,
+            'category_id': [(6, 0, category_ids)] if category_ids else False,
+        }
+
+        # Create new partner record
+        new_partner = self.create(partner_vals)
+
+        # Prepare partner data for response
+        partner_data = [{
+            'id': new_partner.id,
+            'name': new_partner.name,
+            'is_company': new_partner.is_company,
+            'email': new_partner.email,
+            'phone': new_partner.phone,
+            'company_id': new_partner.company_id.id,
+        }]
+
+        response = {'partner_info': partner_data}
+        return response
+
+    @api.model
+    def get_partner(self, partner_id):
+        """
+        Retrieves a partner by ID within Odoo's CRM module.
+
+        Args:
+        - partner_id (int): The ID of the partner to retrieve.
+
+        Returns:
+        dict: Dictionary containing a key 'partner_info' with details of the retrieved partner.
+
+        Raises:
+        ValidationError: If the partner does not exist.
+        """
+        partner = self.browse(partner_id)
+        if not partner.exists():
+            raise ValidationError("Partner with ID {} does not exist.".format(partner_id))
+
+        partner_data = {
+            'id': partner.id,
+            'name': partner.name,
+            'is_company': partner.is_company,
+            'email': partner.email,
+            'phone': partner.phone,
+            'company_id': partner.company_id.id,
+        }
+        response = {'partner_info': partner_data}
+        return response
+
+    @api.model
+    def delete_partner(self, partner_id):
+        """
+        Deletes a partner from Odoo's CRM module.
+
+        Args:
+        - partner_id (int): The ID of the partner to be deleted.
+
+        Returns:
+        str: Success or error message.
+        """
+        Partner = self.env['res.partner']
+        partner = Partner.search([('id', '=', partner_id)])
+
+        if not partner:
+            return "Partner not found."
+
+        try:
+            partner.unlink()  # Delete the partner
+            return "Partner deleted successfully."
+        except Exception as e:
+            return "Failed to delete partner: {}".format(e)
+
+
+class AnalyticAccount(models.Model):
+    _inherit = 'account.analytic.account'  # Inherit the existing model
+
+    @api.model
+    def create_analytic_account(self, name, code, company_id, plan_id):
+        """
+        Create an analytic account within Odoo's accounting module.
+
+        Args:
+        - name (str): The name of the analytic account.
+        - code (str): Unique identifier code for the analytic account.
+        - company_id (int): ID of the company this analytic account belongs to.
+        - currency_id (int, optional): The currency this analytic account operates in.
+        - tag_ids (list, optional): List of tag IDs for reporting purposes.
+        - partner_id (int, optional): The ID of the partner associated with this analytic account.
+
+        Returns:
+        dict: Dictionary containing a key 'account_info' with details of the created analytic account.
+
+        Raises:
+        ValidationError: If any validation fails.
+        """
+        # Check if an analytic account with the same code already exists for the given company
+        if self.search([('code', '=', code), ('company_id', '=', company_id)], limit=1):
+            raise ValidationError("An analytic account with this code already exists in the selected company.")
+
+        # Prepare values for the new analytic account
+        analytic_account_vals = {
+            'name': name,
+            'code': code,
+            'company_id': company_id,
+            'plan_id': plan_id
+
+        }
+
+        # Create the new analytic account
+        new_analytic_account = self.create(analytic_account_vals)
+
+        # Prepare the response data
+        account_data = {
+            'id': new_analytic_account.id,
+            'account_name': new_analytic_account.name,
+            'account_code': new_analytic_account.code,
+            'company_id': new_analytic_account.company_id.id,
+            'plan_id': new_analytic_account.plan_id.id
+        }
+
+        response = {'account_info': [account_data]}
+        return response
+
+    @api.model
+    def get_analytic_account(self, account_id):
+        """
+        Retrieves an analytic account by ID within Odoo's accounting module.
+
+        Args:
+        - account_id (int): The ID of the analytic account to retrieve.
+
+        Returns:
+        dict: Dictionary containing a key 'account_info' with details of the retrieved analytic account.
+
+        Raises:
+        ValidationError: If the analytic account does not exist.
+        """
+        # Attempt to retrieve the analytic account using the provided ID
+        account = self.browse(account_id)
+
+        # Check if the analytic account actually exists
+        if not account.exists():
+            raise ValidationError("Analytic account with ID {} does not exist.".format(account_id))
+
+        # Gather data from the retrieved analytic account object
+        account_data = {
+            'id': account.id,
+            'account_name': account.name,
+            'account_code': account.code,
+            'currency_id': account.currency_id.id if account.currency_id else 'None',
+            'company_id': account.company_id.id,
+        }
+
+        # Package the analytic account data in a response dictionary
+        response = {'account_info': account_data}
+        return response
+
+    @api.model
+    def delete_analytic_account(self, account_id):
+        """
+        Deletes an analytic account from Odoo's accounting module.
+
+        Args:
+        - account_id (int): The ID of the analytic account to be deleted.
+
+        Returns:
+        str: Success or error message.
+        """
+        AnalyticAccount = self.env['account.analytic.account']
+        account = AnalyticAccount.search([('id', '=', account_id)])
+
+        if not account:
+            return "Analytic account not found."
+
+        # Proceed to delete the analytic account
+        try:
+            account.unlink()  # Delete the analytic account
+            return "Analytic account deleted successfully."
+        except Exception as e:
+            return "Failed to delete analytic account: {}".format(e)
