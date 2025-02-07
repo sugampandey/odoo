@@ -1,0 +1,2 @@
+2025-02-05 07:24:53 - odoo_custom - INFO - Processing create account request
+2025-02-05 07:24:53 - odoo_custom - DEBUG - Received data: {'name': 'BANK 1', 'code': 'BANK1', 'company_id': 5, 'account_type': 'asset_current', 'payment_method': 'bank', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}

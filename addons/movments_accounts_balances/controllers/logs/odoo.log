@@ -1,0 +1,5 @@
+2025-02-07 08:14:56 - odoo_custom - INFO - Fetching accounts with parameters: account_type=None, company_id=5, deprecated=None
+2025-02-07 08:14:56 - odoo_custom - DEBUG - Added company_id filter: 5
+2025-02-07 08:14:56 - odoo_custom - DEBUG - Final search domain: [('company_id', '=', 5)]
+2025-02-07 08:14:56 - odoo_custom - INFO - Total matching accounts: 10
+2025-02-07 08:14:56 - odoo_custom - INFO - Retrieved 10 accounts

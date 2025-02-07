@@ -24,14 +24,14 @@
 
     # always loaded
     'data': [
+        # 'security/ir.model.access.csv',
+        'views/swagger_template.xml'
 
-    ],
-    'demo': [
     ],
 
 
     'installable': True,
-    'application': False,
+    'application': True,
 
 
 

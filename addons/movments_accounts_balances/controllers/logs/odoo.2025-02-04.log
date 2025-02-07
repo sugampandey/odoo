@@ -1,0 +1,38 @@
+2025-02-04 07:41:13 - odoo_custom - INFO - Processing create account request
+2025-02-04 07:41:13 - odoo_custom - DEBUG - Received data: {'name': 'Sales', 'code': 'SALES', 'company_id': 5, 'account_type': 'income', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 07:51:20 - odoo_custom - INFO - Processing create account request
+2025-02-04 07:51:20 - odoo_custom - DEBUG - Received data: {'name': 'Sales', 'code': 'SALES', 'company_id': 5, 'account_type': 'income', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 07:51:51 - odoo_custom - INFO - Processing create account request
+2025-02-04 07:51:51 - odoo_custom - DEBUG - Received data: {'name': 'Sales', 'code': 'SALES', 'company_id': 5, 'account_type': 'income', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 07:52:30 - odoo_custom - INFO - Processing create account request
+2025-02-04 07:52:30 - odoo_custom - DEBUG - Received data: {'name': 'Sales', 'code': 'SALES', 'company_id': 5, 'account_type': 'income', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 07:55:43 - odoo_custom - INFO - Processing create account request
+2025-02-04 07:55:43 - odoo_custom - DEBUG - Received data: {'name': 'Sales', 'code': 'SALES', 'company_id': 5, 'account_type': 'income', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 08:02:51 - odoo_custom - INFO - Processing create account request
+2025-02-04 08:02:51 - odoo_custom - DEBUG - Received data: {'name': 'Sales', 'code': 'SALES', 'company_id': 5, 'account_type': 'income', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 08:05:14 - odoo_custom - INFO - Processing create account request
+2025-02-04 08:05:14 - odoo_custom - DEBUG - Received data: {'name': 'Expense', 'code': 'EXPENSE', 'company_id': 5, 'account_type': 'expense', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 08:06:54 - odoo_custom - INFO - Processing create account request
+2025-02-04 08:06:54 - odoo_custom - DEBUG - Received data: {'name': 'Account Receivable', 'code': 'AR', 'company_id': 5, 'account_type': 'asset_receivable', 'payment_method': 'cash', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 08:07:52 - odoo_custom - INFO - Processing create account request
+2025-02-04 08:07:52 - odoo_custom - DEBUG - Received data: {'name': 'Account Receivable', 'code': 'AR', 'company_id': 5, 'account_type': 'asset_receivable', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 08:08:30 - odoo_custom - INFO - Processing create account request
+2025-02-04 08:08:30 - odoo_custom - DEBUG - Received data: {'name': 'Account Payable', 'code': 'AP', 'company_id': 5, 'account_type': 'liability_payable', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 08:09:15 - odoo_custom - INFO - Processing create account request
+2025-02-04 08:09:15 - odoo_custom - DEBUG - Received data: {'name': 'Bank', 'code': 'BANK', 'company_id': 5, 'account_type': 'bank', 'payment_method': 'bank', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 08:09:56 - odoo_custom - INFO - Processing create account request
+2025-02-04 08:09:56 - odoo_custom - DEBUG - Received data: {'name': 'Cash', 'code': 'CASH', 'company_id': 5, 'account_type': 'asset_cash', 'payment_method': 'cash', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 09:47:02 - odoo_custom - INFO - Processing create account request
+2025-02-04 09:47:02 - odoo_custom - DEBUG - Received data: {'name': 'Cash', 'code': 'CASH', 'company_id': 5, 'account_type': 'asset_cash', 'payment_method': 'cash', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 09:47:17 - odoo_custom - INFO - Processing create account request
+2025-02-04 09:47:17 - odoo_custom - DEBUG - Received data: {'name': 'Bank', 'code': 'BANK', 'company_id': 5, 'account_type': 'asset_cash', 'payment_method': 'bank', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 10:28:24 - odoo_custom - INFO - Processing create account request
+2025-02-04 10:28:24 - odoo_custom - DEBUG - Received data: {'name': 'Account Receivable (PoS)', 'code': 'AR(PoS)', 'company_id': 5, 'account_type': 'asset_receivable', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 10:28:45 - odoo_custom - INFO - Processing create account request
+2025-02-04 10:28:45 - odoo_custom - DEBUG - Received data: {'name': 'Account Receivable (PoS)', 'code': 'AR PoS', 'company_id': 5, 'account_type': 'asset_receivable', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 10:28:55 - odoo_custom - INFO - Processing create account request
+2025-02-04 10:28:55 - odoo_custom - DEBUG - Received data: {'name': 'Account Receivable (PoS)', 'code': 'ARPoS', 'company_id': 5, 'account_type': 'asset_receivable', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 10:29:30 - odoo_custom - INFO - Processing create account request
+2025-02-04 10:29:30 - odoo_custom - DEBUG - Received data: {'name': 'Product Sales', 'code': 'PS', 'company_id': 5, 'account_type': 'income', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
+2025-02-04 14:21:48 - odoo_custom - INFO - Processing create account request
+2025-02-04 14:21:48 - odoo_custom - DEBUG - Received data: {'name': 'Current Assets', 'code': 'CUA', 'company_id': 5, 'account_type': 'asset_current', 'payment_method': 'none', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
