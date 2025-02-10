@@ -24,11 +24,11 @@ class AnalyticAccountAPI(http.Controller):
         if not is_valid:
             return False, APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
         
-        # Validate plan if provided
-        plan_id = converted_data['plan_id']
-        is_valid, error_message = validate_analytic_plan(request, plan_id)
-        if not is_valid:
-            return False, APIResponse.error_response(f'Invalid plan: {error_message}', f'Invalid plan_id: {plan_id}')
+        # # Validate plan if provided
+        # plan_id = converted_data['plan_id']
+        # is_valid, error_message = validate_analytic_plan(request, plan_id)
+        # if not is_valid:
+        #     return False, APIResponse.error_response(f'Invalid plan: {error_message}', f'Invalid plan_id: {plan_id}')
             
         # Check if an analytic account with the same code already exists for the given company
         if request.env['account.analytic.account'].sudo().search(
@@ -41,7 +41,7 @@ class AnalyticAccountAPI(http.Controller):
             'name': converted_data['name'],
             'code': converted_data['code'],
             'company_id': company_id,
-            'plan_id': plan_id,
+            # 'plan_id': plan_id,
         }
         return True, analytic_account_vals
         
@@ -56,6 +56,13 @@ class AnalyticAccountAPI(http.Controller):
                 success, analytic_account_vals = self.validate_and_prepare_analytic_account_data(data, ANALYTIC_ACCOUNT_SCHEMA)
                 if success is not True:
                     return analytic_account_vals
+                
+                analytic_account_plan = request.env['account.analytic.plan'].sudo().create({
+                    'name':analytic_account_vals['name'],
+                    'company_id': analytic_account_vals['company_id']
+                })
+
+                analytic_account_vals['plan_id'] = analytic_account_plan.id
                 
                 analytic_account = request.env['account.analytic.account'].sudo().create(analytic_account_vals)
 

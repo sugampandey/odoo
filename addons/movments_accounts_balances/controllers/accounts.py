@@ -104,14 +104,13 @@ class AccountAPI(http.Controller):
                     'company_id': company_id,
                 }
                 account = request.env['account.account'].sudo().create(account_vals)
+                self.create_journal(account, converted_data)
 
                 # Handle opening balances if provided
                 opening_debit = float(converted_data.get('opening_debit')) if converted_data.get('opening_debit') else 0
                 opening_credit = float(converted_data.get('opening_credit')) if converted_data.get('opening_credit') else 0
                 if opening_debit or opening_credit:
                     self.create_opening_balance(account, opening_debit, opening_credit, company_id)
-
-                self.create_journal(account, converted_data)
 
                 # Prepare response data
                 response_data = {

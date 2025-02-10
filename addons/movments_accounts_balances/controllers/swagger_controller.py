@@ -76,7 +76,7 @@ class SwaggerController(http.Controller):
                         for converter, variable in rule._trace:
                             if converter and variable:
                                 # Skip session_code parameter
-                                if variable == 'session_code':
+                                if variable in ['session_code', 'create_token']:
                                     continue
                                 if not any(p for p in method_spec['parameters'] 
                                          if p.get('in') == 'path' and p.get('name') == variable):

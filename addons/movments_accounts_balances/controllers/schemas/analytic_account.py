@@ -107,11 +107,6 @@ ANALYTIC_ACCOUNT_SCHEMA = {
             'display_name': 'Company',
             'swagger_type': 'integer'
         },
-        'plan_id': {
-            'type': int,
-            'display_name': 'Analytic Plan',
-            'swagger_type': 'integer'
-        }
     },
     'optional': {}
 }
