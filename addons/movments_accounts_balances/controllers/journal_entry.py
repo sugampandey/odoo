@@ -15,33 +15,24 @@ class JournalEntryController(http.Controller):
     def validate_and_prepare_journal_entry_data(self, data, invoice_expected_fields):
         success, converted_data = validate_and_convert_data(data, invoice_expected_fields)
         if success is not True:
-            return False, converted_data, converted_data
+            return False, converted_data
         
         # Validate company 
         company_id = converted_data['company_id']
         is_valid, error_message = validate_company(request, company_id)
         if not is_valid:
-            return False, APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}'), converted_data
-        
-
-        # Validate journal
-        journal_id = converted_data.get('journal_id')
-        if journal_id:
-            is_valid, error_message = validate_journal(request, journal_id, company_id)
-            if not is_valid:
-                return False, APIResponse.error_response(f'Invalid journal: {error_message}', f'Invalid journal_id: {journal_id}'), converted_data
-            
+            return False, APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
 
         # validate partner
         partner_id = converted_data.get('partner_id')
         if partner_id:
             is_valid, error_message = validate_partner(request, partner_id, company_id)
             if not is_valid:
-                return False, APIResponse.error_response(f'Invalid partner: {error_message}', f'Invalid partner_id: {partner_id}'), converted_data
+                return False, APIResponse.error_response(f'Invalid partner: {error_message}', f'Invalid partner_id: {partner_id}')
 
         # Validate and prepare journal items
         if not converted_data['line_ids']:
-            return APIResponse.error_response(message='No journal items provided', errors='At least one journal item is required'), converted_data
+            return APIResponse.error_response(message='No journal items provided', errors='At least one journal item is required')
         
         move_lines = []
         total_debit = 0
@@ -52,13 +43,13 @@ class JournalEntryController(http.Controller):
             account_id = int(line.get('account_id')) if line.get('account_id') else False
             is_valid, error_message = validate_account(request, account_id, company_id)
             if not is_valid:
-                return False, APIResponse.error_response(f'Invalid account: {error_message}', f'Invalid account_id: {account_id}'), converted_data
+                return False, APIResponse.error_response(f'Invalid account: {error_message}', f'Invalid account_id: {account_id}')
             
             partner_id = int(line.get('partner_id')) if line.get('partner_id') else False
             if partner_id:
                 is_valid, error_message = validate_partner(request, partner_id, company_id)
                 if not is_valid:
-                    return False, APIResponse.error_response(f'Invalid partner: {error_message}', f'Invalid partner_id: {partner_id}'), converted_data
+                    return False, APIResponse.error_response(f'Invalid partner: {error_message}', f'Invalid partner_id: {partner_id}')
 
             move_line = {
                 'account_id': account_id,
@@ -76,19 +67,18 @@ class JournalEntryController(http.Controller):
             
         # Validate balanced entry
         if not (total_debit - total_credit) == 0:
-            return False, APIResponse.error_response(message='Journal entry is not balanced', errors=f'Difference between debit ({total_debit}) and credit ({total_credit})'), converted_data
+            return False, APIResponse.error_response(message='Journal entry is not balanced', errors=f'Difference between debit ({total_debit}) and credit ({total_credit})')
         
         # Create the journal entry
         move_vals = {
             'move_type': 'entry',
-            'journal_id': journal_id,
             'partner_id': partner_id,
             'date': converted_data['date'],
             'ref': converted_data['ref'],
             'company_id': company_id,
             'line_ids': move_lines,
         }
-        return True, move_vals, converted_data
+        return True, move_vals
     
     @http.route('/api/journal-entries', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     @swagger_doc(journal_entries_docs['create_journal_entry'])
@@ -101,26 +91,11 @@ class JournalEntryController(http.Controller):
             with cursor.savepoint():
                 data = get_request_data(request)
 
-                success, move_vals, converted_data = self.validate_and_prepare_journal_entry_data(data, JOURNAL_ENTRY_SCHEMA)
+                success, move_vals = self.validate_and_prepare_journal_entry_data(data, JOURNAL_ENTRY_SCHEMA)
                 if success is not True:
                     return move_vals
                     
                 move = request.env['account.move'].sudo().create(move_vals)
-                # If custom receivable account is specified, modify the receivable line
-                if converted_data.get('receivable_account_id'):
-                    # Wait for invoice to compute all lines
-                    move.flush_recordset()
-                    
-                    # Find the receivable line
-                    receivable_line = move.line_ids.filtered(
-                        lambda l: l.account_id.account_type == 'asset_receivable'
-                    )
-                    
-                    if receivable_line:
-                        # Update the account
-                        receivable_line.write({
-                            'account_id': converted_data['receivable_account_id']
-                        })
 
                 move.with_context(send_webhook=True).action_post()
                     

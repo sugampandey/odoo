@@ -178,11 +178,6 @@ JOURNAL_ENTRY_SCHEMA = {
             'display_name': 'Reference',
             'swagger_type': 'string'
         },
-        'receivable_account_id': {
-            'type': int,
-            'display_name': 'Receivable Account',
-            'swagger_type': 'integer'
-        },
     }
 }
 
