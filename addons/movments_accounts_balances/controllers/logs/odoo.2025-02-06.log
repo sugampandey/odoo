@@ -1,4 +1,0 @@
-2025-02-06 07:24:40 - odoo_custom - INFO - Processing create account request
-2025-02-06 07:24:40 - odoo_custom - DEBUG - Received data: {'name': 'Credit Card', 'code': 'CC', 'company_id': 5, 'account_type': 'liability_current', 'payment_method': 'cash', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}
-2025-02-06 07:28:46 - odoo_custom - INFO - Processing create account request
-2025-02-06 07:28:46 - odoo_custom - DEBUG - Received data: {'name': 'Credit Card', 'code': 'CC', 'company_id': 5, 'account_type': 'liability_current', 'payment_method': 'cash', 'currency_id': 0, 'opening_debit': 0, 'opening_credit': 0}

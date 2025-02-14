@@ -1,12 +1,12 @@
+import datetime
 from odoo import http, fields
 from odoo.http import request
 from .common import APIResponse, validate_and_convert_data, get_request_data
-from .validation_schema import account_expected_fields
 from .utils import validate_company, validate_account
 from .logger import logger
 from ..swagger.common import swagger_doc
 from ..swagger.accounts import accounts_docs
-from .schemas.accounts import ACCOUNT_SCHEMA
+from .schemas.accounts import ACCOUNT_SCHEMA, AccountCreateRequestModel , AccountResponseModel, AccountModel, MetaDataModel, CurrencyRefModel
 
 class AccountAPI(http.Controller):
     asset_method_types = ['asset_cash', 'asset_current']
@@ -44,23 +44,24 @@ class AccountAPI(http.Controller):
         inbound_method, inbound_line = self.create_payment_method_and_line(payment_method_data, 'inbound')
         outbound_method, outbound_line = self.create_payment_method_and_line(payment_method_data, 'outbound')
 
-    def create_journal(self, account, converted_data):
-        if converted_data['payment_method'].lower() == 'none':
-            if converted_data['account_type'].lower() == 'income':
+    def create_journal(self, account, account_request_data):
+        payment_method = account_request_data.get('PaymentMethod') if account_request_data.get('PaymentMethod') else 'none'
+        if payment_method.lower() == 'none':
+            if account_request_data['AccountType'].lower() == 'income':
                 journal_type = 'sale'
-            elif converted_data['account_type'].lower() == 'expense':
+            elif account_request_data['AccountType'].lower() == 'expense':
                 journal_type = 'purchase'
             else:
                 journal_type = 'general'
-        elif converted_data['account_type'].lower() in self.liability_method_types:
-            if converted_data['payment_method'].lower() == 'credit_card':
+        elif account_request_data['AccountType'].lower() in self.liability_method_types:
+            if payment_method.lower() == 'credit_card':
                 journal_type = 'bank'
             else:
                 raise ValueError('Invalid payment method for liability account')
-        elif converted_data['account_type'].lower() in self.asset_method_types:
-            if converted_data['payment_method'].lower() == 'cash':
+        elif account_request_data['AccountType'].lower() in self.asset_method_types:
+            if payment_method.lower() == 'cash':
                 journal_type = 'cash'
-            if converted_data['payment_method'].lower() == 'bank':
+            if payment_method.lower() == 'bank':
                 journal_type = 'bank'
         else:
             raise ValueError('Invalid payment method')
@@ -74,6 +75,76 @@ class AccountAPI(http.Controller):
         if journal_type in ['cash', 'bank']:
             self.create_payment_method(journal, account)
         # return journal
+
+    def create_account_vals(self, account_request_data, company_id, currency_id):
+        return {
+            'name': account_request_data['Name'],
+            'code': account_request_data['AcctNum'],
+            'account_type': account_request_data['AccountType'],
+            'company_id': company_id,
+            'currency_id': currency_id
+        }
+    
+    def create_account_response(self, account):
+        meta_data = MetaDataModel(
+            CreateTime = account.create_date.strftime('%Y-%m-%d %H:%M:%S'),
+            LastUpdatedTime = account.write_date.strftime('%Y-%m-%d %H:%M:%S'),
+        )
+        if account.currency_id:
+            currency_ref = CurrencyRefModel(
+                name=account.currency_id.full_name,
+                value=account.currency_id.name
+            )
+        else:
+            currency_ref = None
+        account = AccountModel(
+            Id=account.id,
+            Name=account.name,
+            FullyQualifiedName=account.name,
+            AccountType=account.account_type,
+            Classification=account.internal_group,
+            MetaData=meta_data,
+            CurrencyRef=currency_ref,
+            Active= not account.deprecated,
+            AcctNum=account.code
+        )
+        return AccountResponseModel(
+            Account=account,
+            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+        ).to_dict()
+    
+    def validate_and_prepare_account_data(self, data, company_id, ACCOUNT_SCHEMA):
+        # Validate company
+        company = request.env['res.company'].sudo().browse(company_id)
+        if not company.exists():
+            return False, APIResponse.error_response(message='Company not found', errors='Invalid company_id', status=404)
+                    
+        success, converted_data = validate_and_convert_data(data, ACCOUNT_SCHEMA)
+        if not success:
+            logger.warning(f"Data validation failed: {converted_data}")
+            return False, converted_data, converted_data
+        
+        # Convert request data 
+        account_request_data = AccountCreateRequestModel(
+            Name=converted_data['Name'],
+            AcctNum=converted_data['AcctNum'],
+            AccountType=converted_data['AccountType'],
+            CurrencyRef=converted_data.get('CurrencyRef'),
+            PaymentMethod=converted_data.get('PaymentMethod'),
+        ).to_dict()
+
+        currency_ref = account_request_data.get('CurrencyRef')
+        currency_id = None
+        if currency_ref:
+            currency_value = currency_ref.get('value')
+            currency = request.env['res.currency'].sudo().search([('name', '=', currency_value)], limit=1)
+            if not currency:
+                return False, APIResponse.error_response(message='Invalid currency', errors='Invalid currency_ref'), account_request_data
+            currency_id = currency.id
+            
+        account_vals = self.create_account_vals(account_request_data, company_id, currency_id)
+        return True, account_vals, account_request_data
+        
     
     @http.route('/api/accounts', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     @swagger_doc(accounts_docs['create_account'])
@@ -84,48 +155,27 @@ class AccountAPI(http.Controller):
                 logger.info("Processing create account request")
                 data = get_request_data(request)
                 logger.debug(f"Received data: {data}")
-                success, converted_data = validate_and_convert_data(data, ACCOUNT_SCHEMA)
-                if success is not True:
-                    logger.warning(f"Data validation failed: {converted_data}")
-                    return converted_data
                 
-                # Validate company if provided
-                company_id = converted_data.get('company_id')
-                if company_id:
-                    company = request.env['res.company'].sudo().browse(company_id)
-                    if not company.exists():
-                        return APIResponse.error_response(message='Company not found', errors='Invalid company_id', status=404)
-                    
-                # Create the account
-                account_vals = {
-                    'name': converted_data['name'],
-                    'code': converted_data['code'],
-                    'account_type': converted_data['account_type'],
-                    'company_id': company_id,
-                }
-                account = request.env['account.account'].sudo().create(account_vals)
-                self.create_journal(account, converted_data)
+                company_id = int(request.httprequest.headers.get('CompanyId')) if request.httprequest.headers.get('CompanyId') else None
+                if not company_id:
+                    return APIResponse.error_response(message='Company ID is required', errors='Missing CompanyId', status=400)
 
-                # Handle opening balances if provided
-                opening_debit = float(converted_data.get('opening_debit')) if converted_data.get('opening_debit') else 0
-                opening_credit = float(converted_data.get('opening_credit')) if converted_data.get('opening_credit') else 0
-                if opening_debit or opening_credit:
-                    self.create_opening_balance(account, opening_debit, opening_credit, company_id)
+                success, account_vals, account_request_data = self.validate_and_prepare_account_data(data, company_id, ACCOUNT_SCHEMA)
+                if success is not True:
+                    return account_vals
+                
+                # Create the account
+                account = request.env['account.account'].sudo().create(account_vals)
+                self.create_journal(account, account_request_data)
+
+                # # Handle opening balances if provided
+                # opening_debit = float(converted_data.get('opening_debit')) if converted_data.get('opening_debit') else 0
+                # opening_credit = float(converted_data.get('opening_credit')) if converted_data.get('opening_credit') else 0
+                # if opening_debit or opening_credit:
+                #     self.create_opening_balance(account, opening_debit, opening_credit, company_id)
 
                 # Prepare response data
-                response_data = {
-                    'id': account.id,
-                    'name': account.name,
-                    'code': account.code,
-                    'account_type': account.account_type,
-                    'company': {
-                        'id': account.company_id.id,
-                        'name': account.company_id.name
-                    } if account.company_id else None,
-                    'create_date': account.create_date.strftime('%Y-%m-%d %H:%M:%S'),
-                    'opening_debit': opening_debit,
-                    'opening_credit': opening_credit,
-                }
+                response_data = self.create_account_response(account)
                 return APIResponse.success_response(
                     message='Account created successfully',
                     data=response_data,
@@ -306,19 +356,7 @@ class AccountAPI(http.Controller):
             if not account.exists():
                 return APIResponse.error_response(message='Account not found', errors='Invalid account_id', status=404)
 
-            # Prepare response data
-            response_data = {
-                'id': account.id,
-                'name': account.name,
-                'code': account.code,
-                'account_type': account.account_type,
-                'deprecated': account.deprecated,
-                'company': {
-                    'id': account.company_id.id,
-                    'name': account.company_id.name
-                } if account.company_id else None,
-                'create_date': account.create_date.strftime('%Y-%m-%d %H:%M:%S')
-            }
+            response_data = self.create_account_response(account)
             return APIResponse.success_response(message='Account retrieved successfully', data=response_data)
         except Exception as e:
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=500)
@@ -354,3 +392,11 @@ class AccountAPI(http.Controller):
             cursor.rollback()
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=500)
 
+
+# class ResponseCOA:
+#     def __init__(self, account_id, account_number, parent_id, parent_number, level):
+#         self.account_id = account_id
+#         self.account_number = account_number
+#         self.parent_id = parent_id
+#         self.parent_number = parent_number
+#         self.level = level
