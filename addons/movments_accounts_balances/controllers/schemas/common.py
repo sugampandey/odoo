@@ -1,5 +1,14 @@
 from .schema_generator import ResponseSchemaGenerator
 
+
+HEADERS = [
+    {
+        'name': 'X-Company-Id',
+        'type': 'string',
+        'description': 'Company identifier',
+        'required': True
+    }
+]
 class CurrencyRefModel(ResponseSchemaGenerator):
     def __init__(
         self,

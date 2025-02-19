@@ -1,8 +1,8 @@
 from typing import Optional, Literal, get_type_hints, Type, Union, Any
 from datetime import datetime
-from .common import CurrencyRefModel, MetaDataModel
+from .common import CurrencyRefModel, MetaDataModel, HEADERS
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
-from ..mapping.accounts import CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING
+from ..mapping.accounts import CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING
 
 class ParentRef(ResponseSchemaGenerator):
     def __init__(
@@ -54,14 +54,16 @@ class AccountCreateRequestModel(RequestSchemaGenerator):
         Name: str,
         AcctNum: str,
         AccountType: str,
+        AccountSubType: Optional[str] = None,
         CurrencyRef: Optional[dict] = None,
-        PaymentMethod: Optional[Literal['none', 'cash', 'bank', 'credit_card']] = None
+        # PaymentMethod: Optional[Literal['none', 'cash', 'bank', 'credit_card']] = None
     ):
         self.Name = Name
         self.AcctNum = AcctNum
         self.AccountType = self.get_account_type(AccountType)
+        self.AccountSubType = AccountSubType
         self.CurrencyRef = CurrencyRef
-        self.PaymentMethod = PaymentMethod
+        # self.PaymentMethod = PaymentMethod
 
     def get_account_type(self, account_type):
         return ACCOUNT_TYPE_MAPPING.get(account_type)
@@ -72,7 +74,8 @@ class AccountCreateRequestModel(RequestSchemaGenerator):
             'AcctNum': self.AcctNum,
             'AccountType': self.AccountType,
             'CurrencyRef': self.CurrencyRef,
-            'PaymentMethod': self.PaymentMethod
+            'AccountSubType': self.AccountSubType,
+            # 'PaymentMethod': self.PaymentMethod
         }
 
     @classmethod
@@ -82,7 +85,8 @@ class AccountCreateRequestModel(RequestSchemaGenerator):
             AcctNum=data.get('AcctNum'),
             AccountType=data.get('AccountType'),
             CurrencyRef=data.get('CurrencyRef'),
-            PaymentMethod=data.get('PaymentMethod')
+            AccountSubType=data.get('AccountSubType'),
+            # PaymentMethod=data.get('PaymentMethod')
         )
 
 
@@ -214,9 +218,61 @@ class AccountResponseModel(ResponseSchemaGenerator):
         )
 
 
+class AccountQueryResponseModel(ResponseSchemaGenerator):
+    def __init__(
+        self,
+        startPosition: int,
+        Account: list[AccountModel],
+        maxResults: int,
+        totalCount: int
+    ):
+        self.startPosition = startPosition
+        self.Account = Account
+        self.maxResults = maxResults
+        self.totalCount = totalCount
 
-ACCOUNT_CREATE_RESPONSE = ACCOUNT_GET_RESPONSE = AccountResponseModel.get_schema(wrap_response=True)
+    def to_dict(self) -> dict:
+        return {
+            'startPosition': self.startPosition,
+            'Account': [account.to_dict() for account in self.Account],
+            'maxResults': self.maxResults,
+            'totalCount': self.totalCount
+        }
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            startPosition=data.get('startPosition', 0),
+            Account=[AccountModel.from_dict(account_data) for account_data in data.get('Account', [])],
+            maxResults=data.get('maxResults', 0),
+            totalCount=data.get('totalCount', 0)
+        )
+    
+class AccountListResponseModel(ResponseSchemaGenerator):
+    def __init__(
+        self,
+        QueryResponse: AccountQueryResponseModel,
+        time: str
+    ):
+        self.QueryResponse = QueryResponse
+        self.time = time
+
+    def to_dict(self) -> dict:
+        return {
+            'QueryResponse': self.QueryResponse.to_dict(),
+            'time': self.time
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            QueryResponse=AccountQueryResponseModel.from_dict(data.get('QueryResponse', {})),
+            time=data.get('time', '')
+        )
+
+
+ACCOUNT_CREATE_RESPONSE = ACCOUNT_GET_RESPONSE = AccountResponseModel.get_schema()
+ACCOUNT_LIST_RESPONSE = AccountListResponseModel.get_schema()
 
 ACCOUNT_OBJECT = {
     'type': 'object',
@@ -237,30 +293,30 @@ ACCOUNT_OBJECT = {
     }
 }
 
-ACCOUNT_LIST_RESPONSE = {
-    'type': 'object',
-    'properties': {
-        'success': {'type': 'boolean'},
-        'message': {'type': 'string'},
-        'data': {
-            'type': 'object',
-            'properties': {
-                'accounts': {
-                    'type': 'array',
-                    'items': ACCOUNT_OBJECT
-                },
-                'pagination': {
-                    'type': 'object',
-                    'properties': {
-                        'total_count': {'type': 'integer'},
-                        'limit': {'type': 'integer'},
-                        'offset': {'type': 'integer'}
-                    }
-                }
-            }
-        }
-    }
-}
+# ACCOUNT_LIST_RESPONSE = {
+#     'type': 'object',
+#     'properties': {
+#         'success': {'type': 'boolean'},
+#         'message': {'type': 'string'},
+#         'data': {
+#             'type': 'object',
+#             'properties': {
+#                 'accounts': {
+#                     'type': 'array',
+#                     'items': ACCOUNT_OBJECT
+#                 },
+#                 'pagination': {
+#                     'type': 'object',
+#                     'properties': {
+#                         'total_count': {'type': 'integer'},
+#                         'limit': {'type': 'integer'},
+#                         'offset': {'type': 'integer'}
+#                     }
+#                 }
+#             }
+#         }
+#     }
+# }
 
 
 ACCOUNT_SCHEMA = AccountCreateRequestModel.get_schema()
@@ -273,26 +329,7 @@ ACCOUNT_LIST_PARAMS = {
             'type': 'string',
             'description': 'Filter by account type',
             'required': False,
-            'enum': [
-                'asset_receivable',
-                'asset_cash',
-                'asset_current',
-                'asset_non_current',
-                'asset_prepayments',
-                'asset_fixed',
-                'liability_payable',
-                'liability_credit_card',
-                'liability_current',
-                'liability_non_current',
-                'equity',
-                'equity_unaffected',
-                'income',
-                'income_other',
-                'expense',
-                'expense_depreciation',
-                'expense_direct_cost',
-                'off_balance'
-            ]
+            'enum': list(ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING.keys())
         },
         {
             'name': 'company_id',
@@ -301,20 +338,20 @@ ACCOUNT_LIST_PARAMS = {
             'required': True
         },
         {
-            'name': 'deprecated',
+            'name': 'active',
             'type': 'boolean',
-            'description': 'Filter by deprecated',
+            'description': 'Filter by active',
             'required': False
         },
         {
-            'name': 'limit',
+            'name': 'maxResults',
             'type': 'integer',
-            'description': 'Number of records to return (default: 20)',
+            'description': 'Number of records to return (default: 100)',
             'required': False,
             'default': 20
         },
         {
-            'name': 'offset',
+            'name': 'startPosition',
             'type': 'integer',
             'description': 'Number of records to skip (default: 0)',
             'required': False,
@@ -331,10 +368,28 @@ ACCOUNT_GET_PARAMS = {
             'description': 'ID of the account to retrieve',
             'required': True
         }
+    ],
+    'query': [
+        {
+            'name': 'company_id',
+            'type': 'integer',
+            'description': 'Filter by company ID',
+            'required': True
+        },
     ]
 }
 
+ACCOUNT_HEADERS = [
+    {
+        'name': 'X-PaymentMethod',
+        'type': 'string',
+        'description': 'Payment Method',
+        'required': False,
+        'enum': ['none', 'cash', 'bank', 'credit_card']
+    }
+]
 ACCOUNT_CREATE_PARAMS = {
+    'headers': ACCOUNT_HEADERS + HEADERS,
     'body': {
         'schema': ACCOUNT_SCHEMA,
         'required': True

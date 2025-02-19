@@ -88,7 +88,7 @@ class ResponseSchemaGenerator:
     }
 
     @classmethod
-    def get_schema(cls, wrap_response=False) -> dict:
+    def get_schema(cls) -> dict:
         """Generate OpenAPI schema based on class annotations"""
         annotations = cls.__init__.__annotations__
         properties = {}
@@ -98,24 +98,10 @@ class ResponseSchemaGenerator:
                 field_schema = cls._get_field_schema(field_type)
                 properties[field_name] = field_schema
 
-        if wrap_response:
-            return {
-                'type': 'object',
-                'properties': {
-                    'success': {'type': 'boolean'},
-                    'message': {'type': 'string'},
-                    'data': {
-                        'type': 'object',
-                        'properties': properties
-                    },
-                    'errors': {'type': 'string'}
-                }
-            }
-        else:
-            return {
-                'type': 'object',
-                'properties': properties
-            }
+        return {
+            'type': 'object',
+            'properties': properties
+        }
 
     @classmethod
     def _get_field_schema(cls, field_type: Type) -> dict:
@@ -128,6 +114,19 @@ class ResponseSchemaGenerator:
                 # Get the actual type (excluding NoneType)
                 field_type = next(t for t in field_type.__args__ if t != type(None))
 
+        # Handle Lists/Arrays
+        if (hasattr(field_type, '__origin__') and 
+            (field_type.__origin__ is list or field_type.__origin__ == List)):
+            # Get the type of items in the list
+            item_type = field_type.__args__[0]
+            array_schema = {
+                'type': 'array',
+                'items': cls._get_field_schema(item_type)  # Recursively get schema for list items
+            }
+            if is_optional:
+                array_schema['nullable'] = True
+            return array_schema
+        
         # Handle nested schemas
         if isinstance(field_type, type) and issubclass(field_type, ResponseSchemaGenerator):
             schema = field_type.get_schema()

@@ -1,4 +1,4 @@
-from ..controllers.schemas.common import ERROR_RESPONSE
+from ..controllers.schemas.error import ERROR_SCHEMA
 
 
 def generate_swagger_schema(schema):
@@ -102,19 +102,22 @@ standard_responses = {
     'error_400': {
         '400': {
             'description': 'Invalid input',
-            'schema': ERROR_RESPONSE
+            # 'schema': ERROR_SCHEMA,
+            'content': {'application/json': {'schema': ERROR_SCHEMA}}
         }
     },
     'error_404': {
         '404': {
             'description': 'Resource not found',
-            'schema': ERROR_RESPONSE
+            # 'schema': ERROR_SCHEMA
+            'content': {'application/json': {'schema': ERROR_SCHEMA}}
         }
     },
     'error_500': {
         '500': {
             'description': 'Internal server error',
-            'schema': ERROR_RESPONSE
+            # 'schema': ERROR_SCHEMA
+            'content': {'application/json': {'schema': ERROR_SCHEMA}}
         }
     }
 }
@@ -172,16 +175,17 @@ class SwaggerDocGenerator:
         parameters = []
         
         # Process path and query parameters only
-        for param_type in ['path', 'query']:
+        for param_type in ['path', 'query', 'headers']:
             if param_type in param_schema:
+                in_type = 'header' if param_type == 'headers' else param_type
                 for param in param_schema[param_type]:
                     param_spec = {
-                        'in': param_type,
+                        'in': in_type,
                         'name': param['name'],
                         'schema': {
                             'type': param['type']
                         },
-                        'required': param.get('required', param_type == 'path'),
+                        'required': param.get('required', False),
                         'description': param.get('description', '')
                     }
                     if 'enum' in param:

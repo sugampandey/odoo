@@ -3,40 +3,47 @@ from odoo.http import request
 import json
 from typing import Any, Dict, Optional, Union
 import datetime 
+from .schemas.error import ErrorResponseModel, ErrorDetail, FaultModel, ResponseHeaderModel, ResponseModel
 
 class APIResponse:
-    @staticmethod
-    def format(success, message, data=None, errors=None, status=200):
-        """
-        Formats a standardized API response.
+    # @staticmethod
+    # def format(success, message, data=None, errors=None, status=200):
+    #     """
+    #     Formats a standardized API response.
         
-        Args:
-            success: Boolean indicating success or failure
-            message: A short message describing the response
-            data: The data payload (optional)
-            errors: Details about errors (optional)
-            status: HTTP status code (default: 200)
+    #     Args:
+    #         success: Boolean indicating success or failure
+    #         message: A short message describing the response
+    #         data: The data payload (optional)
+    #         errors: Details about errors (optional)
+    #         status: HTTP status code (default: 200)
         
-        Returns:
-            A formatted Response object
-        """
-        response = {
-            "success": success,
-            "message": message,
-            "data": data if data is not None else {},
-            "errors": errors if errors is not None else None,
-        }
-        return json_response(response, status)
+    #     Returns:
+    #         A formatted Response object
+    #     """
+    #     response = {
+    #         "success": success,
+    #         "data": data if data is not None else {},
+    #         "errors": errors if errors is not None else None,
+    #     }
+    #     return json_response(response, status)
     
     @staticmethod
-    def error_response(message, errors=None, status=400):
+    def error_response(message, errors=None, status=400, error_type=None):
         """Creates an error response."""
-        return APIResponse.format(False, message, errors=errors, status=status)
+        # return APIResponse.format(False, message, errors=errors, status=status)
+        error_detail = ErrorDetail(message=message, detail=errors)
+        fault_model = FaultModel(error=[error_detail], type=error_type)
+        response_header = ResponseHeaderModel(status=status, message=message)
+        response_model = ResponseModel(fault=fault_model)
+        error_response = ErrorResponseModel(responseHeader=response_header, response=response_model).to_dict()
+        return json_response(error_response, status)
+
     
     @staticmethod
-    def success_response(message, data=None, status=200):
+    def success_response(response, status=200):
         """Creates a success response."""
-        return APIResponse.format(True, message, data=data, status=status)
+        return json_response(response, status)
     
 
 def json_response(data, status=200):
@@ -64,6 +71,12 @@ def get_request_data(request):
         return json.loads(request.httprequest.data.decode('utf-8'))
     else:
         return request.params
+    
+def get_company_from_headers(request):
+    return int(request.httprequest.headers.get('X-Company-Id')) if request.httprequest.headers.get('X-Company-Id') else None
+
+def get_payment_method_from_headers(request):
+    return request.httprequest.headers.get('X-PaymentMethod') if request.httprequest.headers.get('X-PaymentMethod') else None
     
 
 def convert_field_value(value, target_type, field_name, field_specs=None):
