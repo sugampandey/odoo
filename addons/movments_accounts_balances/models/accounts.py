@@ -25,6 +25,11 @@ class AccountMove(models.Model):
     #      'unique (sub_type_code, company_id)',
     #      'Sub type code must be unique per company!')
     # ]
+    _sql_constraints = [
+        ('unique_account_combination', 
+         'UNIQUE NULLS NOT DISTINCT (sub_type_code, account_number, name, account_type, company_id)',
+         'The combination of Account Number, Name, Account Type, Company and Sub-type Code must be unique!')
+         ]
 
 
 
