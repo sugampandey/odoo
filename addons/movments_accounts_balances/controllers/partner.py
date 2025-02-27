@@ -1,80 +1,147 @@
-from datetime import datetime
+import datetime
 from odoo import http
 from odoo.http import request
 import json
-from .common import APIResponse, validate_and_convert_data, get_request_data
+from .common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data
 from .validation_schema import partner_expected_fields
 from .utils import validate_company, validate_partner_category, get_default_customer_category, get_default_vendor_category
-
 from ..swagger.common import swagger_doc
 from ..swagger.partner import partners_docs
-from .schemas.partner import PARTNER_SCHEMA
+from .schemas.partner import (CUSTOMER_SCHEMA, CustomerModel, CustomerCreateRequestModel, CustomerResponseModel, CustomerListResponseModel, CustomerQueryResponseModel,
+                              VENDOR_SCHEMA, VendorModel, VendorCreateRequestModel, VendorResponseModel, VendorListResponseModel, VendorQueryResponseModel)
+from .schemas.common import MetaDataModel, CurrencyRefModel, BillAddrModel, PhoneNumberModel, EmailAddressModel
 
 class PartnerAPI(http.Controller):
 
-    def validate_and_prepare_partner_data(self, data, analytic_account_expected_fields, is_vendor=None):
-        success, converted_data = validate_and_convert_data(data, analytic_account_expected_fields)
+    def validate_and_prepare_partner_data(self, data, company_id, partner_expected_fields, is_vendor=None):
+        # Validate company
+        company = request.env['res.company'].sudo().browse(company_id)
+        if not company.exists():
+            return False, APIResponse.error_response(message='Company not found', errors='Invalid company_id', status=400)
+        
+        success, converted_data = validate_and_convert_data(data, partner_expected_fields)
         if success is not True:
             return False, converted_data
         
-        # Validate company 
-        company_id = converted_data['company_id']
-        is_valid, error_message = validate_company(request, company_id)
-        if not is_valid:
-            return False, APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
-        
         # Create the partner
         partner_vals = {
-            'name': converted_data['name'],
+            'display_name': converted_data['DisplayName'],
+            'company_name': converted_data.get('CompanyName'),
+            
+            'street': converted_data['BillAddr']['Line1'] if converted_data.get('BillAddr') else None,
+            'street2': converted_data['BillAddr']['Line2'] if converted_data.get('BillAddr') else None,
+            'zip': converted_data['BillAddr']['PostalCode'] if converted_data.get('BillAddr') else None,
+            'city': converted_data['BillAddr']['City'] if converted_data.get('BillAddr') else None,
+            # 'state_id': converted_data['BillAddr']['CountrySubDivisionCode'] if converted_data.get('BillAddr') else None,
+            # 'country_id': converted_data['BillAddr']['Country'] if converted_data.get('BillAddr') else None,
+
+            'phone': converted_data['PrimaryPhone']['FreeFormNumber'] if converted_data.get('PrimaryPhone') else converted_data.get('PrimaryPhone'),
+            'mobile': converted_data['Mobile']['FreeFormNumber'] if converted_data.get('Mobile') else converted_data.get('Mobile'),
+            'email': converted_data['PrimaryEmailAddr']['Address'] if converted_data.get('PrimaryEmailAddr') else converted_data.get('PrimaryEmailAddr'),
+            'title': converted_data.get('Title'),
+            'name': converted_data.get('GivenName'),
             'company_id': company_id,
-            'email': converted_data.get('email'),
-            'phone': converted_data.get('phone'),
-            'is_company': converted_data['is_company'],
-            'parent_id': converted_data.get('parent_id'),
-            'street': converted_data.get('street'),
-            'street2': converted_data.get('street2'),
-            'zip': converted_data.get('zip'),
-            'city': converted_data.get('city'),
-            'state_id': converted_data.get('state_id'),
-            'country_id': converted_data.get('country_id'),
+            'is_company': converted_data.get('is_company'),
         }
+        if is_vendor:
+            partner_vals['vendor_1099'] = converted_data.get('Vendor1099')
 
         # category_id = converted_data.get('category_id')
         category_id = get_default_vendor_category(request) if is_vendor else get_default_customer_category(request)
         if category_id:
             is_valid, error_message = validate_partner_category(request, category_id)
             if not is_valid:
-                return False, APIResponse.error_response(f'Invalid category: {error_message}', f'Invalid category_id: {category_id}')            
+                return False, APIResponse.error_response(message=f'Invalid category_id: {category_id}', errors=f'Invalid category: {error_message}', status=400)            
         partner_vals['category_id'] = [(6, 0, [category_id])]
 
         return True, partner_vals
-    
-    def prepare_partner_response(self, partner):
-        return {
-                'id': partner.id,
-                'name': partner.name,
-                'company': {
-                    'id': partner.company_id.id,
-                    'name': partner.company_id.name
-                } if partner.company_id else None,
-                'email': partner.email,
-                'phone': partner.phone,
-                'mobile': partner.mobile,
-                'active': partner.active,
-                'is_company': partner.is_company,
-                'parent': {
-                    'id': partner.parent_id.id,
-                    'name': partner.parent_id.name
-                } if partner.parent_id else None,
-                'street': partner.street,
-                'street2': partner.street2,
-                'zip': partner.zip,
-                'city': partner.city,
-                'state': partner.state_id.name if partner.state_id else None,
-                'country': partner.country_id.name if partner.country_id else None,
-            }
 
-    def get_partners(self, request, company_id=None, active=None, is_vendor=None, limit=20, offset=0):
+    
+    def partner_object(self, partner, is_vendor):
+        meta_data = MetaDataModel(
+            CreateTime = partner.create_date.strftime('%Y-%m-%d %H:%M:%S'),
+            LastUpdatedTime = partner.write_date.strftime('%Y-%m-%d %H:%M:%S'),
+        )
+        if partner.currency_id:
+            currency_ref = CurrencyRefModel(
+                name=partner.currency_id.full_name,
+                value=partner.currency_id.name
+            )
+        else:
+            currency_ref = None
+        BillAddr = BillAddrModel(
+            Line1=partner.street,
+            Line2=partner.street2,
+            PostalCode=partner.zip,
+            City=partner.city,
+            CountrySubDivisionCode=partner.state_id.name if partner.state_id else None,
+            Country=partner.country_id.name if partner.country_id else None,
+        )
+        phone = PhoneNumberModel(FreeFormNumber=partner.phone)
+        email = EmailAddressModel(Address=partner.email)
+        if is_vendor:
+            return VendorModel(
+            Id=partner.id,
+            DisplayName=partner.display_name,
+            GivenName=partner.name,
+            CompanyName=partner.company_name,
+            BillAddr=BillAddr,
+            Active=partner.active,
+            Vendor1099=partner.vendor_1099,
+            MetaData=meta_data,
+            CurrencyRef=currency_ref,
+            PrimaryPhone=phone,
+            PrimaryEmailAddr=email,
+        )
+        return CustomerModel(
+            Id=partner.id,
+            DisplayName=partner.display_name,
+            GivenName=partner.name,
+            CompanyName=partner.company_name,
+            BillAddr=BillAddr,
+            Active=partner.active,
+            MetaData=meta_data,
+            CurrencyRef=currency_ref,
+            PrimaryPhone=phone,
+            PrimaryEmailAddr=email,
+        )
+    
+    def prepare_partner_response(self, partner, is_vendor=None):
+        if is_vendor:
+            return VendorResponseModel(
+                Vendor=self.partner_object(partner, True),
+                time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+            ).to_dict()
+        return CustomerResponseModel(
+            Customer=self.partner_object(partner, False),
+            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+        ).to_dict()
+    
+    def list_partner_response(self, partner_data, startPosition, maxResults, totalCount, is_vendor=None):
+        if is_vendor:
+            QueryResponse=VendorQueryResponseModel(
+                    startPosition=startPosition,
+                    Vendor=partner_data,
+                    maxResults=maxResults,
+                    totalCount= totalCount
+                )
+            return VendorListResponseModel(
+                QueryResponse=QueryResponse,
+                time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+            ).to_dict()
+        QueryResponse=CustomerQueryResponseModel(
+                startPosition=startPosition,
+                Customer=partner_data,
+                maxResults=maxResults,
+                totalCount= totalCount
+            )
+        return CustomerListResponseModel(
+            QueryResponse=QueryResponse,
+            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+        ).to_dict()
+        
+
+    def get_partners(self, request, company_id=None, active=None, is_vendor=False, maxResults=100, startPosition=0):
         domain = []
         if company_id:
             is_valid, error_message = validate_company(request, int(company_id))
@@ -85,14 +152,10 @@ class PartnerAPI(http.Controller):
             active = active.lower() == 'true'
             domain.append(('active', '=', active))
         category_id = get_default_vendor_category(request) if is_vendor else get_default_customer_category(request)
-        if category_id:
-            is_valid, error_message = validate_partner_category(request, int(category_id))
-            if not is_valid:
-                return False, APIResponse.error_response(f'Invalid category: {error_message}', f'Invalid category_id: {category_id}') 
-            domain.append(('category_id', 'child_of', int(category_id)))
+        domain.append(('category_id', 'child_of', int(category_id)))
 
-        limit = int(limit)
-        offset = int(offset)
+        startPosition = int(startPosition)
+        maxResults = int(maxResults)
 
         # Get total count for pagination
         total_count = request.env['res.partner'].sudo().search_count(domain)
@@ -100,26 +163,18 @@ class PartnerAPI(http.Controller):
         # Get partners with pagination
         partners = request.env['res.partner'].sudo().search(
             domain,
-        limit=limit,
-            offset=offset,
+            limit=maxResults, 
+            offset=startPosition,
             order='name asc'
         )
-        partners = request.env['res.partner'].sudo().search(domain)
 
         # Prepare response data
         partners_data = []
         for partner in partners:
-            partner_info = self.prepare_partner_response(partner)
-            partners_data.append(partner_info)
+            partners_data.append(self.partner_object(partner, is_vendor))
+        response_data = self.list_partner_response(partners_data, startPosition, len(partners), total_count, is_vendor)
 
-        return True, {
-            'partners': partners_data,
-            'pagination': {
-                'total_count': total_count,
-                'limit': limit,
-                'offset': offset
-            }
-        }
+        return True, response_data
 
         
     @http.route('/api/customers', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
@@ -132,8 +187,11 @@ class PartnerAPI(http.Controller):
         try:
             with cursor.savepoint():
                 data= get_request_data(request)
+                company_id = get_company_from_headers(request)
+                if not company_id:
+                    return APIResponse.error_response(message='Company ID is required', errors='Missing CompanyId', status=400)
 
-                success, partner_vals = self.validate_and_prepare_partner_data(data, PARTNER_SCHEMA, False)
+                success, partner_vals = self.validate_and_prepare_partner_data(data, company_id, CUSTOMER_SCHEMA, False)
                 if not success:
                     return partner_vals
                 
@@ -141,10 +199,10 @@ class PartnerAPI(http.Controller):
 
                 # Prepare response data
                 response_data = self.prepare_partner_response(partner)
-                return APIResponse.success_response(message='Customer created successfully', data=response_data)
+                return APIResponse.success_response(response_data, status=201)
         except Exception as e:
             cursor.rollback()
-            return APIResponse.error_response(message='An error occurred while creating the customer', errors=str(e), status=500)
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=500)
         
     @http.route('/api/vendors', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     @swagger_doc(partners_docs['create_vendor'])
@@ -156,31 +214,37 @@ class PartnerAPI(http.Controller):
         try:
             with cursor.savepoint():
                 data= get_request_data(request)
+                company_id = get_company_from_headers(request)
+                if not company_id:
+                    return APIResponse.error_response(message='Company ID is required', errors='Missing CompanyId', status=400)
 
-                success, vendor_vals = self.validate_and_prepare_partner_data(data, PARTNER_SCHEMA, True)
+                success, vendor_vals = self.validate_and_prepare_partner_data(data, company_id, VENDOR_SCHEMA, True)
                 if not success:
                     return vendor_vals
                 
                 partner = request.env['res.partner'].sudo().create(vendor_vals)
 
                 # Prepare response data
-                response_data = self.prepare_partner_response(partner)
-                return APIResponse.success_response(message='Vendor created successfully', data=response_data)
+                response_data = self.prepare_partner_response(partner, True)
+                return APIResponse.success_response(response_data, status=201)
         except Exception as e:
             cursor.rollback()
-            return APIResponse.error_response(message='An error occurred while creating the Vendor', errors=str(e), status=500)
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=500)
         
     @http.route('/api/customers/<int:customer_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(partners_docs['get_customer'])
     def get_customer(self, customer_id):
         try:
-            customer = request.env['res.partner'].sudo().browse(customer_id)
+            domain = [('id', '=', int(customer_id))]
+            category_id = get_default_customer_category(request)
+            domain.append(('category_id', 'child_of', int(category_id)))
+            customer = request.env['res.partner'].sudo().search(domain, limit=1)
             if not customer.exists():
                 return APIResponse.error_response(message='Customer not found', errors='Invalid customer_id', status=404)
                 
             # Prepare response data
             response_data = self.prepare_partner_response(customer)
-            return APIResponse.success_response(message='Customer retrieved successfully', data=response_data)
+            return APIResponse.success_response(response_data, status=200)
         except Exception as e:
             return APIResponse.error_response(message='An error occurred while retrieving the customer', errors=str(e), status=500)
         
@@ -188,38 +252,41 @@ class PartnerAPI(http.Controller):
     @swagger_doc(partners_docs['get_vendor'])
     def get_vendor(self, vendor_id, **kwargs):
         try:
-            vendor = request.env['res.partner'].sudo().browse(vendor_id)
+            domain = [('id', '=', int(vendor_id))]
+            category_id = get_default_vendor_category(request)
+            domain.append(('category_id', 'child_of', int(category_id)))
+            vendor = request.env['res.partner'].sudo().search(domain, limit=1)
             if not vendor.exists():
                 return APIResponse.error_response(message='Vendor not found', errors='Invalid vendor_id', status=404)
             
             # Prepare response data
-            response_data = self.prepare_partner_response(vendor)
-            return APIResponse.success_response(message='Vendor retrieved successfully', data=response_data)
+            response_data = self.prepare_partner_response(vendor, True)
+            return APIResponse.success_response(response_data, status=200)
         except Exception as e:
             return APIResponse.error_response(message='An error occurred while retrieving the vendor', errors=str(e), status=500)
         
         
     @http.route('/api/vendors/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(partners_docs['list_vendors'])
-    def list_vendors(self, company_id=None, active=None, limit=20, offset=0, **kwargs):
+    def list_vendors(self, company_id=None, active=None, maxResults=100, startPosition=0, **kwargs):
         try:
-            success, response_data = self.get_partners(request, company_id, active, True, limit, offset)
+            success, response_data = self.get_partners(request, company_id, active, True, maxResults, startPosition)
             if not success:
                 return response_data
-            return APIResponse.success_response(message='Vendor retrieved successfully', data=response_data)
+            return APIResponse.success_response(response_data, status=200)
         except Exception as e:
             return APIResponse.error_response(message='An error occurred while retrieving the Vendor', errors=str(e), status=500)
         
     @http.route('/api/customers/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(partners_docs['list_customers'])
-    def list_customers(self, company_id=None, active=None, limit=20, offset=0, **kwargs):
+    def list_customers(self, company_id=None, active=None, maxResults=100, startPosition=0, **kwargs):
         try:
-            success, response_data = self.get_partners(request, company_id, active, False, limit, offset)
+            success, response_data = self.get_partners(request, company_id, active, False, maxResults, startPosition)
             if not success:
                 return response_data
-            return APIResponse.success_response(message='Vendor retrieved successfully', data=response_data)
+            return APIResponse.success_response(response_data, status=200)
         except Exception as e:
-            return APIResponse.error_response(message='An error occurred while retrieving the Vendor', errors=str(e), status=500)
+            return APIResponse.error_response(message='An error occurred while retrieving the Customers', errors=str(e), status=500)
         
 
     def delete_partner(self, partner_id):
@@ -255,20 +322,6 @@ class PartnerAPI(http.Controller):
             cursor.rollback()  
             return APIResponse.error_response(message='An error occurred while deleting the customer', errors=str(e), status=500)
         
-
-    # @http.route('/api/partner_category_list/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(partners_docs['list_partner_categories'])
-    # def get_partner_category_list(self, **kwargs):
-    #     try:
-    #         categories = request.env['res.partner.category'].sudo().search([])
-    #         if not categories:
-    #             return APIResponse.success_response(message='No categories found', data=[])
-
-    #         # Prepare response data
-    #         response_data = [{'id': category.id, 'name': category.name, 'active': category.active} for category in categories]
-    #         return APIResponse.success_response(message='Categories retrieved successfully', data=response_data)
-    #     except Exception as e:
-    #         return APIResponse.error_response(message='An error occurred while retrieving the categories', errors=str(e), status=500)
         
 
 

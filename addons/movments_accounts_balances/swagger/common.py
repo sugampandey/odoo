@@ -6,8 +6,8 @@ def generate_swagger_schema(schema):
     swagger_properties = {}
     required_fields = []
 
-    # Process required fields
-    for field_name, field_spec in schema['required'].items():
+    def process_field_spec(field_spec):
+        """Helper function to process field specifications"""
         field_def = {
             'type': field_spec['swagger_type'],
             'description': field_spec['display_name']
@@ -15,51 +15,80 @@ def generate_swagger_schema(schema):
         if 'format' in field_spec:
             field_def['format'] = field_spec['format']
             
+        # Handle array (list) type
         if field_spec['type'] == list:
             field_def['type'] = 'array'
-            items_properties = {}
-            items_required = []
             
-            # Process required items fields
-            for item_field, item_spec in field_spec['items']['required'].items():
-                items_properties[item_field] = {
-                    'type': item_spec['swagger_type'],
-                    'description': item_spec['display_name']
+            # Handle array of simple types
+            if field_spec['items']['type'] != dict:
+                field_def['items'] = {
+                    'type': field_spec['items']['swagger_type']
                 }
-                items_required.append(item_field)
+                if 'format' in field_spec['items']:
+                    field_def['items']['format'] = field_spec['items']['format']
             
-            # Process optional items fields
-            for item_field, item_spec in field_spec['items']['optional'].items():
-                items_properties[item_field] = {
-                    'type': item_spec['swagger_type'],
-                    'description': item_spec['display_name']
+            # Handle array of objects (dictionaries)
+            else:
+                items_properties = {}
+                items_required = []
+                
+                # Process required items fields
+                if 'required' in field_spec['items']:
+                    for item_field, item_spec in field_spec['items']['required'].items():
+                        items_properties[item_field] = process_field_spec(item_spec)
+                        items_required.append(item_field)
+                
+                # Process optional items fields
+                if 'optional' in field_spec['items']:
+                    for item_field, item_spec in field_spec['items']['optional'].items():
+                        items_properties[item_field] = process_field_spec(item_spec)
+                
+                field_def['items'] = {
+                    'type': 'object',
+                    'properties': items_properties
                 }
+                if items_required:
+                    field_def['items']['required'] = items_required
+        
+        # Handle object (dictionary) type
+        elif field_spec['type'] == dict:
+            field_def['type'] = 'object'
+            properties = {}
+            dict_required = []
             
-            field_def['items'] = {
-                'type': 'object',
-                'properties': items_properties,
-                'required': items_required
-            }
+            # Process required fields
+            if 'required' in field_spec['items']:
+                for item_field, item_spec in field_spec['items']['required'].items():
+                    properties[item_field] = process_field_spec(item_spec)
+                    dict_required.append(item_field)
             
-        swagger_properties[field_name] = field_def
+            # Process optional fields
+            if 'optional' in field_spec['items']:
+                for item_field, item_spec in field_spec['items']['optional'].items():
+                    properties[item_field] = process_field_spec(item_spec)
+            
+            field_def['properties'] = properties
+            if dict_required:
+                field_def['required'] = dict_required
+                
+        return field_def
+
+    # Process required fields
+    for field_name, field_spec in schema['required'].items():
+        swagger_properties[field_name] = process_field_spec(field_spec)
         required_fields.append(field_name)
 
     # Process optional fields
     if schema.get('optional'):
         for field_name, field_spec in schema['optional'].items():
-            field_def = {
-                'type': field_spec['swagger_type'],
-                'description': field_spec['display_name']
-            }
-            if 'format' in field_spec:
-                field_def['format'] = field_spec['format']
-            swagger_properties[field_name] = field_def
+            swagger_properties[field_name] = process_field_spec(field_spec)
 
     return {
         'type': 'object',
         'properties': swagger_properties,
         'required': required_fields
     }
+
 
 def swagger_doc(documentation):
     """

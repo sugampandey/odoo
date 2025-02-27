@@ -189,11 +189,11 @@ def get_default_product(request, company_id):
     return default_product
 
 def get_default_vendor_category(request):
-    return request.env['res.partner.category'].search([
+    return request.env['res.partner.category'].sudo().search([
         ('name', '=', CONSTANTS['VENDOR_CATEGORY_NAME'])
     ], limit=1).id
     
 def get_default_customer_category(request):
-    return request.env['res.partner.category'].search([
+    return request.env['res.partner.category'].sudo().search([
         ('name', '=', CONSTANTS['CUSTOMER_CATEGORY_NAME'])
     ], limit=1).id

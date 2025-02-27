@@ -1,9 +1,9 @@
-from typing import Optional, Literal, get_type_hints, Type, Union, Any
+from typing import Optional, Literal, get_type_hints, Type, Union, Any, List
 from datetime import datetime
 
 class RequestSchemaGenerator:
-    @staticmethod
-    def generate_schema(cls: Type[Any]) -> dict:
+    @classmethod
+    def generate_schema(cls) -> dict:
         type_hints = get_type_hints(cls.__init__)
         required_fields = {}
         optional_fields = {}
@@ -23,32 +23,117 @@ class RequestSchemaGenerator:
             # Get the actual type for Optional fields
             if is_optional:
                 actual_type = next(t for t in field_type.__args__ if t != type(None))
-            else:
-                actual_type = field_type
-
-            field_info = {
-                'type': RequestSchemaGenerator._get_python_type(actual_type),
-                'display_name': ' '.join(field_name.split('_')),
-                'swagger_type': RequestSchemaGenerator._get_swagger_type(actual_type)
-            }
-
-            # Handle Literal types for enums
-            if hasattr(actual_type, '__origin__') and actual_type.__origin__ is Literal:
-                field_info['enum'] = list(actual_type.__args__)
-
-            if is_optional:
+                field_info = cls._process_field_type(actual_type, field_name)
                 optional_fields[field_name] = field_info
             else:
+                field_info = cls._process_field_type(field_type, field_name)
                 required_fields[field_name] = field_info
+
+            # # Handle Literal types for enums
+            # if hasattr(actual_type, '__origin__') and actual_type.__origin__ is Literal:
+            #     field_info['enum'] = list(actual_type.__args__)
 
         return {
             'required': required_fields,
             'optional': optional_fields
         }
     
+    @staticmethod
+    def _process_field_type(field_type: Type, field_name: str) -> dict:
+        display_name = ' '.join(word.capitalize() for word in field_name.split('_'))
+
+        # Handle basic types
+        if field_type in (str, int, float, bool):
+            return {
+                'type': field_type,
+                'display_name': display_name,
+                'swagger_type': RequestSchemaGenerator._get_swagger_type(field_type)
+            }
+        
+        # Handle dictionary types
+        if field_type is dict or (hasattr(field_type, '__origin__') and field_type.__origin__ is dict):
+            # If it's a typed dict with __annotations__, process each field
+            if hasattr(field_type, '__annotations__'):
+                required_fields = {}
+                optional_fields = {}
+                
+                for key, value_type in field_type.__annotations__.items():
+                    # Check if field is Optional
+                    is_optional = (
+                        hasattr(value_type, '__origin__') 
+                        and value_type.__origin__ is Union 
+                        and type(None) in value_type.__args__
+                    )
+                    
+                    if is_optional:
+                        actual_type = next(t for t in value_type.__args__ if t != type(None))
+                        field_info = RequestSchemaGenerator._process_field_type(actual_type, key)
+                        optional_fields[key] = field_info
+                    else:
+                        field_info = RequestSchemaGenerator._process_field_type(value_type, key)
+                        required_fields[key] = field_info
+                
+                schema = {
+                    'type': dict,
+                    'display_name': display_name,
+                    'swagger_type': 'object',
+                }
+                
+                if required_fields:
+                    schema['required'] = required_fields
+                if optional_fields:
+                    schema['optional'] = optional_fields
+                    
+                return schema
+                
+            # For simple dict type
+            return {
+                'type': dict,
+                'display_name': display_name,
+                'swagger_type': 'object'
+            }
+        
+        # Handle nested objects that inherit from RequestSchemaGenerator
+        if isinstance(field_type, type) and issubclass(field_type, RequestSchemaGenerator):
+            nested_schema = field_type.get_schema()
+            return {
+                'type': dict,
+                'display_name': display_name,
+                'swagger_type': 'object',
+                'items': nested_schema
+            }
+        
+        # Handle List/Array types
+        if (hasattr(field_type, '__origin__') and 
+            (field_type.__origin__ is list or field_type.__origin__ == List)):
+            item_type = field_type.__args__[0]
+            return {
+                'type': list,
+                'display_name': display_name,
+                'swagger_type': 'array',
+                'items': RequestSchemaGenerator._process_field_type(item_type, field_name)
+            }
+
+        # Handle Literal types for enums
+        if hasattr(field_type, '__origin__') and field_type.__origin__ is Literal:
+            return {
+                'type': str,
+                'display_name': display_name,
+                'swagger_type': 'string',
+                'enum': list(field_type.__args__)
+            }
+
+        # Default to string if type is not recognized
+        return {
+            'type': str,
+            'display_name': display_name,
+            'swagger_type': 'string'
+        }
+
+    
     @classmethod
     def get_schema(cls) -> dict:
-        return RequestSchemaGenerator.generate_schema(cls)
+        return cls.generate_schema()
 
     @staticmethod
     def _get_python_type(field_type: Type) -> Type:
@@ -73,8 +158,6 @@ class RequestSchemaGenerator:
         }
         
         return type_mapping.get(field_type, 'string')
-
-
 
 class ResponseSchemaGenerator:
     TYPE_MAPPING = {
@@ -139,3 +222,5 @@ class ResponseSchemaGenerator:
         if is_optional:
             base_schema['nullable'] = True
         return base_schema
+    
+    

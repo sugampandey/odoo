@@ -7,7 +7,8 @@ from .utils import validate_company, validate_account
 from .logger import logger
 from ..swagger.common import swagger_doc
 from ..swagger.accounts import accounts_docs
-from .schemas.accounts import ACCOUNT_SCHEMA, AccountCreateRequestModel , AccountResponseModel, AccountModel, MetaDataModel, CurrencyRefModel, AccountQueryResponseModel, AccountListResponseModel
+from .schemas.accounts import ACCOUNT_SCHEMA, AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountQueryResponseModel, AccountListResponseModel
+from .schemas.common import MetaDataModel, CurrencyRefModel
 from .mapping.accounts import ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING, ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
 
 class AccountAPI(http.Controller):
@@ -132,10 +133,10 @@ class AccountAPI(http.Controller):
             time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
         ).to_dict()
     
-    def list_account_response(self, startPosition, account, maxResults, totalCount):
+    def list_account_response(self, accounts_data, startPosition, maxResults, totalCount):
         QueryResponse=AccountQueryResponseModel(
                 startPosition=startPosition,
-                Account=account,
+                Account=accounts_data,
                 maxResults=maxResults,
                 totalCount= totalCount
             )
@@ -327,10 +328,10 @@ class AccountAPI(http.Controller):
             logger.info(f"Retrieved {len(accounts)} accounts")
 
             # Prepare the response data
-            account_data = []
+            accounts_data = []
             for account in accounts:
-                account_data.append(self.account_object(account))
-            response_data = self.list_account_response(startPosition, account_data, len(accounts), total_count)
+                accounts_data.append(self.account_object(account))
+            response_data = self.list_account_response(accounts_data, startPosition, len(accounts), total_count)
 
             return APIResponse.success_response(response_data)
         except Exception as e:
@@ -339,27 +340,6 @@ class AccountAPI(http.Controller):
         
     @http.route('/api/account-types', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     def get_account_types(self, **kwargs):
-        # Define the account types
-        # account_types = [
-        #     {"code": "asset_receivable", "name": "Receivable"},
-        #     {"code": "asset_cash", "name": "Bank and Cash"},
-        #     {"code": "asset_current", "name": "Current Assets"},
-        #     {"code": "asset_non_current", "name": "Non-current Assets"},
-        #     {"code": "asset_prepayments", "name": "Prepayments"},
-        #     {"code": "asset_fixed", "name": "Fixed Assets"},
-        #     {"code": "liability_payable", "name": "Payable"},
-        #     {"code": "liability_credit_card", "name": "Credit Card"},
-        #     {"code": "liability_current", "name": "Current Liabilities"},
-        #     {"code": "liability_non_current", "name": "Non-current Liabilities"},
-        #     {"code": "equity", "name": "Equity"},
-        #     {"code": "equity_unaffected", "name": "Current Year Earnings"},
-        #     {"code": "income", "name": "Income"},
-        #     {"code": "income_other", "name": "Other Income"},
-        #     {"code": "expense", "name": "Expenses"},
-        #     {"code": "expense_depreciation", "name": "Depreciation"},
-        #     {"code": "expense_direct_cost", "name": "Cost of Revenue"},
-        #     {"code": "off_balance", "name": "Off-Balance Sheet"},
-        # ]
         account_types = [{"code": ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING[key], "name": key} for key in ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING.keys()]
         return APIResponse.success_response(account_types)
     
@@ -414,11 +394,3 @@ class AccountAPI(http.Controller):
             cursor.rollback()
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=500)
 
-
-# class ResponseCOA:
-#     def __init__(self, account_id, account_number, parent_id, parent_number, level):
-#         self.account_id = account_id
-#         self.account_number = account_number
-#         self.parent_id = parent_id
-#         self.parent_number = parent_number
-#         self.level = level

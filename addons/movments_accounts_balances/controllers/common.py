@@ -135,45 +135,35 @@ def convert_fields(data: Dict, fields_dict: Dict, required: bool = True, parent_
             )
         
         # Convert field if it exists and has value
-        if field in data and data[field] is not None:
+        if field in data and data[field] and data[field] is not None:
             try:
                 if 'items' in field_specs:
-                    if not isinstance(data[field], list):
+                    if not isinstance(data[field], field_specs['type']):
                         return False, APIResponse.error_response(
-                            message=f"{field_display} must be a list",
-                            errors=f"{field_display} must be a list",
+                            message=f"{field_display} must be a {field_specs['type'].__name__}",
+                            errors=f"{field_display} must be a {field_specs['type'].__name__}",
                         )
                     
-                    converted_lines = []
-                    for index, item in enumerate(data[field]):
-                        if not isinstance(item, dict):
-                            return False, APIResponse.error_response(
-                                message=f"Item at index {index} in {field_display} must be a dictionary",
-                                errors=f"Item at index {index} in {field_display} must be a dictionary",
-                            )
-                        
-                        converted_item = {}
-                        # Convert required fields in item
-                        for item_field, item_specs in field_specs['items']['required'].items():
-                            if item_field not in item:
+                    # Handle list type
+                    if field_specs['type'] == list:
+                        converted_lines = []
+                        for index, item in enumerate(data[field]):
+                            if not isinstance(item, field_specs['items']['type']):
                                 return False, APIResponse.error_response(
-                                    message=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
-                                    errors=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
+                                    message=f"Item at index {index} in {field_display} must be a {field_specs['items']['type'].__name__}",
+                                    errors=f"Item at index {index} in {field_display} must be a {field_specs['items']['type'].__name__}",
                                 )
-                            try:
-                                converted_item[item_field] = convert_field_value(
-                                    item[item_field],
-                                    item_specs['type'],
-                                    f"{item_specs['display_name']} in {field_display} at index {index}",
-                                    item_specs
-                                )
-                            except ValueError as e:
-                                return False, APIResponse.error_response(message=str(e), errors=str(e))
-                        
-                        # Convert optional fields in item
-                        if field_specs['items'].get('optional'):
-                            for item_field, item_specs in field_specs['items']['optional'].items():
-                                if item_field in item and item[item_field] is not None:
+                            
+                            # Handle dictionary items
+                            if field_specs['items']['type'] == dict:
+                                converted_item = {}
+                                # Convert required fields in item
+                                for item_field, item_specs in field_specs['items']['required'].items():
+                                    if item_field not in item:
+                                        return False, APIResponse.error_response(
+                                            message=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
+                                            errors=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
+                                        )
                                     try:
                                         converted_item[item_field] = convert_field_value(
                                             item[item_field],
@@ -183,9 +173,77 @@ def convert_fields(data: Dict, fields_dict: Dict, required: bool = True, parent_
                                         )
                                     except ValueError as e:
                                         return False, APIResponse.error_response(message=str(e), errors=str(e))
+                                
+                                # Convert optional fields in item
+                                if field_specs['items'].get('optional'):
+                                    for item_field, item_specs in field_specs['items']['optional'].items():
+                                        if item_field in item and item[item_field] is not None:
+                                            try:
+                                                converted_item[item_field] = convert_field_value(
+                                                    item[item_field],
+                                                    item_specs['type'],
+                                                    f"{item_specs['display_name']} in {field_display} at index {index}",
+                                                    item_specs
+                                                )
+                                            except ValueError as e:
+                                                return False, APIResponse.error_response(message=str(e), errors=str(e))
+                                converted_lines.append(converted_item)
+                            else:
+                                # Handle simple type items (strings, numbers, etc.)
+                                try:
+                                    converted_value = convert_field_value(
+                                        item,
+                                        field_specs['items']['type'],
+                                        f"Item at index {index} in {field_display}",
+                                        field_specs['items']
+                                    )
+                                    converted_lines.append(converted_value)
+                                except ValueError as e:
+                                    return False, APIResponse.error_response(message=str(e), errors=str(e))
                         
-                        converted_lines.append(converted_item)
-                    converted_data[field] = converted_lines
+                        converted_data[field] = converted_lines
+                    
+                    # Handle dictionary type
+                    elif field_specs['type'] == dict:
+                        if not isinstance(data[field], dict):
+                            return False, APIResponse.error_response(
+                                message=f"{field_display} must be a dictionary",
+                                errors=f"{field_display} must be a dictionary",
+                            )
+                        
+                        converted_dict = {}
+                        # Handle required fields
+                        for item_field, item_specs in field_specs['items']['required'].items():
+                            if item_field not in data[field]:
+                                return False, APIResponse.error_response(
+                                    message=f"Missing required field '{item_specs['display_name']}' in {field_display}",
+                                    errors=f"Missing required field '{item_specs['display_name']}' in {field_display}",
+                                )
+                            try:
+                                converted_dict[item_field] = convert_field_value(
+                                    data[field][item_field],
+                                    item_specs['type'],
+                                    f"{item_specs['display_name']} in {field_display}",
+                                    item_specs
+                                )
+                            except ValueError as e:
+                                return False, APIResponse.error_response(message=str(e), errors=str(e))
+                        
+                        # Handle optional fields
+                        if field_specs['items'].get('optional'):
+                            for item_field, item_specs in field_specs['items']['optional'].items():
+                                if item_field in data[field] and data[field][item_field] is not None:
+                                    try:
+                                        converted_dict[item_field] = convert_field_value(
+                                            data[field][item_field],
+                                            item_specs['type'],
+                                            f"{item_specs['display_name']} in {field_display}",
+                                            item_specs
+                                        )
+                                    except ValueError as e:
+                                        return False, APIResponse.error_response(message=str(e), errors=str(e))
+                        
+                        converted_data[field] = converted_dict
                 else:
                     converted_data[field] = convert_field_value(
                         data[field],
@@ -193,6 +251,7 @@ def convert_fields(data: Dict, fields_dict: Dict, required: bool = True, parent_
                         field_display,
                         field_specs
                     )
+
             except ValueError as e:
                 return False, APIResponse.error_response(message=str(e), errors=str(e))
     
@@ -202,73 +261,110 @@ def validate_converted_data(converted_data: Dict, expected_fields: Dict) -> Unio
     """
     Validates the already converted data
     """
+    def validate_field_value(value: Any, field_specs: Dict, field_display: str) -> Optional[Response]:
+        """Helper function to validate individual field values"""
+        if field_specs.get('format') == 'date':
+            if not isinstance(value, (datetime.date, datetime.datetime)):
+                return APIResponse.error_response(
+                    message=f"{field_display} must be a valid date",
+                    errors=f"Invalid date type for {field_display}",
+                )
+        else:
+            if not isinstance(value, field_specs['type']):
+                return APIResponse.error_response(
+                    message=f"Invalid type for {field_display}. Expected {field_specs['type'].__name__}, got {type(value).__name__}",
+                    errors=f"Invalid type for {field_display}",
+                )
+        return None
+    
     def validate_converted_value(value: Any, field_specs: Dict, field_display: str) -> Optional[Response]:
         """Helper function to validate converted values"""
         if 'items' in field_specs:
-            if not isinstance(value, list):
+            # Validate the container type (list or dict)
+            if not isinstance(value, field_specs['type']):
                 return APIResponse.error_response(
-                    message=f"{field_display} must be a list",
-                    errors=f"{field_display} must be a list",
+                    message=f"{field_display} must be a {field_specs['type'].__name__}",
+                    errors=f"{field_display} must be a {field_specs['type'].__name__}",
                 )
-            
-            for index, item in enumerate(value):
-                if not isinstance(item, dict):
-                    return APIResponse.error_response(
-                        message=f"Item at index {index} in {field_display} must be a dictionary",
-                        errors=f"Item at index {index} in {field_display} must be a dictionary",
-                    )
-                
-                # Validate required fields in item
-                for item_field, item_specs in field_specs['items']['required'].items():
-                    if item_field not in item:
+
+            # Handle list type
+            if field_specs['type'] == list:
+                for index, item in enumerate(value):
+                    # Validate item type
+                    if not isinstance(item, field_specs['items']['type']):
                         return APIResponse.error_response(
-                            message=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
-                            errors=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
+                            message=f"Item at index {index} in {field_display} must be a {field_specs['items']['type'].__name__}",
+                            errors=f"Item at index {index} in {field_display} must be a {field_specs['items']['type'].__name__}",
+                        )
+
+                    # If item should be a dictionary, validate its structure
+                    if field_specs['items']['type'] == dict:
+                        # Validate required fields in item
+                        for item_field, item_specs in field_specs['items']['required'].items():
+                            if item_field not in item:
+                                return APIResponse.error_response(
+                                    message=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
+                                    errors=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
+                                )
+                            
+                            # Validate field value
+                            validation_result = validate_field_value(
+                                item[item_field], 
+                                item_specs, 
+                                f"{item_specs['display_name']} in {field_display} at index {index}"
+                            )
+                            if validation_result:
+                                return validation_result
+
+                        # Validate optional fields in item if present
+                        if field_specs['items'].get('optional'):
+                            for item_field, item_specs in field_specs['items']['optional'].items():
+                                if item_field in item and item[item_field] is not None:
+                                    validation_result = validate_field_value(
+                                        item[item_field], 
+                                        item_specs, 
+                                        f"{item_specs['display_name']} in {field_display} at index {index}"
+                                    )
+                                    if validation_result:
+                                        return validation_result
+
+            # Handle dictionary type
+            elif field_specs['type'] == dict:
+                # Validate required fields
+                for item_field, item_specs in field_specs['items']['required'].items():
+                    if item_field not in value:
+                        return APIResponse.error_response(
+                            message=f"Missing required field '{item_specs['display_name']}' in {field_display}",
+                            errors=f"Missing required field '{item_specs['display_name']}' in {field_display}",
                         )
                     
-                    if item_specs.get('format') == 'date':
-                        if not isinstance(item[item_field], (datetime.date, datetime.datetime)):
-                            return APIResponse.error_response(
-                                message=f"{item_specs['display_name']} in {field_display} at index {index} must be a valid date",
-                                errors=f"Invalid date type for {item_specs['display_name']} in item {index}",
-                            )
-                    else:
-                        if not isinstance(item[item_field], item_specs['type']):
-                            return APIResponse.error_response(
-                                message=f"Invalid type for {item_specs['display_name']} in {field_display} at index {index}. Expected {item_specs['type'].__name__}, got {type(item[item_field]).__name__}",
-                                errors=f"Invalid type for {item_specs['display_name']} in {field_display} at index {index}",
-                            )
-                        
-                # Validate optional fields in item if present
+                    # Validate field value
+                    validation_result = validate_field_value(
+                        value[item_field], 
+                        item_specs, 
+                        f"{item_specs['display_name']} in {field_display}"
+                    )
+                    if validation_result:
+                        return validation_result
+
+                # Validate optional fields if present
                 if field_specs['items'].get('optional'):
                     for item_field, item_specs in field_specs['items']['optional'].items():
-                        if item_field in item and item[item_field] is not None:
-                            if item_specs.get('format') == 'date':
-                                if not isinstance(item[item_field], (datetime.date, datetime.datetime)):
-                                    return APIResponse.error_response(
-                                        message=f"{item_specs['display_name']} in {field_display} at index {index} must be a valid date",
-                                        errors=f"Invalid date type for {item_specs['display_name']} in item {index}",
-                                    )
-                            else:
-                                if not isinstance(item[item_field], item_specs['type']):
-                                    return APIResponse.error_response(
-                                        message=f"Invalid type for {item_specs['display_name']} in {field_display} at index {index}",
-                                        errors=f"Invalid type for {item_specs['display_name']} in {field_display} at index {index}",
-                                    )
+                        if item_field in value and value[item_field] is not None:
+                            validation_result = validate_field_value(
+                                value[item_field], 
+                                item_specs, 
+                                f"{item_specs['display_name']} in {field_display}"
+                            )
+                            if validation_result:
+                                return validation_result
+
         else:
-            if field_specs.get('format') == 'date':
-                if not isinstance(value, (datetime.date, datetime.datetime)):
-                    return APIResponse.error_response(
-                        message=f"{field_display} must be a valid date",
-                        errors=f"Invalid date type for {field_display}",
-                    )
-            else:
-                if not isinstance(value, field_specs['type']):
-                    return APIResponse.error_response(
-                        message=f"Invalid type for {field_display}. Expected {field_specs['type'].__name__}, got {type(value).__name__}",
-                        errors=f"Invalid type for {field_display}",
-                    )
+            # Validate simple value
+            return validate_field_value(value, field_specs, field_display)
+
         return None
+
 
     # Validate required fields
     for field, field_specs in expected_fields['required'].items():

@@ -1,32 +1,10 @@
 from typing import Optional, Literal, get_type_hints, Type, Union, Any
 from datetime import datetime
-from .common import CurrencyRefModel, MetaDataModel, HEADERS
+from .common import CurrencyRefModel, MetaDataModel, TaxCodeRef, HEADERS
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
 from ..mapping.accounts import CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING
 
 class ParentRef(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        name: str,
-        value: str
-    ):
-        self.name = name
-        self.value = value
-
-    def to_dict(self) -> dict:
-        return {
-            'name': self.name,
-            'value': self.value
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            name=data.get('name', ''),
-            value=data.get('value', '')
-        )
-    
-class TaxCodeRef(ResponseSchemaGenerator):
     def __init__(
         self,
         name: str,
@@ -55,7 +33,7 @@ class AccountCreateRequestModel(RequestSchemaGenerator):
         AcctNum: str,
         AccountType: str,
         AccountSubType: Optional[str] = None,
-        CurrencyRef: Optional[dict] = None,
+        CurrencyRef: Optional[CurrencyRefModel] = None,
         # PaymentMethod: Optional[Literal['none', 'cash', 'bank', 'credit_card']] = None
     ):
         self.Name = Name
@@ -154,7 +132,7 @@ class AccountModel(ResponseSchemaGenerator):
             'CurrencyRef': self.CurrencyRef.to_dict() if self.CurrencyRef else None,
             'CurrentBalanceWithSubAccounts': self.CurrentBalanceWithSubAccounts,
             'sparse': self.sparse,
-            'MetaData': self.MetaData.to_dict(),
+            'MetaData': self.MetaData.to_dict() if self.MetaData else None,
             'AccountType': self.AccountType,
             'CurrentBalance': self.CurrentBalance,
             'Active': self.Active,
@@ -274,53 +252,45 @@ class AccountListResponseModel(ResponseSchemaGenerator):
 ACCOUNT_CREATE_RESPONSE = ACCOUNT_GET_RESPONSE = AccountResponseModel.get_schema()
 ACCOUNT_LIST_RESPONSE = AccountListResponseModel.get_schema()
 
-ACCOUNT_OBJECT = {
-    'type': 'object',
-    'properties': {
-        'id': {'type': 'integer'},
-        'name': {'type': 'string'},
-        'code': {'type': 'string'},
-        'account_type': {'type': 'string'},
-        'company': {
-            'type': 'object',
-            'properties': {
-                'id': {'type': 'integer'},
-                'name': {'type': 'string'}
-            }
-        },
-        'create_date': {'type': 'string', 'format': 'date-time'},
-        'depricated': {'type': 'boolean'},
+ACCOUNT_SCHEMA = AccountCreateRequestModel.get_schema()
+
+
+# PARAMS
+ACCOUNT_HEADERS = [
+    {
+        'name': 'X-PaymentMethod',
+        'type': 'string',
+        'description': 'Payment Method',
+        'required': False,
+        'enum': ['none', 'cash', 'bank', 'credit_card']
+    }
+]
+ACCOUNT_CREATE_PARAMS = {
+    'headers': ACCOUNT_HEADERS + HEADERS,
+    'body': {
+        'schema': ACCOUNT_SCHEMA,
+        'required': True
     }
 }
 
-# ACCOUNT_LIST_RESPONSE = {
-#     'type': 'object',
-#     'properties': {
-#         'success': {'type': 'boolean'},
-#         'message': {'type': 'string'},
-#         'data': {
-#             'type': 'object',
-#             'properties': {
-#                 'accounts': {
-#                     'type': 'array',
-#                     'items': ACCOUNT_OBJECT
-#                 },
-#                 'pagination': {
-#                     'type': 'object',
-#                     'properties': {
-#                         'total_count': {'type': 'integer'},
-#                         'limit': {'type': 'integer'},
-#                         'offset': {'type': 'integer'}
-#                     }
-#                 }
-#             }
-#         }
-#     }
-# }
-
-
-ACCOUNT_SCHEMA = AccountCreateRequestModel.get_schema()
-
+ACCOUNT_GET_PARAMS = {
+    'path': [
+        {
+            'name': 'account_id',
+            'type': 'integer',
+            'description': 'ID of the account to retrieve',
+            'required': True
+        }
+    ],
+    'query': [
+        {
+            'name': 'company_id',
+            'type': 'integer',
+            'description': 'Filter by company ID',
+            'required': True
+        },
+    ]
+}
 
 ACCOUNT_LIST_PARAMS = {
     'query': [
@@ -358,42 +328,6 @@ ACCOUNT_LIST_PARAMS = {
             'default': 0
         },
     ]
-}
-
-ACCOUNT_GET_PARAMS = {
-    'path': [
-        {
-            'name': 'account_id',
-            'type': 'integer',
-            'description': 'ID of the account to retrieve',
-            'required': True
-        }
-    ],
-    'query': [
-        {
-            'name': 'company_id',
-            'type': 'integer',
-            'description': 'Filter by company ID',
-            'required': True
-        },
-    ]
-}
-
-ACCOUNT_HEADERS = [
-    {
-        'name': 'X-PaymentMethod',
-        'type': 'string',
-        'description': 'Payment Method',
-        'required': False,
-        'enum': ['none', 'cash', 'bank', 'credit_card']
-    }
-]
-ACCOUNT_CREATE_PARAMS = {
-    'headers': ACCOUNT_HEADERS + HEADERS,
-    'body': {
-        'schema': ACCOUNT_SCHEMA,
-        'required': True
-    }
 }
 
 ACCOUNT_DELETE_PARAMS = {
