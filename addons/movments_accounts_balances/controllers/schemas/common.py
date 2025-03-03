@@ -10,6 +10,29 @@ HEADERS = [
         'required': True
     }
 ]
+
+class ParentRef(ResponseSchemaGenerator):
+    def __init__(
+        self,
+        name: str,
+        value: str
+    ):
+        self.name = name
+        self.value = value
+
+    def to_dict(self) -> dict:
+        return {
+            'name': self.name,
+            'value': self.value
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get('name', ''),
+            value=data.get('value', '')
+        )
+    
 class CurrencyRefModel(ResponseSchemaGenerator):
     def __init__(
         self,

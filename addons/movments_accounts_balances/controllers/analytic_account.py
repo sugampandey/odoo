@@ -1,49 +1,72 @@
 from odoo import http
+import uuid, datetime
 from odoo.http import request
 from odoo.exceptions import ValidationError, UserError
-from .common import APIResponse, validate_and_convert_data, get_request_data
+from .common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data
 from .validation_schema import analytic_account_expected_fields
 from . utils import validate_company, validate_analytic_plan, validate_analytic_account
 
 from ..swagger.common import swagger_doc
 from ..swagger.analytic_account import analytic_accounts_docs
-from .schemas.analytic_account import ANALYTIC_ACCOUNT_SCHEMA
-
+from .schemas.analytic_account import ANALYTIC_ACCOUNT_SCHEMA, AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassQueryResponseModel
+from .schemas.common import MetaDataModel
 from .logger import logger
 
 class AnalyticAccountAPI(http.Controller):
 
-    def validate_and_prepare_analytic_account_data(self, data, analytic_account_expected_fields):
+    def validate_and_prepare_analytic_account_data(self, data, company_id, analytic_account_expected_fields):
         success, converted_data = validate_and_convert_data(data, analytic_account_expected_fields)
         if success is not True:
             return False, converted_data
         
         # Validate company 
-        company_id = converted_data['company_id']
         is_valid, error_message = validate_company(request, company_id)
         if not is_valid:
             return False, APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
-        
-        # # Validate plan if provided
-        # plan_id = converted_data['plan_id']
-        # is_valid, error_message = validate_analytic_plan(request, plan_id)
-        # if not is_valid:
-        #     return False, APIResponse.error_response(f'Invalid plan: {error_message}', f'Invalid plan_id: {plan_id}')
             
         # Check if an analytic account with the same code already exists for the given company
-        if request.env['account.analytic.account'].sudo().search(
-            [('code', '=', converted_data['code']), ('company_id', '=', company_id)], limit=1
-            ):
-            return False, APIResponse.error_response('An analytic account with this code already exists', 'Duplicate code')
-            
+        if request.env['account.analytic.account'].sudo().search([
+            ('name', '=ilike', converted_data['Name'].lower()), ('company_id', '=', company_id)
+            ], limit=1):
+            return False, APIResponse.error_response(message='Another Class with this Name already exists', errors='Duplicate Name')
+        
         # Create the analytic account
         analytic_account_vals = {
-            'name': converted_data['name'],
-            'code': converted_data['code'],
+            'name': converted_data['Name'],
+            'code': str(uuid.uuid4()).replace('-', '.'), # Format: UUID (e.g., 550e8400.e29b.41d4.a716.446655440000)
             'company_id': company_id,
-            # 'plan_id': plan_id,
         }
         return True, analytic_account_vals
+    
+    def analytic_account_object(self, analytic_account):
+        meta_data = MetaDataModel(
+            CreateTime = analytic_account.create_date.strftime('%Y-%m-%d %H:%M:%S'),
+            LastUpdatedTime = analytic_account.write_date.strftime('%Y-%m-%d %H:%M:%S'),
+        )
+        return AnalyticClassModel(
+            Id=analytic_account.id,
+            Name=analytic_account.name,
+            MetaData=meta_data,
+            Active=analytic_account.active
+        )
+    
+    def create_analytic_account_response(self, analytic_account):
+        return AnalyticClassResponseModel(
+            Class=self.analytic_account_object(analytic_account),
+            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+        ).to_dict()
+    
+    def list_analytic_account_response(self, accounts_data, startPosition, maxResults, totalCount):
+        QueryResponse=AnalyticClassQueryResponseModel(
+                startPosition=startPosition,
+                Class=accounts_data,
+                maxResults=maxResults,
+                totalCount= totalCount
+            )
+        return AnalyticClassListResponseModel(
+            QueryResponse=QueryResponse,
+            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+        ).to_dict()
         
     @http.route('/api/analytic-class', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     @swagger_doc(analytic_accounts_docs['create_analytic_account'])
@@ -52,8 +75,11 @@ class AnalyticAccountAPI(http.Controller):
         try:
             with cursor.savepoint():
                 data = get_request_data(request)
+                company_id = get_company_from_headers(request)
+                if not company_id:
+                    return APIResponse.error_response(message='Company ID is required', errors='Missing CompanyId', status=400)
                 
-                success, analytic_account_vals = self.validate_and_prepare_analytic_account_data(data, ANALYTIC_ACCOUNT_SCHEMA)
+                success, analytic_account_vals = self.validate_and_prepare_analytic_account_data(data, company_id, ANALYTIC_ACCOUNT_SCHEMA)
                 if success is not True:
                     return analytic_account_vals
                 
@@ -67,24 +93,15 @@ class AnalyticAccountAPI(http.Controller):
                 analytic_account = request.env['account.analytic.account'].sudo().create(analytic_account_vals)
 
                 # Prepare response data
-                response_data = {
-                    'id': analytic_account.id,
-                    'name': analytic_account.name,
-                    'code': analytic_account.code,
-                    'company': {
-                        'id': analytic_account.company_id.id,
-                        'name': analytic_account.company_id.name
-                    } if analytic_account.company_id else None,
-                    'create_date': analytic_account.create_date.strftime('%Y-%m-%d %H:%M:%S')
-                }
-                return APIResponse.success_response(message='Analytic account created successfully', data=response_data) 
+                response_data = self.create_analytic_account_response(analytic_account)
+                return APIResponse.success_response(response_data, status=201)
         except Exception as e:
             cursor.rollback()
             return APIResponse.error_response(message='An error occurred while creating the analytic account', errors=str(e), status=500)
         
     @http.route('/api/analytic-class', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(analytic_accounts_docs['list_analytic_accounts'])
-    def list_analytic_accounts(self, company_id=None, active=None, limit=20, offset=0, **kwargs):
+    def list_analytic_accounts(self, company_id=None, active=None, maxResults=100, startPosition=0, **kwargs):
         """
         Retrieves analytic accounts from Odoo's accounting module.
 
@@ -106,8 +123,8 @@ class AnalyticAccountAPI(http.Controller):
                 active = active.lower() == 'true'
                 domain.append(('active', '=', active))
                 
-            limit = int(limit)
-            offset = int(offset)
+            startPosition = int(startPosition)
+            maxResults = int(maxResults)
 
             # Get total count
             total_count = request.env['account.analytic.account'].sudo().search_count(domain)
@@ -115,8 +132,9 @@ class AnalyticAccountAPI(http.Controller):
             # Retrieve analytic accounts with pagination
             analytic_accounts = request.env['account.analytic.account'].sudo().search(
                 domain, 
-                limit=limit, 
-                offset=offset
+                limit=maxResults, 
+                offset=startPosition,
+                order='id DESC'
             )
             if not analytic_accounts:
                 return APIResponse.error_response(message='No analytic class found.', status=404)
@@ -124,48 +142,22 @@ class AnalyticAccountAPI(http.Controller):
             # Prepare response data
             accounts_data = []
             for account in analytic_accounts:
-                account_info = {
-                    'id': account.id,
-                    'name': account.name,
-                    'code': account.code,
-                    'active': account.active,
-                    'company': {
-                        'id': account.company_id.id,
-                        'name': account.company_id.name
-                    } if account.company_id else None,
-                    'plan': {
-                        'id': account.plan_id.id,
-                        'name': account.plan_id.name
-                    } if account.plan_id else None,
-                    'partner': {
-                        'id': account.partner_id.id,
-                        'name': account.partner_id.name
-                    } if account.partner_id else None,
-                    'create_date': account.create_date.strftime('%Y-%m-%d %H:%M:%S')
-                }
-                accounts_data.append(account_info)
-            response_data = {
-                'analytic_class': accounts_data,
-                'pagination': {
-                    'total_count': total_count,
-                    'limit': limit,
-                    'offset': offset
-                }
-            }
+                accounts_data.append(self.analytic_account_object(account))
+            response_data = self.list_analytic_account_response(accounts_data, startPosition, len(analytic_accounts), total_count)
 
-            return APIResponse.success_response(message='Analytic class retrieved successfully', data=response_data)
+            return APIResponse.success_response(response_data)
         except Exception as e:
             return APIResponse.error_response(message='An error occurred while retrieving analytic class', errors=str(e), status=500)
         
 
     @http.route('/api/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(analytic_accounts_docs['get_analytic_account'])
-    def get_analytic_account(self, analytic_class_id, **kwargs):
+    def get_analytic_account(self, analytic_class_id, company_id, **kwargs):
         """
         Retrieves an analytic account by ID within Odoo's accounting module.
 
         Args:
-        - account_id (int): The ID of the analytic account to retrieve.
+        - analytic_class_id (int): The ID of the analytic account to retrieve.
 
         Returns:
         dict: Dictionary containing a key 'account_info' with details of the retrieved analytic account.
@@ -175,34 +167,23 @@ class AnalyticAccountAPI(http.Controller):
         """
         analytic_account_id = analytic_class_id
         try:
+            domain = [('id', '=', int(analytic_account_id))]
+            if company_id:
+                is_valid, error_message = validate_company(request, company_id)
+                if not is_valid:
+                    return APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
+                domain.append(('company_id', '=', int(company_id)))
+
             # Attempt to retrieve the analytic account using the provided ID
-            account = request.env['account.analytic.account'].sudo().browse(analytic_account_id)
+            analytic_account = request.env['account.analytic.account'].sudo().search(domain, limit=1)
 
             # Check if the analytic account actually exists
-            if not account.exists():
-                raise ValidationError(f"Analytic class with ID {analytic_account_id} does not exist.")
+            if not analytic_account.exists():
+                return APIResponse.error_response(message=f"Analytic class with ID {analytic_account_id} does not exist.", errors='Invalid Id', status=404)
             
             # Prepare response data
-            response_data = {
-                'id': account.id,
-                'name': account.name,
-                'code': account.code,
-                'active': account.active,
-                'company': {
-                    'id': account.company_id.id,
-                    'name': account.company_id.name
-                } if account.company_id else None,
-                'plan': {
-                    'id': account.plan_id.id,
-                    'name': account.plan_id.name
-                } if account.plan_id else None,
-                'partner': {
-                    'id': account.partner_id.id,
-                    'name': account.partner_id.name
-                } if account.partner_id else None,
-                'create_date': account.create_date.strftime('%Y-%m-%d %H:%M:%S')
-            }
-            return APIResponse.success_response(message='Analytic class retrieved successfully', data=response_data)
+            response_data = self.create_analytic_account_response(analytic_account)
+            return APIResponse.success_response(response_data)
         except Exception as e:
             return APIResponse.error_response(message='An error occurred while retrieving analytic class', errors=str(e), status=500)
     

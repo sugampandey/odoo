@@ -323,7 +323,8 @@ class AccountAPI(http.Controller):
             accounts = request.env['account.account'].sudo().search(
                 domain, 
                 limit=maxResults, 
-                offset=startPosition
+                offset=startPosition,
+                order='id DESC'
             )
             logger.info(f"Retrieved {len(accounts)} accounts")
 

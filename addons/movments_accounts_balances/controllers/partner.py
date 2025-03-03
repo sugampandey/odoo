@@ -165,7 +165,7 @@ class PartnerAPI(http.Controller):
             domain,
             limit=maxResults, 
             offset=startPosition,
-            order='name asc'
+            order='id DESC'
         )
 
         # Prepare response data

@@ -1,30 +1,8 @@
 from typing import Optional, Literal, get_type_hints, Type, Union, Any
 from datetime import datetime
-from .common import CurrencyRefModel, MetaDataModel, TaxCodeRef, HEADERS
+from .common import CurrencyRefModel, MetaDataModel, TaxCodeRef, ParentRef, HEADERS
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
 from ..mapping.accounts import CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING
-
-class ParentRef(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        name: str,
-        value: str
-    ):
-        self.name = name
-        self.value = value
-
-    def to_dict(self) -> dict:
-        return {
-            'name': self.name,
-            'value': self.value
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            name=data.get('name', ''),
-            value=data.get('value', '')
-        )
     
 class AccountCreateRequestModel(RequestSchemaGenerator):
     def __init__(
