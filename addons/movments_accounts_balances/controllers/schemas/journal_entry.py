@@ -119,39 +119,41 @@ JOURNAL_ENTRY_SCHEMA = {
             'swagger_type': 'array',
             'items': {
                 'type': dict,
-                'required': {
-                    'partner_id': {
-                        'type': int,
-                        'display_name': 'Partner',
-                        'swagger_type': 'integer'
+                'items': {
+                    'required': {
+                        'partner_id': {
+                            'type': int,
+                            'display_name': 'Partner',
+                            'swagger_type': 'integer'
+                        },
+                        'amount': {
+                            'type': float,
+                            'display_name': 'Amount',
+                            'swagger_type': 'number'
+                        },
+                        'amount_type': {
+                            'type': str,
+                            'display_name': 'Amount Type',
+                            'swagger_type': 'string',
+                            'enum': ['debit', 'credit']
+                        },
+                        'account_id': {
+                            'type': int,
+                            'display_name': 'Account',
+                            'swagger_type': 'integer'
+                        }
                     },
-                    'amount': {
-                        'type': float,
-                        'display_name': 'Amount',
-                        'swagger_type': 'number'
-                    },
-                    'amount_type': {
-                        'type': str,
-                        'display_name': 'Amount Type',
-                        'swagger_type': 'string',
-                        'enum': ['debit', 'credit']
-                    },
-                    'account_id': {
-                        'type': int,
-                        'display_name': 'Account',
-                        'swagger_type': 'integer'
-                    }
-                },
-                'optional': {
-                    'ref' : {
-                        'type': str,
-                        'display_name': 'Reference',
-                        'swagger_type': 'string'
-                    },
-                    'analytic_distribution': {
-                        'type': str,
-                        'display_name': 'Analytic Distribution',
-                        'swagger_type': 'string'
+                    'optional': {
+                        'ref' : {
+                            'type': str,
+                            'display_name': 'Reference',
+                            'swagger_type': 'string'
+                        },
+                        'analytic_distribution': {
+                            'type': str,
+                            'display_name': 'Analytic Distribution',
+                            'swagger_type': 'string'
+                        }
                     }
                 }
             }
