@@ -1,18 +1,19 @@
 from odoo import http
 from odoo.http import request
-import json
+import datetime
 from .common import APIResponse, validate_and_convert_data, get_request_data
 from .validation_schema import company_expected_fields
 
 from ..swagger.common import swagger_doc
 from ..swagger.company import companies_docs
-from .schemas.company import COMPANY_SCHEMA
+from .schemas.company import COMPANY_SCHEMA, CompanyModel, CompanyListResponseModel, CompanyCreateRequestModel, CompanyQueryResponseModel, CompanyResponseModel
+from .schemas.common import CurrencyRefModel, MetaDataModel, PhoneNumberModel, EmailAddressModel
 from ..constants import CONSTANTS
 
 class CreateCompany(http.Controller):
 
     def create_default_product(self, request, company_id):
-        default_product = request.env['product.template'].create({
+        default_product = request.env['product.template'].sudo().create({
             'name': 'Default Product',
             'default_code': CONSTANTS['PRODUCT_DEFAULT_CODE'],
             'company_id': company_id,
@@ -37,6 +38,48 @@ class CreateCompany(http.Controller):
     #     self.create_journal(request, company_id, 'purchase', 'PURCHASE', 'Purchase Journal')
     #     self.create_journal(request, company_id, 'general', 'GENERAL', 'General Journal')
 
+    def company_object(self, company):
+        meta_data = MetaDataModel(
+            CreateTime = company.create_date.strftime('%Y-%m-%d %H:%M:%S'),
+            LastUpdatedTime = company.write_date.strftime('%Y-%m-%d %H:%M:%S'),
+        )
+        if company.currency_id:
+            currency_ref = CurrencyRefModel(
+                name=company.currency_id.full_name,
+                value=company.currency_id.name
+            )
+        else:
+            currency_ref = None
+        phone = PhoneNumberModel(FreeFormNumber=company.phone)
+        email = EmailAddressModel(Address=company.email)
+        return CompanyModel(
+            Id=company.id,
+            Name=company.name,
+            Active=company.active,
+            MetaData=meta_data,
+            CurrencyRef=currency_ref,
+            PrimaryPhone=phone,
+            PrimaryEmailAddr=email,
+        )
+    
+    def create_company_response(self, company):
+        return CompanyResponseModel(
+            Company=self.company_object(company),
+            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+        ).to_dict()
+    
+    def list_company_response(self, company_data, startPosition, maxResults, totalCount):
+        QueryResponse=CompanyQueryResponseModel(
+                startPosition=startPosition,
+                Company=company_data,
+                maxResults=maxResults,
+                totalCount= totalCount
+            )
+        return CompanyListResponseModel(
+            QueryResponse=QueryResponse,
+            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+        ).to_dict()
+    
     @http.route('/api/companies', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     @swagger_doc(companies_docs['create_company'])
     def create_company(self, **kwargs):
@@ -48,35 +91,32 @@ class CreateCompany(http.Controller):
                 if success is not True:
                     return converted_data
                 
+                currency_ref = converted_data.get('CurrencyRef')
+                currency_id = None
+                if currency_ref:
+                    currency_value = currency_ref.get('value', 'USD')
+                    currency = request.env['res.currency'].sudo().search([('name', '=', currency_value)], limit=1)
+                    if not currency:
+                        return APIResponse.error_response(message='Invalid currency', errors='Invalid currency_ref')
+                    currency_id = currency.id
+                
                 company_vals = {
-                    'name': converted_data.get('name'),
-                    'city': converted_data.get('city'),
-                    'street': converted_data.get('street'),
-                    'phone': converted_data.get('phone'),
-                    'zip': converted_data.get('zip'),
-                    'email': converted_data.get('email'),
-                    'currency_id': converted_data.get('currency_id') or 2, # ID for USD, adjust as needed
+                    'name': converted_data.get('Name'),
+                    'phone': converted_data['PrimaryPhone']['FreeFormNumber'] if converted_data.get('PrimaryPhone') else converted_data.get('PrimaryPhone'),
+                    'email': converted_data['PrimaryEmailAddr']['Address'] if converted_data.get('PrimaryEmailAddr') else converted_data.get('PrimaryEmailAddr'),
+                    'currency_id': currency_id or 2, # ID for USD, adjust as needed
+                    # 'city': converted_data.get('city'),
+                    # 'street': converted_data.get('street'),
+                    # 'zip': converted_data.get('zip'),
                 }
+                
                 company = request.env['res.company'].sudo().create(company_vals)
                 default_product = self.create_default_product(request, company.id)
                 # default_journals = self.create_default_journals(request, company.id)
                 
                 # prepare response data
-                response_data = {
-                    'id': company.id,
-                    'name': company.name,
-                    'city': company.city,
-                    'street': company.street,
-                    'phone': company.phone,
-                    'zip': company.zip,
-                    'email': company.email,
-                    'currency': {
-                        'id': company.currency_id.id,
-                        'name': company.currency_id.name,
-                        'symbol': company.currency_id.symbol
-                    } if company.currency_id else None
-                }
-                return APIResponse.success_response(message="Company created successfully", data=response_data)
+                response_data = self.create_company_response(company)
+                return APIResponse.success_response(response_data, status=201)
         except Exception as e:
             cursor.rollback()
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
@@ -94,65 +134,35 @@ class CreateCompany(http.Controller):
                 return APIResponse.error_response(message="Company not found", errors="Invalid company_id", status=404)
             
             # Prepare response data
-            response_data = {
-                'id': company.id,
-                'name': company.name,
-                'city': company.city,
-                'street': company.street,
-                'phone': company.phone,
-                'zip': company.zip,
-                'email': company.email,
-                'active': company.active,
-                'currency': {
-                    'id': company.currency_id.id,
-                    'name': company.currency_id.name,
-                    'symbol': company.currency_id.symbol
-                } if company.currency_id else None
-            }
-            return APIResponse.success_response(message="Company retrieved successfully", data=response_data)
+            response_data = self.create_company_response(company)
+            return APIResponse.success_response(response_data, status=201)
         except Exception as e:
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
         
     @http.route('/api/companies/', type='http', auth='public', methods=['GET'], csrf=False)
     @swagger_doc(companies_docs['list_companies'])
-    def list_companies(self, active=None, limit=20, offset=0, **kwargs):
+    def list_companies(self, active=None, maxResults=100, startPosition=0, **kwargs):
         try:
             domain = []
             if active is not None:
                 active = active.lower() == 'true'
                 domain.append(('active', '=', active))
-            limit = int(limit)
-            offset = int(offset)
+            startPosition = int(startPosition)
+            maxResults = int(maxResults)
             # Get total count
             total_count = request.env['res.company'].sudo().search_count(domain)
             # Get paginated companies
-            companies = request.env['res.company'].sudo().search(domain, limit=limit, offset=offset)
+            companies = request.env['res.company'].sudo().search(
+                domain, 
+                limit=maxResults, 
+                offset=startPosition,
+                order='id DESC'
+                )
             companies_data = []
             for company in companies:
-                companies_data.append({
-                    'id': company.id,
-                    'name': company.name,
-                    'city': company.city,
-                    'street': company.street,
-                    'phone': company.phone,
-                    'zip': company.zip,
-                    'email': company.email,
-                    'active': company.active,
-                    'currency': {
-                        'id': company.currency_id.id,
-                        'name': company.currency_id.name,
-                        'symbol': company.currency_id.symbol
-                    } if company.currency_id else None
-                })
-            response_data = {
-                'companies': companies_data,
-                'pagination': {
-                    'total_count': total_count,
-                    'limit': limit,
-                    'offset': offset
-                }
-            }
-            return APIResponse.success_response(message="Companys retrieved successfully", data=response_data)
+                companies_data.append(self.company_object(company))
+            response_data = self.list_company_response(companies_data, startPosition, maxResults, total_count)
+            return APIResponse.success_response(response_data)
         except Exception as e:
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
         

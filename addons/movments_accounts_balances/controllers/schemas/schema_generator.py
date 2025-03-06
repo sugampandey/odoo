@@ -95,7 +95,7 @@ class RequestSchemaGenerator:
         
         # Handle nested objects that inherit from RequestSchemaGenerator
         if isinstance(field_type, type) and issubclass(field_type, RequestSchemaGenerator):
-            nested_schema = field_type.get_schema()
+            nested_schema = field_type.get_request_schema()
             return {
                 'type': dict,
                 'display_name': display_name,
@@ -132,7 +132,7 @@ class RequestSchemaGenerator:
 
     
     @classmethod
-    def get_schema(cls) -> dict:
+    def get_request_schema(cls) -> dict:
         return cls.generate_schema()
 
     @staticmethod
@@ -171,7 +171,7 @@ class ResponseSchemaGenerator:
     }
 
     @classmethod
-    def get_schema(cls) -> dict:
+    def get_response_schema(cls) -> dict:
         """Generate OpenAPI schema based on class annotations"""
         annotations = cls.__init__.__annotations__
         properties = {}
@@ -212,7 +212,7 @@ class ResponseSchemaGenerator:
         
         # Handle nested schemas
         if isinstance(field_type, type) and issubclass(field_type, ResponseSchemaGenerator):
-            schema = field_type.get_schema()
+            schema = field_type.get_response_schema()
             if is_optional:
                 schema['nullable'] = True
             return schema

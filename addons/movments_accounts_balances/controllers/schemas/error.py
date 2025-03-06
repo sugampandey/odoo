@@ -168,4 +168,4 @@ class ErrorResponseModel(ResponseSchemaGenerator):
             response=ResponseModel.from_dict(data.get('response', {}))
         )
 
-ERROR_SCHEMA = ErrorResponseModel.get_schema()
+ERROR_SCHEMA = ErrorResponseModel.get_response_schema()

@@ -111,28 +111,30 @@ BILL_SCHEMA = {
             'swagger_type': 'array',
             'items': {
                 'type': dict,
-                'required': {
-                    'amount': {
-                        'type': float,
-                        'display_name': 'Amount',
-                        'swagger_type': 'number'
+                'items': {
+                    'required': {
+                        'amount': {
+                            'type': float,
+                            'display_name': 'Amount',
+                            'swagger_type': 'number'
+                        },
                     },
-                },
-                'optional': {
-                    'description': {
-                        'type': str,
-                        'display_name': 'Description',
-                        'swagger_type': 'string'
-                    },
-                    'class': {
-                        'type': str,
-                        'display_name': 'Class',
-                        'swagger_type': 'string'
-                    },
-                    'account_id': {
-                        'type': int,
-                        'display_name': 'Expense Account',
-                        'swagger_type': 'integer'
+                    'optional': {
+                        'description': {
+                            'type': str,
+                            'display_name': 'Description',
+                            'swagger_type': 'string'
+                        },
+                        'class': {
+                            'type': str,
+                            'display_name': 'Class',
+                            'swagger_type': 'string'
+                        },
+                        'account_id': {
+                            'type': int,
+                            'display_name': 'Expense Account',
+                            'swagger_type': 'integer'
+                        }
                     }
                 }
             }

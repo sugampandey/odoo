@@ -11,7 +11,7 @@ HEADERS = [
     }
 ]
 
-class ParentRef(ResponseSchemaGenerator):
+class ParentRef(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(
         self,
         name: str,
@@ -33,7 +33,7 @@ class ParentRef(ResponseSchemaGenerator):
             value=data.get('value', '')
         )
     
-class CurrencyRefModel(ResponseSchemaGenerator):
+class CurrencyRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(
         self,
         name: str,
@@ -77,7 +77,7 @@ class MetaDataModel(ResponseSchemaGenerator):
             LastUpdatedTime=data.get('LastUpdatedTime', '')
         )
     
-class PhoneNumberModel(RequestSchemaGenerator):
+class PhoneNumberModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(self, FreeFormNumber: str):
         self.FreeFormNumber = FreeFormNumber
 
@@ -88,7 +88,7 @@ class PhoneNumberModel(RequestSchemaGenerator):
     def from_dict(cls, data: dict):
         return cls(FreeFormNumber=data.get('FreeFormNumber'))
     
-class EmailAddressModel(RequestSchemaGenerator):
+class EmailAddressModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(self, Address: str):
         self.Address = Address
 
@@ -99,7 +99,7 @@ class EmailAddressModel(RequestSchemaGenerator):
     def from_dict(cls, data: dict):
         return cls(Address=data.get('Address', ''))
 
-class WebAddress(RequestSchemaGenerator):
+class WebAddress(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(self, URI: str):
         self.URI = URI
 
@@ -132,27 +132,53 @@ class TaxCodeRef(ResponseSchemaGenerator):
             value=data.get('value', '')
         )
     
-
-class DefaultTaxCodeRefModel(ResponseSchemaGenerator):
+class ClassRef(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(
         self,
+        name: str,
         value: str
     ):
+        self.name = name
         self.value = value
 
     def to_dict(self) -> dict:
         return {
+            'name': self.name,
             'value': self.value
         }
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
+            name=data.get('name', ''),
+            value=data.get('value', '')
+        )
+    
+
+class TaxCodeRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
+    def __init__(
+        self,
+        name: str,
+        value: str
+    ):
+        self.name = name
+        self.value = value
+
+    def to_dict(self) -> dict:
+        return {
+            'name': self.name,
+            'value': self.value
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get('name', ''),
             value=data.get('value', '')
         )
 
 
-class BillAddrModel(RequestSchemaGenerator):
+class BillAddrModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(
         self,
         City: Optional[str] = None,

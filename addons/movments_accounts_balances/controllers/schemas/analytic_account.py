@@ -155,10 +155,10 @@ class AnalyticClassListResponseModel(ResponseSchemaGenerator):
             time=data.get('time', '')
         )
     
-ANALYTIC_ACCOUNT_CREATE_RESPONSE = ANALYTIC_ACCOUNT_GET_RESPONSE = AnalyticClassResponseModel.get_schema()
-ANALYTIC_ACCOUNT_LIST_RESPONSE = AnalyticClassListResponseModel.get_schema()
+ANALYTIC_ACCOUNT_CREATE_RESPONSE = ANALYTIC_ACCOUNT_GET_RESPONSE = AnalyticClassResponseModel.get_response_schema()
+ANALYTIC_ACCOUNT_LIST_RESPONSE = AnalyticClassListResponseModel.get_response_schema()
 
-ANALYTIC_ACCOUNT_SCHEMA = AnalyticClassCreateRequestModel.get_schema()
+ANALYTIC_ACCOUNT_SCHEMA = AnalyticClassCreateRequestModel.get_request_schema()
 
 ANALYTIC_ACCOUNT_CREATE_PARAMS = {
     'headers': HEADERS,
@@ -188,7 +188,7 @@ ANALYTIC_ACCOUNT_LIST_PARAMS = {
             'type': 'integer',
             'description': 'Number of records to return (default: 100)',
             'required': False,
-            'default': 20
+            'default': 100
         },
         {
             'name': 'startPosition',

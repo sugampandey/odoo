@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from .common import (CurrencyRefModel, MetaDataModel, DefaultTaxCodeRefModel, BillAddrModel,
+from .common import (CurrencyRefModel, MetaDataModel, TaxCodeRefModel, BillAddrModel,
                      PhoneNumberModel, EmailAddressModel, WebAddress, HEADERS)
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
 
@@ -149,7 +149,7 @@ class CustomerModel(ResponseSchemaGenerator):
         PrimaryPhone: Optional[PhoneNumberModel] = None,
         BillAddr: Optional[BillAddrModel] = None,
         CurrencyRef: Optional[CurrencyRefModel] = None,
-        DefaultTaxCodeRef: Optional[DefaultTaxCodeRefModel] = None,
+        DefaultTaxCodeRef: Optional[TaxCodeRefModel] = None,
         MetaData: Optional[MetaDataModel] = None,
         domain: Optional[str] = None,
         FullyQualifiedName: Optional[str] = None,
@@ -240,7 +240,7 @@ class CustomerModel(ResponseSchemaGenerator):
             PrimaryPhone=PhoneNumberModel.from_dict(data.get('PrimaryPhone', {})),
             BillAddr=BillAddrModel.from_dict(data.get('BillAddr', {})),
             CurrencyRef=CurrencyRefModel.from_dict(data.get('CurrencyRef', {})),
-            DefaultTaxCodeRef=DefaultTaxCodeRefModel.from_dict(data.get('DefaultTaxCodeRef', {})),
+            DefaultTaxCodeRef=TaxCodeRefModel.from_dict(data.get('DefaultTaxCodeRef', {})),
             MetaData=MetaDataModel.from_dict(data.get('MetaData', {})),
             FullyQualifiedName=data.get('FullyQualifiedName'),
             PreferredDeliveryMethod=data.get('PreferredDeliveryMethod'),
@@ -765,9 +765,9 @@ CUSTOMER_DELETE_PARAMS = {
 #     }
 # }
 
-VENDOR_CREATE_RESPONSE = VENDOR_GET_RESPONSE = VendorResponseModel.get_schema()
-VENDOR_LIST_RESPONSE = VendorListResponseModel.get_schema()
-VENDOR_SCHEMA = VendorCreateRequestModel.get_schema()
+VENDOR_CREATE_RESPONSE = VENDOR_GET_RESPONSE = VendorResponseModel.get_response_schema()
+VENDOR_LIST_RESPONSE = VendorListResponseModel.get_response_schema()
+VENDOR_SCHEMA = VendorCreateRequestModel.get_request_schema()
 VENDOR_CREATE_PARAMS = {
     'headers': HEADERS,
     'body': {
@@ -776,9 +776,9 @@ VENDOR_CREATE_PARAMS = {
     }
 }
 
-CUSTOMER_CREATE_RESPONSE = CUSTOMER_GET_RESPONSE = CustomerResponseModel.get_schema()
-CUSTOMER_LIST_RESPONSE = CustomerListResponseModel.get_schema()
-CUSTOMER_SCHEMA = CustomerCreateRequestModel.get_schema()
+CUSTOMER_CREATE_RESPONSE = CUSTOMER_GET_RESPONSE = CustomerResponseModel.get_response_schema()
+CUSTOMER_LIST_RESPONSE = CustomerListResponseModel.get_response_schema()
+CUSTOMER_SCHEMA = CustomerCreateRequestModel.get_request_schema()
 CUSTOMER_CREATE_PARAMS = {
     'headers': HEADERS,
     'body': {

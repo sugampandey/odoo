@@ -33,14 +33,14 @@ def generate_swagger_schema(schema):
                 items_required = []
                 
                 # Process required items fields
-                if 'required' in field_spec['items']:
-                    for item_field, item_spec in field_spec['items']['required'].items():
+                if 'required' in field_spec['items']['items']:
+                    for item_field, item_spec in field_spec['items']['items']['required'].items():
                         items_properties[item_field] = process_field_spec(item_spec)
                         items_required.append(item_field)
                 
                 # Process optional items fields
-                if 'optional' in field_spec['items']:
-                    for item_field, item_spec in field_spec['items']['optional'].items():
+                if 'optional' in field_spec['items']['items']:
+                    for item_field, item_spec in field_spec['items']['items']['optional'].items():
                         items_properties[item_field] = process_field_spec(item_spec)
                 
                 field_def['items'] = {

@@ -1,6 +1,6 @@
 from .common import doc_generator
 from ..controllers.schemas.company import (
-    COMPANY_RESPONSE, COMPANY_LIST_RESPONSE, COMPANY_CREATE_PARAMS, COMPANY_GET_PARAMS,
+    COMPANY_CREATE_RESPONSE, COMPANY_GET_RESPONSE, COMPANY_LIST_RESPONSE, COMPANY_CREATE_PARAMS, COMPANY_GET_PARAMS,
     COMPANY_DELETE_PARAMS, COMPANY_LIST_PARAMS)
 
 companies_docs = {
@@ -14,13 +14,13 @@ companies_docs = {
         'get',
         'company',
         param_schema=COMPANY_GET_PARAMS,
-        response_schema=COMPANY_RESPONSE
+        response_schema=COMPANY_GET_RESPONSE
     ),
     'create_company': doc_generator.create_endpoint_doc(
         'create',
         'company',
         param_schema=COMPANY_CREATE_PARAMS,
-        response_schema=COMPANY_RESPONSE
+        response_schema=COMPANY_CREATE_RESPONSE
     ),
     'delete_company': doc_generator.create_endpoint_doc(
         'delete',

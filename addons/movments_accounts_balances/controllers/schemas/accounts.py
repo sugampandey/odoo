@@ -227,10 +227,10 @@ class AccountListResponseModel(ResponseSchemaGenerator):
         )
 
 
-ACCOUNT_CREATE_RESPONSE = ACCOUNT_GET_RESPONSE = AccountResponseModel.get_schema()
-ACCOUNT_LIST_RESPONSE = AccountListResponseModel.get_schema()
+ACCOUNT_CREATE_RESPONSE = ACCOUNT_GET_RESPONSE = AccountResponseModel.get_response_schema()
+ACCOUNT_LIST_RESPONSE = AccountListResponseModel.get_response_schema()
 
-ACCOUNT_SCHEMA = AccountCreateRequestModel.get_schema()
+ACCOUNT_SCHEMA = AccountCreateRequestModel.get_request_schema()
 
 
 # PARAMS
