@@ -135,33 +135,35 @@ class CreateCompany(http.Controller):
             
             # Prepare response data
             response_data = self.create_company_response(company)
-            return APIResponse.success_response(response_data, status=201)
+            return APIResponse.success_response(response_data)
         except Exception as e:
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
         
     @http.route('/api/companies/', type='http', auth='public', methods=['GET'], csrf=False)
     @swagger_doc(companies_docs['list_companies'])
-    def list_companies(self, active=None, maxResults=100, startPosition=0, **kwargs):
+    def list_companies(self, name=None, active=None, maxresults=100, startposition=0, **kwargs):
         try:
             domain = []
             if active is not None:
                 active = active.lower() == 'true'
                 domain.append(('active', '=', active))
-            startPosition = int(startPosition)
-            maxResults = int(maxResults)
+            if name:
+                domain.append(('name', 'ilike', name))
+            startposition = int(startposition)
+            maxresults = int(maxresults)
             # Get total count
             total_count = request.env['res.company'].sudo().search_count(domain)
             # Get paginated companies
             companies = request.env['res.company'].sudo().search(
                 domain, 
-                limit=maxResults, 
-                offset=startPosition,
+                limit=maxresults, 
+                offset=startposition,
                 order='id DESC'
                 )
             companies_data = []
             for company in companies:
                 companies_data.append(self.company_object(company))
-            response_data = self.list_company_response(companies_data, startPosition, maxResults, total_count)
+            response_data = self.list_company_response(companies_data, startposition, maxresults, total_count)
             return APIResponse.success_response(response_data)
         except Exception as e:
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)

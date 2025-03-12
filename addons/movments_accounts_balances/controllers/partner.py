@@ -41,7 +41,7 @@ class PartnerAPI(http.Controller):
             'title': converted_data.get('Title'),
             'name': converted_data.get('GivenName'),
             'company_id': company_id,
-            'is_company': converted_data.get('is_company'),
+            # 'is_company': converted_data.get('is_company'),
         }
         if is_vendor:
             partner_vals['vendor_1099'] = converted_data.get('Vendor1099')
@@ -141,7 +141,7 @@ class PartnerAPI(http.Controller):
         ).to_dict()
         
 
-    def get_partners(self, request, company_id=None, active=None, is_vendor=False, maxResults=100, startPosition=0):
+    def get_partners(self, request, company_id=None, DisplayName=None, active=None, is_vendor=False, maxresults=100, startposition=0):
         domain = []
         if company_id:
             is_valid, error_message = validate_company(request, int(company_id))
@@ -153,9 +153,11 @@ class PartnerAPI(http.Controller):
             domain.append(('active', '=', active))
         category_id = get_default_vendor_category(request) if is_vendor else get_default_customer_category(request)
         domain.append(('category_id', 'child_of', int(category_id)))
+        if DisplayName:
+            domain.append(('display_name', 'ilike', f'%{DisplayName}%'))
 
-        startPosition = int(startPosition)
-        maxResults = int(maxResults)
+        startposition = int(startposition)
+        maxresults = int(maxresults)
 
         # Get total count for pagination
         total_count = request.env['res.partner'].sudo().search_count(domain)
@@ -163,8 +165,8 @@ class PartnerAPI(http.Controller):
         # Get partners with pagination
         partners = request.env['res.partner'].sudo().search(
             domain,
-            limit=maxResults, 
-            offset=startPosition,
+            limit=maxresults, 
+            offset=startposition,
             order='id DESC'
         )
 
@@ -172,7 +174,7 @@ class PartnerAPI(http.Controller):
         partners_data = []
         for partner in partners:
             partners_data.append(self.partner_object(partner, is_vendor))
-        response_data = self.list_partner_response(partners_data, startPosition, len(partners), total_count, is_vendor)
+        response_data = self.list_partner_response(partners_data, startposition, len(partners), total_count, is_vendor)
 
         return True, response_data
 
@@ -268,9 +270,9 @@ class PartnerAPI(http.Controller):
         
     @http.route('/api/vendors/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(partners_docs['list_vendors'])
-    def list_vendors(self, company_id=None, active=None, maxResults=100, startPosition=0, **kwargs):
+    def list_vendors(self, company_id=None, DisplayName=None, active=None, maxresults=100, startposition=0, **kwargs):
         try:
-            success, response_data = self.get_partners(request, company_id, active, True, maxResults, startPosition)
+            success, response_data = self.get_partners(request, company_id, DisplayName, active, True, maxresults, startposition)
             if not success:
                 return response_data
             return APIResponse.success_response(response_data, status=200)
@@ -279,9 +281,9 @@ class PartnerAPI(http.Controller):
         
     @http.route('/api/customers/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(partners_docs['list_customers'])
-    def list_customers(self, company_id=None, active=None, maxResults=100, startPosition=0, **kwargs):
+    def list_customers(self, company_id=None, DisplayName=None, active=None, maxresults=100, startposition=0, **kwargs):
         try:
-            success, response_data = self.get_partners(request, company_id, active, False, maxResults, startPosition)
+            success, response_data = self.get_partners(request, company_id, DisplayName, active, False, maxresults, startposition)
             if not success:
                 return response_data
             return APIResponse.success_response(response_data, status=200)

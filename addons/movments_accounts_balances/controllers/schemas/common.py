@@ -11,7 +11,7 @@ HEADERS = [
     }
 ]
 
-class ParentRef(RequestSchemaGenerator, ResponseSchemaGenerator):
+class ParentRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(
         self,
         name: str,
@@ -99,7 +99,7 @@ class EmailAddressModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def from_dict(cls, data: dict):
         return cls(Address=data.get('Address', ''))
 
-class WebAddress(RequestSchemaGenerator, ResponseSchemaGenerator):
+class WebAddrModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(self, URI: str):
         self.URI = URI
 
@@ -110,29 +110,8 @@ class WebAddress(RequestSchemaGenerator, ResponseSchemaGenerator):
     def from_dict(cls, data: dict):
         return cls(URI=data.get('URI', ''))
     
-class TaxCodeRef(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        name: str,
-        value: str
-    ):
-        self.name = name
-        self.value = value
-
-    def to_dict(self) -> dict:
-        return {
-            'name': self.name,
-            'value': self.value
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            name=data.get('name', ''),
-            value=data.get('value', '')
-        )
     
-class ClassRef(RequestSchemaGenerator, ResponseSchemaGenerator):
+class ClassRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(
         self,
         name: str,
@@ -219,6 +198,120 @@ class BillAddrModel(RequestSchemaGenerator, ResponseSchemaGenerator):
             PostalCode=data.get('PostalCode', ''),
             CountrySubDivisionCode=data.get('CountrySubDivisionCode', '')
         )
+    
+
+class AccountRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        value: Optional[str] = None
+    ):
+        self.name = name
+        self.value = value
+
+    def to_dict(self) -> dict:
+        return {
+            'name': self.name,
+            'value': self.value
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get('name', ''),
+            value=data.get('value', '')
+        )
+
+class CustomerRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
+    def __init__(
+        self,
+        name: str,
+        value: str
+    ):
+        self.name = name
+        self.value = value
+
+    def to_dict(self) -> dict:
+        return {
+            'name': self.name,
+            'value': self.value
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get('name', ''),
+            value=data.get('value', '')
+        )
+    
+
+class ProjectRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
+    def __init__(
+        self,
+        name: str,
+        value: str
+    ):
+        self.name = name
+        self.value = value
+
+    def to_dict(self) -> dict:
+        return {
+            'name': self.name,
+            'value': self.value
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get('name', ''),
+            value=data.get('value', '')
+        )
+    
+
+class ItemRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
+    def __init__(
+        self,
+        name: str,
+        value: str
+    ):
+        self.name = name
+        self.value = value
+
+    def to_dict(self) -> dict:
+        return {
+            'name': self.name,
+            'value': self.value
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get('name', ''),
+            value=data.get('value', '')
+        )
+    
+class ItemAccountRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
+    def __init__(
+        self,
+        name: str,
+        value: str
+    ):
+        self.name = name
+        self.value = value
+
+    def to_dict(self) -> dict:
+        return {
+            'name': self.name,
+            'value': self.value
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get('name', ''),
+            value=data.get('value', '')
+        )
+    
 
 ERROR_RESPONSE = {
     'type': 'object',

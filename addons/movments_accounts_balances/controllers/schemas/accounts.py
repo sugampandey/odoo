@@ -1,6 +1,6 @@
 from typing import Optional, Literal, get_type_hints, Type, Union, Any
 from datetime import datetime
-from .common import CurrencyRefModel, MetaDataModel, TaxCodeRef, ParentRef, HEADERS
+from .common import CurrencyRefModel, MetaDataModel, TaxCodeRefModel, ParentRefModel, HEADERS
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
 from ..mapping.accounts import CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING
     
@@ -68,8 +68,8 @@ class AccountModel(ResponseSchemaGenerator):
         Description: Optional[str] = None,
         TxnLocationType : Optional[str] = None,
         AccountAlias : Optional[str] = None,
-        TaxCodeRef : Optional[TaxCodeRef] = None,
-        ParentRef : Optional[ParentRef] = None,
+        TaxCodeRef : Optional[TaxCodeRefModel] = None,
+        ParentRef : Optional[ParentRefModel] = None,
     ):
         self.FullyQualifiedName = FullyQualifiedName
         self.domain = domain
@@ -147,8 +147,8 @@ class AccountModel(ResponseSchemaGenerator):
             Description=data.get('Description', ''),
             TxnLocationType=data.get('TxnLocationType', ''),
             AccountAlias=data.get('AccountAlias', ''),
-            TaxCodeRef=TaxCodeRef.from_dict(data.get('TaxCodeRef', {})),
-            ParentRef=ParentRef.from_dict(data.get('ParentRef', {})),
+            TaxCodeRef=TaxCodeRefModel.from_dict(data.get('TaxCodeRef', {})),
+            ParentRef=ParentRefModel.from_dict(data.get('ParentRef', {})),
         )
 
 class AccountResponseModel(ResponseSchemaGenerator):
@@ -286,20 +286,26 @@ ACCOUNT_LIST_PARAMS = {
             'required': True
         },
         {
+            'name': 'name',
+            'type': 'string',
+            'description': 'Filter by name',
+            'required': False
+        },
+        {
             'name': 'active',
             'type': 'boolean',
             'description': 'Filter by active',
             'required': False
         },
         {
-            'name': 'maxResults',
+            'name': 'maxresults',
             'type': 'integer',
             'description': 'Number of records to return (default: 100)',
             'required': False,
             'default': 20
         },
         {
-            'name': 'startPosition',
+            'name': 'startposition',
             'type': 'integer',
             'description': 'Number of records to skip (default: 0)',
             'required': False,

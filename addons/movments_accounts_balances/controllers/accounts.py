@@ -291,7 +291,7 @@ class AccountAPI(http.Controller):
 
     @http.route('/api/accounts', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(accounts_docs['list_accounts'])
-    def list_accounts(self, account_type=None, company_id=None, active=None, maxResults=100, startPosition=0, **kwargs):
+    def list_accounts(self, name=None, account_type=None, company_id=None, active=None, maxresults=100, startposition=0, **kwargs):
         try:
             logger.info(f"Fetching accounts with parameters: account_type={account_type}, company_id={company_id}, active={active}")
             domain = []
@@ -310,6 +310,9 @@ class AccountAPI(http.Controller):
                 deprecated = not (active.lower() == 'true')
                 domain.append(('deprecated', '=', deprecated))
                 logger.debug(f"Added deprecated filter: {deprecated}")
+            if name:
+                domain.append(('name', 'ilike', name))
+                logger.debug(f"Added name filter: {name}")
 
             logger.debug(f"Final search domain: {domain}")
 
@@ -318,12 +321,12 @@ class AccountAPI(http.Controller):
             logger.info(f"Total matching accounts: {total_count}")
 
             # Search for accounts based on the domain with pagination
-            startPosition = int(startPosition)
-            maxResults = int(maxResults)
+            startposition = int(startposition)
+            maxresults = int(maxresults)
             accounts = request.env['account.account'].sudo().search(
                 domain, 
-                limit=maxResults, 
-                offset=startPosition,
+                limit=maxresults, 
+                offset=startposition,
                 order='id DESC'
             )
             logger.info(f"Retrieved {len(accounts)} accounts")
@@ -332,7 +335,7 @@ class AccountAPI(http.Controller):
             accounts_data = []
             for account in accounts:
                 accounts_data.append(self.account_object(account))
-            response_data = self.list_account_response(accounts_data, startPosition, len(accounts), total_count)
+            response_data = self.list_account_response(accounts_data, startposition, len(accounts), total_count)
 
             return APIResponse.success_response(response_data)
         except Exception as e:

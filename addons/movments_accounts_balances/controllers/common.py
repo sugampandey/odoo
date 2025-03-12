@@ -158,7 +158,7 @@ def convert_fields(data: Dict, fields_dict: Dict, required: bool = True, parent_
                             if field_specs['items']['type'] == dict:
                                 converted_item = {}
                                 # Convert required fields in item
-                                for item_field, item_specs in field_specs['items']['required'].items():
+                                for item_field, item_specs in field_specs['items']['items']['required'].items():
                                     if item_field not in item:
                                         return False, APIResponse.error_response(
                                             message=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
@@ -175,8 +175,8 @@ def convert_fields(data: Dict, fields_dict: Dict, required: bool = True, parent_
                                         return False, APIResponse.error_response(message=str(e), errors=str(e))
                                 
                                 # Convert optional fields in item
-                                if field_specs['items'].get('optional'):
-                                    for item_field, item_specs in field_specs['items']['optional'].items():
+                                if field_specs['items']['items'].get('optional'):
+                                    for item_field, item_specs in field_specs['items']['items']['optional'].items():
                                         if item_field in item and item[item_field] is not None:
                                             try:
                                                 converted_item[item_field] = convert_field_value(
@@ -300,7 +300,7 @@ def validate_converted_data(converted_data: Dict, expected_fields: Dict) -> Unio
                     # If item should be a dictionary, validate its structure
                     if field_specs['items']['type'] == dict:
                         # Validate required fields in item
-                        for item_field, item_specs in field_specs['items']['required'].items():
+                        for item_field, item_specs in field_specs['items']['items']['required'].items():
                             if item_field not in item:
                                 return APIResponse.error_response(
                                     message=f"Missing required field '{item_specs['display_name']}' in {field_display} at index {index}",
@@ -317,8 +317,8 @@ def validate_converted_data(converted_data: Dict, expected_fields: Dict) -> Unio
                                 return validation_result
 
                         # Validate optional fields in item if present
-                        if field_specs['items'].get('optional'):
-                            for item_field, item_specs in field_specs['items']['optional'].items():
+                        if field_specs['items']['items'].get('optional'):
+                            for item_field, item_specs in field_specs['items']['items']['optional'].items():
                                 if item_field in item and item[item_field] is not None:
                                     validation_result = validate_field_value(
                                         item[item_field], 

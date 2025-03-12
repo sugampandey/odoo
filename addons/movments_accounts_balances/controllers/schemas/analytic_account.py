@@ -1,13 +1,13 @@
 from typing import Optional, Literal, get_type_hints, Type, Union, Any
 from datetime import datetime
-from .common import ParentRef, MetaDataModel, HEADERS
+from .common import ParentRefModel, MetaDataModel, HEADERS
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
 
 class AnalyticClassCreateRequestModel(RequestSchemaGenerator):
     def __init__(
         self,
         Name: str,
-        ParentRef: Optional[ParentRef] = None,
+        ParentRef: Optional[ParentRefModel] = None,
     ):
         self.Name = Name
         self.ParentRef = ParentRef
@@ -22,7 +22,7 @@ class AnalyticClassCreateRequestModel(RequestSchemaGenerator):
     def from_dict(cls, data: dict):
         return cls(
             Name=data.get('Name'),
-            ParentRef=ParentRef.from_dict(data.get('ParentRef', {})),
+            ParentRef=ParentRefModel.from_dict(data.get('ParentRef', {})),
         )
 
 class AnalyticClassModel(ResponseSchemaGenerator):
@@ -36,7 +36,7 @@ class AnalyticClassModel(ResponseSchemaGenerator):
         Active: Optional[bool] = None,
         Id: Optional[str] = None,
         MetaData: Optional[MetaDataModel] = None,
-        ParentRef: Optional[ParentRef] = None,
+        ParentRef: Optional[ParentRefModel] = None,
         SyncToken: Optional[str] = None,
     ):
         self.FullyQualifiedName = FullyQualifiedName
@@ -75,7 +75,7 @@ class AnalyticClassModel(ResponseSchemaGenerator):
             Active=data.get('Active'),
             Id=data.get('Id'),
             MetaData=MetaDataModel.from_dict(data.get('MetaData', {})),
-            ParentRef=ParentRef.from_dict(data.get('ParentRef', {})),
+            ParentRef=ParentRefModel.from_dict(data.get('ParentRef', {})),
             SyncToken=data.get('SyncToken'),
         )
 
@@ -184,14 +184,14 @@ ANALYTIC_ACCOUNT_LIST_PARAMS = {
             'required': False
         },
         {
-            'name': 'maxResults',
+            'name': 'maxresults',
             'type': 'integer',
             'description': 'Number of records to return (default: 100)',
             'required': False,
             'default': 100
         },
         {
-            'name': 'startPosition',
+            'name': 'startposition',
             'type': 'integer',
             'description': 'Number of records to skip (default: 0)',
             'required': False,

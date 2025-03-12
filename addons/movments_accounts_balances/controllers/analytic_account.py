@@ -101,7 +101,7 @@ class AnalyticAccountAPI(http.Controller):
         
     @http.route('/api/analytic-class', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(analytic_accounts_docs['list_analytic_accounts'])
-    def list_analytic_accounts(self, company_id=None, active=None, maxResults=100, startPosition=0, **kwargs):
+    def list_analytic_accounts(self, company_id=None, active=None, maxresults=100, startposition=0, **kwargs):
         """
         Retrieves analytic accounts from Odoo's accounting module.
 
@@ -123,8 +123,8 @@ class AnalyticAccountAPI(http.Controller):
                 active = active.lower() == 'true'
                 domain.append(('active', '=', active))
                 
-            startPosition = int(startPosition)
-            maxResults = int(maxResults)
+            startposition = int(startposition)
+            maxresults = int(maxresults)
 
             # Get total count
             total_count = request.env['account.analytic.account'].sudo().search_count(domain)
@@ -132,8 +132,8 @@ class AnalyticAccountAPI(http.Controller):
             # Retrieve analytic accounts with pagination
             analytic_accounts = request.env['account.analytic.account'].sudo().search(
                 domain, 
-                limit=maxResults, 
-                offset=startPosition,
+                limit=maxresults, 
+                offset=startposition,
                 order='id DESC'
             )
             if not analytic_accounts:
@@ -143,7 +143,7 @@ class AnalyticAccountAPI(http.Controller):
             accounts_data = []
             for account in analytic_accounts:
                 accounts_data.append(self.analytic_account_object(account))
-            response_data = self.list_analytic_account_response(accounts_data, startPosition, len(analytic_accounts), total_count)
+            response_data = self.list_analytic_account_response(accounts_data, startposition, len(analytic_accounts), total_count)
 
             return APIResponse.success_response(response_data)
         except Exception as e:

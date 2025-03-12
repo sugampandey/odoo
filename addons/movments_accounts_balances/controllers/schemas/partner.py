@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import datetime
 from .common import (CurrencyRefModel, MetaDataModel, TaxCodeRefModel, BillAddrModel,
-                     PhoneNumberModel, EmailAddressModel, WebAddress, HEADERS)
+                     PhoneNumberModel, EmailAddressModel, WebAddrModel, HEADERS)
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
 
 
@@ -13,7 +13,7 @@ class VendorCreateRequestModel(RequestSchemaGenerator):
         FamilyName: Optional[str] = None,
         CompanyName: Optional[str] = None,
         PrimaryEmailAddr: Optional[EmailAddressModel] = None,
-        WebAddr: Optional[WebAddress] = None,
+        WebAddr: Optional[WebAddrModel] = None,
         PrimaryPhone: Optional[PhoneNumberModel] = None,
         Mobile: Optional[PhoneNumberModel] = None,
         BillAddr: Optional[BillAddrModel] = None,
@@ -65,7 +65,7 @@ class VendorCreateRequestModel(RequestSchemaGenerator):
             CompanyName=data.get('CompanyName', ''),
             PrintOnCheckName=data.get('PrintOnCheckName', ''),
             PrimaryEmailAddr=EmailAddressModel.from_dict(data.get('PrimaryEmailAddr', {})),
-            WebAddr=WebAddress.from_dict(data.get('WebAddr', {})),
+            WebAddr=WebAddrModel.from_dict(data.get('WebAddr', {})),
             PrimaryPhone=PhoneNumberModel.from_dict(data.get('PrimaryPhone', {})),
             Mobile=PhoneNumberModel.from_dict(data.get('Mobile', {})),
             BillAddr=BillAddrModel.from_dict(data.get('BillAddr', {})),
@@ -346,7 +346,7 @@ class VendorModel(ResponseSchemaGenerator):
         PrimaryEmailAddr: Optional[EmailAddressModel] = None,
         PrimaryPhone: Optional[PhoneNumberModel] = None,
         Mobile: Optional[PhoneNumberModel] = None,
-        WebAddr: Optional[WebAddress] = None,
+        WebAddr: Optional[WebAddrModel] = None,
         BillAddr: Optional[BillAddrModel] = None,
         CurrencyRef: Optional[CurrencyRefModel] = None,
         MetaData: Optional[MetaDataModel] = None,
@@ -425,7 +425,7 @@ class VendorModel(ResponseSchemaGenerator):
             PrimaryEmailAddr=EmailAddressModel.from_dict(data.get('PrimaryEmailAddr', {})) if data.get('PrimaryEmailAddr') else None,
             PrimaryPhone=PhoneNumberModel.from_dict(data.get('PrimaryPhone', {})) if data.get('PrimaryPhone') else None,
             Mobile=PhoneNumberModel.from_dict(data.get('Mobile', {})) if data.get('Mobile') else None,
-            WebAddr=WebAddress.from_dict(data.get('WebAddr', {})) if data.get('WebAddr') else None,
+            WebAddr=WebAddrModel.from_dict(data.get('WebAddr', {})) if data.get('WebAddr') else None,
             BillAddr=BillAddrModel.from_dict(data.get('BillAddr', {})) if data.get('BillAddr') else None,
             CurrencyRef=CurrencyRefModel.from_dict(data.get('CurrencyRef', {})) if data.get('CurrencyRef') else None,
             MetaData=MetaDataModel.from_dict(data.get('MetaData', {})) if data.get('MetaData') else None,
@@ -669,20 +669,26 @@ PARTNER_LIST_PARAMS = {
             'required': True
         },
         {
+            'name': 'DisplayName',
+            'type': 'string',
+            'description': 'Filter by name',
+            'required': False
+        },
+        {
             'name': 'active',
             'type': 'boolean',
             'description': 'Filter by active status',
             'required': False
         },
         {
-            'name': 'maxResults',
+            'name': 'maxresults',
             'type': 'integer',
             'description': 'Number of records to return (default: 100)',
             'required': False,
             'default': 20
         },
         {
-            'name': 'startPosition',
+            'name': 'startposition',
             'type': 'integer',
             'description': 'Number of records to skip (default: 0)',
             'required': False,

@@ -275,20 +275,26 @@ COMPANY_SCHEMA = CompanyCreateRequestModel.get_request_schema()
 COMPANY_LIST_PARAMS = {
     'query': [
         {
+            'name': 'name',
+            'type': 'string',
+            'description': 'Filter by name',
+            'required': False
+        },
+        {
             'name': 'active',
             'type': 'boolean',
             'description': 'Filter by active status',
             'required': False
         },
         {
-            'name': 'maxResults',
+            'name': 'maxresults',
             'type': 'integer',
             'description': 'Number of records to return (default: 100)',
             'required': False,
             'default': 100
         },
         {
-            'name': 'startPosition',
+            'name': 'startposition',
             'type': 'integer',
             'description': 'Number of records to skip (default: 0)',
             'required': False,
