@@ -14,41 +14,6 @@ from .schemas.common import CurrencyRefModel, MetaDataModel, ClassRefModel
 
 class JournalEntryController(http.Controller):
 
-    # Notes 
-    # Are we going to use DescriptionOnlyLine while we sync (need to add in Response ?)
-    # DescriptionOnlyLine is not used while sendind Request, Is it auto generated ?
-
-    {
-    "Line": [
-        {
-        "JournalEntryLineDetail": {
-            "PostingType": "Debit", 
-            "AccountRef": {
-            "name": "Opening Bal Equity", 
-            "value": "39"
-            }
-        }, 
-        "DetailType": "JournalEntryLineDetail", 
-        "Amount": 100.0, 
-        "Id": "0", 
-        "Description": "nov portion of rider insurance"
-        }, 
-        {
-        "JournalEntryLineDetail": {
-            "PostingType": "Credit", 
-            "AccountRef": {
-            "name": "Notes Payable", 
-            "value": "44"
-            }
-        }, 
-        "DetailType": "JournalEntryLineDetail", 
-        "Amount": 100.0, 
-        "Description": "nov portion of rider insurance"
-        }
-    ]
-    }
-
-
     def journal_entry_object(self, journal_entry):
         # description = ref
         # account_ref ={name-name, value-id}

@@ -6,6 +6,8 @@ from .utils import validate_analytic_account, validate_journal, validate_partner
 from ..swagger.common import swagger_doc
 from ..swagger.reports import reports_docs
 
+from .report_generator import prepare_response
+
 class ReportsAPI(http.Controller):
 
     def generate_move_line_response(self, line):
@@ -73,7 +75,7 @@ class ReportsAPI(http.Controller):
 
     @http.route('/api/general_ledger', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(reports_docs['general_ledger'])
-    def get_general_ledger(self, company_id, end_date=None, partner_id=None, 
+    def get_general_ledger(self, company_id, columns, start_date=None, end_date=None, partner_id=None, 
                            account_id=None, analytic_class_id=None, 
                            include_unposted=False, **kwargs):
         try:
@@ -87,10 +89,12 @@ class ReportsAPI(http.Controller):
             # Build domain
             domain = [('company_id', '=', int(company_id))]
 
-            if end_date:
+            if start_date and end_date:
                 try:
+                    start_date = fields.Date.from_string(start_date)
                     end_date = fields.Date.from_string(end_date)
-                    domain.extend([('date', '<=', end_date)])
+                    # domain.extend([('date', '<=', end_date)])
+                    domain.extend([('date', '>=', start_date), ('date', '<=', end_date)])
                 except ValueError:
                     return APIResponse.error_response(message='Invalid date format. Use YYYY-MM-DD')
 
@@ -127,9 +131,17 @@ class ReportsAPI(http.Controller):
             if not include_unposted:
                 domain.append(('move_id.state', '=', 'posted'))
 
-            response_data = self.get_move_line_data(domain)
+            
+            move_lines = request.env['account.move.line'].sudo().search(
+                domain,
+                # order='date desc, move_id desc, id desc'
+            )
+            columns_list = [col.strip() for col in columns.split(',')]
+            accounts = [{"name": account.name, "id": str(account.id)} for account in move_lines.mapped('account_id')]
 
-            return APIResponse.success_response(message='General ledger retrieved successfully', data=response_data)
+            response_data = prepare_response(request, start_date, end_date, move_lines, columns_list, accounts)
+
+            return APIResponse.success_response(response_data)
         except Exception as e:
             return APIResponse.error_response(message=f'Error retrieving general ledger: {str(e)}', status=500)
         
@@ -165,7 +177,7 @@ class ReportsAPI(http.Controller):
             
             response_data = self.get_move_line_data(domain)
             
-            return APIResponse.success_response(message='Account balance retrieved successfully', data=response_data)
+            return APIResponse.success_response(response_data)
         except Exception as e:
             return APIResponse.error_response(message=f'Error retrieving account balance: {str(e)}', status=500)
 

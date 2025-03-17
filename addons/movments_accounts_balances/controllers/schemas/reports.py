@@ -337,6 +337,19 @@ GENERAL_LEDGER_PARAMS = {
             'required': True
         },
         {
+            'name': 'columns',
+            'type': 'string',
+            'description': 'Columns Name (Separated by commas)',
+            'required': True
+        },
+        {
+            'name': 'start_date',
+            'type': 'string',
+            'format': 'date',
+            'description': 'Start date (YYYY-MM-DD)',
+            'required': False
+        },
+        {
             'name': 'end_date',
             'type': 'string',
             'format': 'date',
@@ -368,6 +381,7 @@ GENERAL_LEDGER_PARAMS = {
             'required': False,
             'default': False
         },
+
     ]
 }
 
