@@ -2,7 +2,6 @@
 # from odoo.http import request
 # import json
 # from odoo.exceptions import ValidationError
-# from .validation_schema import product_expected_fields, product_category_expected_fields
 # from .common import APIResponse, validate_and_convert_data, get_request_data
 # from .utils import validate_company, validate_tax, validate_account
 

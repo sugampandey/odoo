@@ -2,15 +2,15 @@ from odoo import http
 import uuid, datetime
 from odoo.http import request
 from odoo.exceptions import ValidationError, UserError
-from .common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data
-from .validation_schema import analytic_account_expected_fields
-from . utils import validate_company, validate_analytic_plan, validate_analytic_account
+from ..common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data
+from ..utils import validate_company, validate_analytic_plan, validate_analytic_account
 
 from ..swagger.common import swagger_doc
 from ..swagger.analytic_account import analytic_accounts_docs
-from .schemas.analytic_account import ANALYTIC_ACCOUNT_SCHEMA, AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassQueryResponseModel
-from .schemas.common import MetaDataModel
-from .logger import logger
+from ..schemas.analytic_account import ANALYTIC_ACCOUNT_SCHEMA, AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassQueryResponseModel
+from ..schemas.common import MetaDataModel
+from ..logger.logger import logger
+from ..constants import CONSTANTS
 
 class AnalyticAccountAPI(http.Controller):
 
@@ -53,7 +53,7 @@ class AnalyticAccountAPI(http.Controller):
     def create_analytic_account_response(self, analytic_account):
         return AnalyticClassResponseModel(
             Class=self.analytic_account_object(analytic_account),
-            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
         ).to_dict()
     
     def list_analytic_account_response(self, accounts_data, startPosition, maxResults, totalCount):
@@ -65,7 +65,7 @@ class AnalyticAccountAPI(http.Controller):
             )
         return AnalyticClassListResponseModel(
             QueryResponse=QueryResponse,
-            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
         ).to_dict()
         
     @http.route('/api/analytic-class', type='http', auth='public', methods=['POST'], csrf=False, cors="*")

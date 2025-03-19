@@ -1,5 +1,5 @@
 # from .common import doc_generator
-# from ..controllers.schemas.tax import (
+# from ..schemas.tax import (
 #     TAX_RESPONSE, TAX_LIST_RESPONSE, TAX_CREATE_PARAMS, TAX_GET_PARAMS,
 #     TAX_DELETE_PARAMS, TAX_LIST_PARAMS, TAX_GROUP_RESPONSE, TAX_GROUP_LIST_RESPONSE,
 #     TAX_GROUP_CREATE_PARAMS, TAX_GROUP_GET_PARAMS, TAX_GROUP_DELETE_PARAMS,

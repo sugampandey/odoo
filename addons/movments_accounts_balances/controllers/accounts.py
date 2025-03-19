@@ -2,14 +2,15 @@ import datetime
 import uuid
 from odoo import http, fields
 from odoo.http import request
-from .common import APIResponse, get_company_from_headers, get_payment_method_from_headers, validate_and_convert_data, get_request_data
-from .utils import validate_company, validate_account
-from .logger import logger
+from ..common import APIResponse, get_company_from_headers, get_payment_method_from_headers, validate_and_convert_data, get_request_data
+from ..utils import validate_company, validate_account
+from ..logger.logger import logger
 from ..swagger.common import swagger_doc
 from ..swagger.accounts import accounts_docs
-from .schemas.accounts import ACCOUNT_SCHEMA, AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountQueryResponseModel, AccountListResponseModel
-from .schemas.common import MetaDataModel, CurrencyRefModel
-from .mapping.accounts import ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING, ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
+from ..schemas.accounts import ACCOUNT_SCHEMA, AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountQueryResponseModel, AccountListResponseModel
+from ..schemas.common import MetaDataModel, CurrencyRefModel
+from ..mapping.accounts import ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING, ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
+from ..constants import CONSTANTS
 
 class AccountAPI(http.Controller):
     asset_method_types = ['asset_cash', 'asset_current']
@@ -130,7 +131,7 @@ class AccountAPI(http.Controller):
     def create_account_response(self, account):
         return AccountResponseModel(
             Account=self.account_object(account),
-            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
         ).to_dict()
     
     def list_account_response(self, accounts_data, startPosition, maxResults, totalCount):
@@ -142,7 +143,7 @@ class AccountAPI(http.Controller):
             )
         return AccountListResponseModel(
             QueryResponse=QueryResponse,
-            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
         ).to_dict()
     
     def validate_and_prepare_account_data(self, data, company_id, ACCOUNT_SCHEMA):

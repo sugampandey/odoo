@@ -1,5 +1,5 @@
 from .common import doc_generator
-from ..controllers.schemas.accounts import (
+from ..schemas.accounts import (
     ACCOUNT_CREATE_RESPONSE, ACCOUNT_GET_RESPONSE, ACCOUNT_LIST_RESPONSE, ACCOUNT_CREATE_PARAMS, ACCOUNT_GET_PARAMS,
     ACCOUNT_DELETE_PARAMS, ACCOUNT_LIST_PARAMS)
 

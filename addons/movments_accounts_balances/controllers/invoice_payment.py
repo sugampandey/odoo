@@ -5,13 +5,12 @@ from odoo.exceptions import ValidationError, UserError
 import json
 
 from odoo.fields import float_compare
-from .common import APIResponse, validate_and_convert_data, get_request_data
-from .validation_schema import invoice_payment_expected_fields
-from .utils import validate_account, validate_company, get_payment_method_line, validate_partner
+from ..common import APIResponse, validate_and_convert_data, get_request_data
+from ..utils import validate_account, validate_company, get_payment_method_line, validate_partner
 
 from ..swagger.common import swagger_doc
 from ..swagger.invoice_payment import invoice_payments_docs
-from .schemas.invoice_payment import INVOICE_PAYMENT_SCHEMA
+from ..schemas.invoice_payment import INVOICE_PAYMENT_SCHEMA
 
 class InvocePaymentController(http.Controller):
     ASSET_ACCOUNT_TYPES = ['asset_cash', 'asset_current', 'asset_receivable']

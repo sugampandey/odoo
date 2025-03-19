@@ -1,5 +1,5 @@
 from .common import doc_generator
-from ..controllers.schemas.bills import (
+from ..schemas.bills import (
     BILL_RESPONSE, BILL_LIST_RESPONSE, BILL_CREATE_PARAMS, BILL_LIST_PARAMS, 
     BILL_GET_PARAMS, BILL_DELETE_PARAMS)
 

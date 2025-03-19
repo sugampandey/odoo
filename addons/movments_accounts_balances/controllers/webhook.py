@@ -1,6 +1,6 @@
 from odoo import http
 from odoo.http import request
-from .common import get_request_data, APIResponse
+from ..common import get_request_data, APIResponse
 from ..swagger.common import swagger_doc
 from ..swagger.webhook import webhooks_docs
 

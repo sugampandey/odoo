@@ -2,13 +2,12 @@ from datetime import datetime
 from odoo import http
 from odoo.http import request
 import json
-from .common import APIResponse, validate_and_convert_data, get_request_data
-from .validation_schema import bill_expected_fields
-from .utils import get_default_product, validate_account, validate_partner, validate_analytic_plan, validate_company, validate_product, validate_tax
+from ..common import APIResponse, validate_and_convert_data, get_request_data
+from ..utils import get_default_product, validate_account, validate_partner, validate_analytic_plan, validate_company, validate_product, validate_tax
 
 from ..swagger.common import swagger_doc
 from ..swagger.bills import bills_docs
-from .schemas.bills import BILL_SCHEMA
+from ..schemas.bills import BILL_SCHEMA
 
 
 class BillController(http.Controller):

@@ -1,4 +1,4 @@
-from ..controllers.schemas.error import ERROR_SCHEMA
+from ..schemas.error import ERROR_SCHEMA
 
 
 def generate_swagger_schema(schema):

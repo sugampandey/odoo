@@ -1,5 +1,5 @@
 from .common import doc_generator
-from ..controllers.schemas.company import (
+from ..schemas.company import (
     COMPANY_CREATE_RESPONSE, COMPANY_GET_RESPONSE, COMPANY_LIST_RESPONSE, COMPANY_CREATE_PARAMS, COMPANY_GET_PARAMS,
     COMPANY_DELETE_PARAMS, COMPANY_LIST_PARAMS)
 

@@ -3,4 +3,6 @@ CONSTANTS = {
     'PRODUCT_DEFAULT_CODE': 'DEFAULT001',
     'VENDOR_CATEGORY_NAME': 'Vendor',
     'CUSTOMER_CATEGORY_NAME': 'Customer',
+    'DATE_FORMAT': '%Y-%m-%d, %H:%M:%S'
 }
+

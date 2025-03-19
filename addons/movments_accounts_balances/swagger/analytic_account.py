@@ -1,5 +1,5 @@
 from .common import doc_generator
-from ..controllers.schemas.analytic_account import (
+from ..schemas.analytic_account import (
     ANALYTIC_ACCOUNT_CREATE_RESPONSE, ANALYTIC_ACCOUNT_GET_RESPONSE, 
     ANALYTIC_ACCOUNT_LIST_RESPONSE, ANALYTIC_ACCOUNT_CREATE_PARAMS, ANALYTIC_ACCOUNT_GET_PARAMS,
     ANALYTIC_ACCOUNT_DELETE_PARAMS, ANALYTIC_ACCOUNT_LIST_PARAMS)

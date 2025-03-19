@@ -2,12 +2,11 @@
 # from odoo.http import request
 # import json
 # from .common import validate_and_convert_data, APIResponse, get_request_data
-# from .validation_schema import journal_expected_fields
 # from .utils import validate_company
 
 # from ..swagger.common import swagger_doc
 # from ..swagger.journal import journals_docs
-# from .schemas.journal import JOURNAL_SCHEMA
+# from ..schemas.journal import JOURNAL_SCHEMA
 
 # class JournalController(http.Controller):
 

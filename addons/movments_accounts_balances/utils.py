@@ -1,5 +1,5 @@
 from odoo.exceptions import UserError
-from ..constants import CONSTANTS
+from .constants import CONSTANTS
 
 def validate_account(request, account_id, company_id, valid_account_types=None):
     """
@@ -197,3 +197,28 @@ def get_default_customer_category(request):
     return request.env['res.partner.category'].sudo().search([
         ('name', '=', CONSTANTS['CUSTOMER_CATEGORY_NAME'])
     ], limit=1).id
+
+
+def get_general_ledger_report_order(sort_by, sort_order):
+    if sort_by:
+        match sort_by:
+            case "tx_date":
+                sort_column = "date"
+            case "name":
+                sort_column = "partner_id"
+            case "account_name":
+                sort_column = "account_id"
+            case "vend_name":
+                sort_column = "partner_id"
+            case "subt_nat_amount":
+                sort_column = "debit"
+            case "rbal_nat_amount":
+                sort_column = "balance"
+            case _:
+                sort_column = "date"
+
+    order = "desc"
+    if sort_order:
+        order = "asc" if sort_order == "ascend" else "desc"
+    return sort_column + " " + order
+

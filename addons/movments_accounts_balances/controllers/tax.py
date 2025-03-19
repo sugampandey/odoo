@@ -2,7 +2,6 @@
 # from odoo.http import request
 # import json
 # from .common import APIResponse, validate_and_convert_data, get_request_data
-# from .validation_schema import tax_expected_fields, tax_group_expected_fields
 # from .utils import validate_company, validate_tax_group, validate_tax
 
 # from ..swagger.common import swagger_doc

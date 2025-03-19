@@ -1,5 +1,5 @@
 from .common import doc_generator
-from ..controllers.schemas.invoice import (
+from ..schemas.invoice import (
     INVOICE_RESPONSE, INVOICE_LIST_RESPONSE, INVOICE_CREATE_PARAMS, INVOICE_GET_PARAMS,
     INVOICE_DELETE_PARAMS, INVOICE_LIST_PARAMS)
 

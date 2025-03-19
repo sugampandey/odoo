@@ -2,15 +2,15 @@ import datetime
 from odoo import http
 from odoo.http import request
 import json
-from .common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data
-from .validation_schema import journal_entry_expected_fields
-from .utils import validate_company, validate_journal, validate_partner, validate_account, validate_tax
+from ..common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data
+from ..utils import validate_company, validate_journal, validate_partner, validate_account, validate_tax
 
 from ..swagger.common import swagger_doc
 from ..swagger.journal_entry import journal_entries_docs
-from .schemas.journal_entry import (JOURNAL_ENTRY_SCHEMA, JournalEntryModel, JournalEntryResponseModel, JournalEntryQueryResponseModel, JournalEntryListResponseModel, 
+from ..schemas.journal_entry import (JOURNAL_ENTRY_SCHEMA, JournalEntryModel, JournalEntryResponseModel, JournalEntryQueryResponseModel, JournalEntryListResponseModel, 
                                     LineResponseModel, JournalEntryLineDetailModel, AccountRefModel, EntityModel, EntityRefModel)
-from .schemas.common import CurrencyRefModel, MetaDataModel, ClassRefModel
+from ..schemas.common import CurrencyRefModel, MetaDataModel, ClassRefModel
+from ..constants import CONSTANTS
 
 class JournalEntryController(http.Controller):
 
@@ -34,10 +34,10 @@ class JournalEntryController(http.Controller):
                 name=move_line.account_id.name,
                 value=move_line.account_id.id,
             )
-            analytic_class = request.env['account.analytic.line'].sudo().search([('move_line_id', '=', move_line.id)], limit=1)
+            analytic_class = move_line.analytic_line_ids
             classRef = ClassRefModel(
-                name=analytic_class.name if analytic_class else None,
-                value=analytic_class.id if analytic_class else None,
+                name=analytic_class.account_id.name if analytic_class else None,
+                value=analytic_class.account_id.id if analytic_class else None,
             )
             EntityRef=EntityRefModel(
                 name=move_line.partner_id.name,
@@ -76,7 +76,7 @@ class JournalEntryController(http.Controller):
     def create_journal_entry_response(self, journal_entry):
         return JournalEntryResponseModel(
             JournalEntry=self.journal_entry_object(journal_entry),
-            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
         ).to_dict()
     
     def list_journal_entry_response(self, journal_entry_data, startPosition, maxResults, totalCount):
@@ -88,12 +88,12 @@ class JournalEntryController(http.Controller):
             )
         return JournalEntryListResponseModel(
             QueryResponse=QueryResponse,
-            time=datetime.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
         ).to_dict()
 
         
-    def validate_and_prepare_journal_entry_data(self, data, company_id, invoice_expected_fields):
-        success, converted_data = validate_and_convert_data(data, invoice_expected_fields)
+    def validate_and_prepare_journal_entry_data(self, data, company_id, journal_entry_expected_fields):
+        success, converted_data = validate_and_convert_data(data, journal_entry_expected_fields)
         if success is not True:
             return False, converted_data
         

@@ -1,12 +1,10 @@
 from odoo import http, fields
 from odoo.http import request
-from .common import APIResponse
-from .utils import validate_analytic_account, validate_journal, validate_partner, validate_account, validate_company
-
+from ..common import APIResponse
+from ..utils import validate_analytic_account, validate_journal, validate_partner, validate_account, validate_company, get_general_ledger_report_order
 from ..swagger.common import swagger_doc
 from ..swagger.reports import reports_docs
-
-from .report_generator import prepare_response
+from ..helpers.report_generator import prepare_response
 
 class ReportsAPI(http.Controller):
 
@@ -76,7 +74,7 @@ class ReportsAPI(http.Controller):
     @http.route('/api/general_ledger', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(reports_docs['general_ledger'])
     def get_general_ledger(self, company_id, columns, start_date=None, end_date=None, partner_id=None, 
-                           account_id=None, analytic_class_id=None, 
+                           account_id=None, analytic_class_id=None, sort_by=None, sort_order=None,
                            include_unposted=False, **kwargs):
         try:
             # Validate company
@@ -134,12 +132,15 @@ class ReportsAPI(http.Controller):
             
             move_lines = request.env['account.move.line'].sudo().search(
                 domain,
-                # order='date desc, move_id desc, id desc'
+                order=get_general_ledger_report_order(sort_by, sort_order)
             )
+            # .with_context(
+            #     prefetch_fields=['analytic_line_ids', 'analytic_line_ids.account_id']
+            #     )
+            # entries = self.env['account.move.line'].search([...], prefetch=['analytic_line_ids', 'analytic_line_ids.account_id'])
             columns_list = [col.strip() for col in columns.split(',')]
-            accounts = [{"name": account.name, "id": str(account.id)} for account in move_lines.mapped('account_id')]
 
-            response_data = prepare_response(request, start_date, end_date, move_lines, columns_list, accounts)
+            response_data = prepare_response(request, start_date, end_date, move_lines, columns_list)
 
             return APIResponse.success_response(response_data)
         except Exception as e:

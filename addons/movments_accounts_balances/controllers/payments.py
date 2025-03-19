@@ -3,7 +3,7 @@ from odoo import http
 from odoo.http import request
 from odoo.exceptions import ValidationError, UserError
 import json
-from .common import APIResponse, validate_and_convert_data
+from ..common import APIResponse, validate_and_convert_data
 
 
 class PaymentAPI(http.Controller):

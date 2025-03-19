@@ -5,13 +5,12 @@ from odoo.exceptions import UserError, ValidationError
 import json
 
 from odoo.fields import float_compare
-from .common import APIResponse, validate_and_convert_data, get_request_data
-from .validation_schema import bill_payment_expected_fields
-from .utils import get_payment_method_line, validate_account, validate_company, validate_partner
+from ..common import APIResponse, validate_and_convert_data, get_request_data
+from ..utils import get_payment_method_line, validate_account, validate_company, validate_partner
 
 from ..swagger.common import swagger_doc
 from ..swagger.bill_payment import bill_payments_docs
-from .schemas.bill_payment import BILL_PAYMENT_SCHEMA
+from ..schemas.bill_payment import BILL_PAYMENT_SCHEMA
 
 class BillPaymentController(http.Controller):
     LIABILITY_ACCOUNT_TYPES = ['liability_current', 'liability_payable', 'liability_receivable']

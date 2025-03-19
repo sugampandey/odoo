@@ -1,5 +1,5 @@
 from .common import doc_generator
-from ..controllers.schemas.journal_entry import (
+from ..schemas.journal_entry import (
     JOURNAL_ENTRY_LIST_PARAMS, JOURNAL_ENTRY_LIST_RESPONSE, JOURNAL_ENTRY_GET_PARAMS,
     JOURNAL_ENTRY_CREATE_RESPONSE, JOURNAL_ENTRY_GET_RESPONSE, JOURNAL_ENTRY_CREATE_PARAMS, JOURNAL_ENTRY_DELETE_PARAMS,
 )

@@ -1,5 +1,5 @@
 from .common import doc_generator
-from ..controllers.schemas.webhook import (
+from ..schemas.webhook import (
     WEBHOOK_CONFIG_RESPONSE, WEBHOOK_CONFIG_GET_PARAMS, WEBHOOK_CONFIG_UPDATE_PARAMS,
     WEBHOOK_CONFIG_UPDATE_RESPONSE, WEBHOOK_CONFIG_DELETE_PARAMS, WEBHOOK_CONFIG_DELETE_RESPONSE
 )

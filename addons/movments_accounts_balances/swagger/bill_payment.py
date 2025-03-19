@@ -1,5 +1,5 @@
 from .common import doc_generator
-from ..controllers.schemas.bill_payment import (
+from ..schemas.bill_payment import (
     BILL_PAYMENT_RESPONSE, BILL_PAYMENT_LIST_RESPONSE, BILL_PAYMENT_CREATE_PARAMS, 
     BILL_PAYMENT_GET_PARAMS, BILL_PAYMENT_DELETE_PARAMS, BILL_PAYMENT_LIST_PARAMS) 
 

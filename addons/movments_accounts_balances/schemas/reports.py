@@ -369,6 +369,18 @@ GENERAL_LEDGER_PARAMS = {
             'required': False
         },
         {
+            'name': 'sort_by',
+            'type': 'string',
+            'description': 'Sort by',
+            'required': False
+        },
+        {
+            'name': 'sort_order',
+            'type': 'string',
+            'description': 'Sort order (asc or desc)',
+            'required': False
+        },
+        {
             'name': 'analytic_class_id',
             'type': 'integer',
             'description': 'Filter by analytic class ID',
