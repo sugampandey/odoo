@@ -1,3 +1,71 @@
+from pydantic import BaseModel, Field
+from typing import List, Optional, Union, Any
+from datetime import datetime
+
+class OptionModel(BaseModel):
+    Name: Optional[str] = None
+    Value: Optional[str] = None
+
+class HeaderModel(BaseModel):
+    Time: str
+    ReportName: str = "GeneralLedger"
+    ReportBasis: str = "Accrual"
+    StartPeriod: Optional[str] = None
+    EndPeriod: Optional[str] = None
+    Currency: str = "USD"
+    Option: Optional[List[OptionModel]] = None
+
+class MetaDataModel(BaseModel):
+    Name: str
+    Value: str
+
+class ColumnModel(BaseModel):
+    ColTitle: str
+    ColType: str = "String"
+    MetaData: List[MetaDataModel] = Field(default_factory=list)
+
+class ColumnsModel(BaseModel):
+    Column: List[ColumnModel]
+
+class ColDataModel(BaseModel):
+    value: Any
+    id: Optional[int] = None
+
+class DataRowModel(BaseModel):
+    ColData: List[ColDataModel]
+    type: str = "Data"
+
+class SummaryModel(BaseModel):
+    ColData: List[ColDataModel]
+
+class SectionHeaderModel(BaseModel):
+    ColData: List[ColDataModel]
+
+class NestedRowsModel(BaseModel):
+    Row: List[Union['SectionRowModel', DataRowModel]]
+
+class SectionRowModel(BaseModel):
+    Header: SectionHeaderModel
+    Rows: NestedRowsModel
+    type: str = "Section"
+    Summary: SummaryModel
+
+class RowsModel(BaseModel):
+    Row: List[SectionRowModel]
+
+class GeneralLedgerResponseModel(BaseModel):
+    Header: HeaderModel
+    Columns: ColumnsModel
+    Rows: RowsModel
+
+# Handle forward references
+SectionRowModel.model_rebuild()
+
+
+
+
+
+
 # General Ledger Report Schema
 GENERAL_LEDGER_RESPONSE = {
     'type': 'object',

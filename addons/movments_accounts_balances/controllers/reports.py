@@ -4,7 +4,8 @@ from ..common import APIResponse
 from ..utils import validate_analytic_account, validate_journal, validate_partner, validate_account, validate_company, get_general_ledger_report_order
 from ..swagger.common import swagger_doc
 from ..swagger.reports import reports_docs
-from ..helpers.report_generator import prepare_response
+from ..helpers.general_ledger import prepare_general_ledger_response
+import traceback
 
 class ReportsAPI(http.Controller):
 
@@ -140,10 +141,11 @@ class ReportsAPI(http.Controller):
             # entries = self.env['account.move.line'].search([...], prefetch=['analytic_line_ids', 'analytic_line_ids.account_id'])
             columns_list = [col.strip() for col in columns.split(',')]
 
-            response_data = prepare_response(request, start_date, end_date, move_lines, columns_list)
+            response_data = prepare_general_ledger_response(request, start_date, end_date, move_lines, columns_list)
 
-            return APIResponse.success_response(response_data)
+            return APIResponse.success_response(response_data.model_dump(mode='json'))
         except Exception as e:
+            traceback.print_exc()
             return APIResponse.error_response(message=f'Error retrieving general ledger: {str(e)}', status=500)
         
     

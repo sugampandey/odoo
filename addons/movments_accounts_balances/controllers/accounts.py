@@ -188,8 +188,6 @@ class AccountAPI(http.Controller):
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )
     
-
-    
     
     @http.route('/api/accounts/<int:account_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     def get_account(self, account_id: int, company_id: int) -> Dict[str, Any]:

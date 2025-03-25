@@ -200,6 +200,7 @@ def get_default_customer_category(request):
 
 
 def get_general_ledger_report_order(sort_by, sort_order):
+    sort_column = "date"
     if sort_by:
         match sort_by:
             case "tx_date":
