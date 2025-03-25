@@ -1,4 +1,6 @@
 from typing import Optional
+from pydantic import BaseModel, Field
+from odoo import fields, models
 from .schema_generator import ResponseSchemaGenerator, RequestSchemaGenerator
 
 
@@ -11,6 +13,21 @@ HEADERS = [
     }
 ]
 
+
+class PaginationMixin(BaseModel):
+    """Base class for pagination parameters"""
+    startPosition: int = Field(
+        0, 
+        ge=0,
+        description="Starting position of the result set"
+    )
+    maxResults: int = Field(
+        20, 
+        ge=1, 
+        le=100,
+        description="Maximum number of results to return"
+    )
+
 class ParentRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(
         self,
@@ -19,6 +36,27 @@ class ParentRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     ):
         self.name = name
         self.value = value
+
+    def to_dict(self) -> dict:
+        return {
+            'name': self.name,
+            'value': self.value
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get('name', ''),
+            value=data.get('value', '')
+        )
+    
+
+class CurrencyRefDTO(models.TransientModel, RequestSchemaGenerator, ResponseSchemaGenerator):
+    _name = 'currency.ref'
+    _description = 'Currency Reference Model'
+
+    name = fields.Char(string='Name')
+    value = fields.Char(string='Value')
 
     def to_dict(self) -> dict:
         return {

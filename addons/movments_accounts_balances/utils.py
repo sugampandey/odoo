@@ -222,3 +222,8 @@ def get_general_ledger_report_order(sort_by, sort_order):
         order = "asc" if sort_order == "ascend" else "desc"
     return sort_column + " " + order
 
+def get_currency_id(request, currency_value):
+    currency = request.env['res.currency'].sudo().search([('name', '=', currency_value)], limit=1)
+    if not currency:
+        raise UserError("Invalid currency")
+    return currency.id

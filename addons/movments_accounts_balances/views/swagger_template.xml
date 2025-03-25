@@ -1,5 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <template id="swagger_template">
+        <html>
+            <head>
+                <title>API Documentation</title>
+                <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@3/swagger-ui.css" />
+            </head>
+            <body>
+                <div id="swagger-ui"></div>
+                <script src="https://unpkg.com/swagger-ui-dist@3/swagger-ui-bundle.js"></script>
+                <script>
+                    window.onload = function() {
+                        SwaggerUIBundle({
+                            spec: <t t-raw="spec"/>,
+                            dom_id: '#swagger-ui',
+                        });
+                    }
+                </script>
+            </body>
+        </html>
+    </template>
+</odoo>
+
+
+
+<!-- <?xml version="1.0" encoding="UTF-8"?>
+<odoo>
     <template id="swagger_ui_template">
         <html>
             <head>
@@ -25,4 +51,4 @@
             </body>
         </html>
     </template>
-</odoo>
+</odoo> -->

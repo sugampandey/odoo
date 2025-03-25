@@ -11,7 +11,7 @@ class WebhookController(http.Controller):
     def get_webhook_url(self):
         try:
             webhook_url = request.env['ir.config_parameter'].sudo().get_param('account_move.webhook_url', '')
-            return APIResponse.success_response(message='Webhook URL retrieved successfully', data={'webhook_url': webhook_url})
+            return APIResponse.success_response({'webhook_url': webhook_url})
         except Exception as e:
             return APIResponse.error_response(message='Failed to retrieve webhook URL', errors=str(e), status=500)
 
@@ -35,7 +35,7 @@ class WebhookController(http.Controller):
                     'account_move.webhook_url', 
                     webhook_url
                 )
-                return APIResponse.success_response(message='Webhook URL updated successfully', data={'webhook_url': webhook_url})
+                return APIResponse.success_response({'webhook_url': webhook_url})
         except Exception as e:
             cursor.rollback()
             return APIResponse.error_response(message='Failed to update webhook URL', errors=str(e), status=500)
@@ -48,7 +48,7 @@ class WebhookController(http.Controller):
         try:
             with cursor.savepoint():
                 request.env['ir.config_parameter'].sudo().set_param('account_move.webhook_url', '')
-                return APIResponse.success_response(message='Webhook URL removed successfully')
+                return APIResponse.success_response({'message':'Webhook URL removed successfully'})
         except Exception as e:
             cursor.rollback()  
             return APIResponse.error_response(message='Failed to remove webhook URL', errors=str(e), status=500)

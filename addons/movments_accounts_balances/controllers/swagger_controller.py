@@ -4,6 +4,36 @@ import json
 import os
 from ..swagger.common import doc_generator
 
+
+class SwaggerUIController(http.Controller):
+    @http.route('/api/v1/swagger', type='http', auth='public')
+    def swagger_ui(self):
+        return http.request.render('movments_accounts_balances.swagger_template', {
+            'spec': self._get_openapi_spec()
+        })
+        # return request.render('movments_accounts_balances.swagger_ui_template', {
+        #         'spec_url': '/api/swagger.json'
+        #     })
+
+    def _get_openapi_spec(self):
+        return {
+            'openapi': '3.0.0',
+            'info': {
+                'title': 'Odoo Account API',
+                'version': '1.0.0',
+                'description': 'API for managing accounts in Odoo'
+            },
+            'servers': [
+                {
+                    'url': '/api'
+                }
+            ],
+            'paths': self._get_paths(),
+            'components': {
+                'schemas': self._get_schemas()
+            }
+        }
+
 class SwaggerController(http.Controller):
     
     def _get_swagger_spec(self):

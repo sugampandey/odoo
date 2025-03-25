@@ -147,9 +147,46 @@ class ReportsAPI(http.Controller):
             return APIResponse.error_response(message=f'Error retrieving general ledger: {str(e)}', status=500)
         
     
+    # @http.route('/api/account_balance', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    # @swagger_doc(reports_docs['account_balance'])
+    # def get_account_balance(self, company_id, end_date=None, account_id=None, **kwargs):
+    #     try:
+    #         # Validate company
+    #         if not company_id:
+    #             return APIResponse.error_response(message='Company ID is required')
+    #         company = request.env['res.company'].sudo().browse(int(company_id))
+    #         if not company.exists():
+    #             return APIResponse.error_response(message=f'Invalid company_id: {company_id}')
+
+    #         # Build domain
+    #         domain = [('company_id', '=', int(company_id))]
+
+    #         if end_date:
+    #             try:
+    #                 end_date = fields.Date.from_string(end_date)
+    #                 domain.extend([('date', '<=', end_date)])
+    #             except ValueError:
+    #                 return APIResponse.error_response(message='Invalid date format. Use YYYY-MM-DD')
+
+    #         # Account validation and domain
+    #         if account_id:
+    #             account_id = int(account_id)
+    #             is_valid, error_message = validate_account(request, account_id, company_id)
+    #             if not is_valid:
+    #                 return APIResponse.error_response(message=f'Invalid account: {error_message}')
+    #             domain.append(('account_id', '=', account_id))
+            
+    #         response_data = self.get_move_line_data(domain)
+            
+    #         return APIResponse.success_response(response_data)
+    #     except Exception as e:
+    #         return APIResponse.error_response(message=f'Error retrieving account balance: {str(e)}', status=500)
+
+
     @http.route('/api/account_balance', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(reports_docs['account_balance'])
-    def get_account_balance(self, company_id, end_date=None, account_id=None, **kwargs):
+    # @http.route('/api/balance_sheet', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    def get_account_balance(self, company_id, end_date=None, include_zero_balance=False, **kwargs):
         try:
             # Validate company
             if not company_id:
@@ -158,30 +195,93 @@ class ReportsAPI(http.Controller):
             if not company.exists():
                 return APIResponse.error_response(message=f'Invalid company_id: {company_id}')
 
-            # Build domain
-            domain = [('company_id', '=', int(company_id))]
+            # Convert include_zero_balance to boolean
+            include_zero_balance = str(include_zero_balance).lower() == 'true'
 
+            # Get all accounts for the company
+            accounts = request.env['account.account'].sudo().search([
+                ('company_id', '=', int(company_id))
+            ], order='code, id')  # Order by code to maintain COA structure
+
+            # Build domain for move lines
+            domain = [
+                ('company_id', '=', int(company_id)),
+                ('move_id.state', '=', 'posted'),
+                ('account_id', 'in', accounts.ids)
+            ]
+
+            # Validate and add date filter
             if end_date:
                 try:
                     end_date = fields.Date.from_string(end_date)
-                    domain.extend([('date', '<=', end_date)])
+                    domain.append(('date', '<=', end_date))
                 except ValueError:
                     return APIResponse.error_response(message='Invalid date format. Use YYYY-MM-DD')
 
-            # Account validation and domain
-            if account_id:
-                account_id = int(account_id)
-                is_valid, error_message = validate_account(request, account_id, company_id)
-                if not is_valid:
-                    return APIResponse.error_response(message=f'Invalid account: {error_message}')
-                domain.append(('account_id', '=', account_id))
-            
-            response_data = self.get_move_line_data(domain)
-            
-            return APIResponse.success_response(response_data)
-        except Exception as e:
-            return APIResponse.error_response(message=f'Error retrieving account balance: {str(e)}', status=500)
+            # Get all move lines
+            move_lines = request.env['account.move.line'].sudo().search(domain)
 
+            # Calculate balances for each account
+            account_balances = {}
+            for line in move_lines:
+                if line.account_id.id not in account_balances:
+                    account_balances[line.account_id.id] = 0.0
+                account_balances[line.account_id.id] += line.balance
+
+            # Initialize balance sheet structure
+            balance_sheet = {
+                'assets': [],
+                'liabilities': [],
+                'equity': [],
+                'off_balance': []
+            }
+
+            # Process each account and add to appropriate section
+            for account in accounts:
+                balance = account_balances.get(account.id, 0.0)
+                if include_zero_balance or balance != 0:
+                    account_data = {
+                        'id': account.id,
+                        'code': account.code,
+                        'name': account.name,
+                        'balance': balance,
+                        'account_type': account.account_type,
+                    }
+
+                    # Categorize based on internal group
+                    if account.internal_group == 'asset':
+                        balance_sheet['assets'].append(account_data)
+                    elif account.internal_group == 'liability':
+                        balance_sheet['liabilities'].append(account_data)
+                    elif account.internal_group == 'equity':
+                        balance_sheet['equity'].append(account_data)
+                    elif account.internal_group == 'off_balance':
+                        balance_sheet['off_balance'].append(account_data)
+
+            # Calculate totals
+            total_assets = sum(account['balance'] for account in balance_sheet['assets'])
+            total_liabilities = sum(account['balance'] for account in balance_sheet['liabilities'])
+            total_equity = sum(account['balance'] for account in balance_sheet['equity'])
+
+            # Add summary
+            balance_sheet['summary'] = {
+                'total_assets': total_assets,
+                'total_liabilities': total_liabilities,
+                'total_equity': total_equity,
+                'total_liabilities_and_equity': total_liabilities + total_equity,
+                'as_of_date': end_date.strftime('%Y-%m-%d') if end_date else fields.Date.today().strftime('%Y-%m-%d'),
+            }
+
+            return APIResponse.success_response(balance_sheet)
+
+        except Exception as e:
+            return APIResponse.error_response(
+                message='Error generating balance sheet',
+                errors=str(e),
+                status=500
+            )
+
+    
     # @http.route('/api/get_general_ledger', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     # def get_general_ledger(self, company_id, date_from=None, date_to=None, account_ids=None, partner_id=None, **kwargs):
     #     try:

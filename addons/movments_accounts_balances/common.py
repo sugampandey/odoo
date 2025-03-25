@@ -4,8 +4,183 @@ import json
 from typing import Any, Dict, Optional, Union
 import datetime 
 from .schemas.error import ErrorResponseModel, ErrorDetail, FaultModel, ResponseHeaderModel, ResponseModel
+from http import HTTPStatus
 
 class APIResponse:
+    """
+    Utility class for handling API responses with consistent formatting
+    """
+
+    # @staticmethod
+    # def _create_response(
+    #     data: Dict[str, Any],
+    #     status: int = HTTPStatus.OK
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Creates a formatted response dictionary with headers
+        
+    #     Args:
+    #         data: Response data dictionary
+    #         status: HTTP status code
+            
+    #     Returns:
+    #         Dict containing response data and headers
+    #     """
+    #     return {
+    #         "response": data,
+    #         "headers": {
+    #             "Content-Type": "application/json",
+    #             "Access-Control-Allow-Origin": "*",
+    #             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    #             "Access-Control-Allow-Headers": "Content-Type, X-Company-Id"
+    #         },
+    #         "status": status
+    #     }
+
+    # @classmethod
+    # def success_response(
+    #     cls,
+    #     data: Dict[str, Any],
+    #     status: int = HTTPStatus.OK,
+    #     message: Optional[str] = None
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Creates a success response
+        
+    #     Args:
+    #         data: Response payload
+    #         status: HTTP status code (default: 200)
+    #         message: Optional success message
+            
+    #     Returns:
+    #         Dict containing formatted success response
+    #     """
+    #     response_data = {
+    #         "status": "success",
+    #         "data": data
+    #     }
+        
+    #     if message:
+    #         response_data["message"] = message
+            
+    #     return cls._create_response(response_data, status)
+
+    # @classmethod
+    # def error_response(
+    #     cls,
+    #     message: str,
+    #     errors: Any = None,
+    #     status: int = HTTPStatus.INTERNAL_SERVER_ERROR
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Creates an error response
+        
+    #     Args:
+    #         message: Error message
+    #         errors: Detailed error information (optional)
+    #         status: HTTP status code (default: 500)
+            
+    #     Returns:
+    #         Dict containing formatted error response
+    #     """
+    #     response_data = {
+    #         "status": "error",
+    #         "message": message
+    #     }
+        
+    #     if errors:
+    #         response_data["errors"] = errors
+            
+    #     return cls._create_response(response_data, status)
+
+    # @classmethod
+    # def validation_error_response(
+    #     cls,
+    #     message: str,
+    #     errors: Any
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Creates a validation error response
+        
+    #     Args:
+    #         message: Validation error message
+    #         errors: Validation error details
+            
+    #     Returns:
+    #         Dict containing formatted validation error response
+    #     """
+    #     return cls.error_response(
+    #         message=message,
+    #         errors=errors,
+    #         status=HTTPStatus.UNPROCESSABLE_ENTITY
+    #     )
+
+    # @classmethod
+    # def not_found_response(
+    #     cls,
+    #     message: str = "Resource not found",
+    #     errors: Any = None
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Creates a not found error response
+        
+    #     Args:
+    #         message: Not found message (default: "Resource not found")
+    #         errors: Additional error details (optional)
+            
+    #     Returns:
+    #         Dict containing formatted not found response
+    #     """
+    #     return cls.error_response(
+    #         message=message,
+    #         errors=errors,
+    #         status=HTTPStatus.NOT_FOUND
+    #     )
+
+    # @classmethod
+    # def bad_request_response(
+    #     cls,
+    #     message: str,
+    #     errors: Any = None
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Creates a bad request error response
+        
+    #     Args:
+    #         message: Bad request message
+    #         errors: Additional error details (optional)
+            
+    #     Returns:
+    #         Dict containing formatted bad request response
+    #     """
+    #     return cls.error_response(
+    #         message=message,
+    #         errors=errors,
+    #         status=HTTPStatus.BAD_REQUEST
+    #     )
+
+    # @classmethod
+    # def unauthorized_response(
+    #     cls,
+    #     message: str = "Unauthorized access",
+    #     errors: Any = None
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Creates an unauthorized error response
+        
+    #     Args:
+    #         message: Unauthorized message (default: "Unauthorized access")
+    #         errors: Additional error details (optional)
+            
+    #     Returns:
+    #         Dict containing formatted unauthorized response
+    #     """
+    #     return cls.error_response(
+    #         message=message,
+    #         errors=errors,
+    #         status=HTTPStatus.UNAUTHORIZED
+    #     )
+
     # @staticmethod
     # def format(success, message, data=None, errors=None, status=200):
     #     """

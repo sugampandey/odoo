@@ -416,7 +416,7 @@ ACCOUNT_BALANCE_PARAMS = {
             'name': 'account_id',
             'type': 'integer',
             'description': 'Filter by account ID',
-            'required': True
+            'required': False
         }
     ]
 }

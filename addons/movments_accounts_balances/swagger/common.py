@@ -99,6 +99,63 @@ def swagger_doc(documentation):
         return f
     return decorator
 
+from functools import wraps
+from typing import Type, Dict, Any
+from pydantic import BaseModel
+
+def swagger_document(
+    summary: str,
+    request_model: Type[BaseModel] = None,
+    response_model: Type[BaseModel] = None,
+    tags: list = None,
+    responses: Dict[int, Dict[str, Any]] = None
+):
+    def decorator(f):
+        if not hasattr(f, '_swagger_doc'):
+            f._swagger_doc = {}
+        
+        f._swagger_doc.update({
+            'summary': summary,
+            'tags': tags or [],
+            'requestBody': {
+                'content': {
+                    'application/json': {
+                        'schema': request_model.model_json_schema() if request_model else {}
+                    }
+                }
+            } if request_model else None,
+            'responses': {
+                '201': {
+                    'description': 'Success',
+                    'content': {
+                        'application/json': {
+                            'schema': response_model.model_json_schema() if response_model else {}
+                        }
+                    }
+                },
+                '400': {
+                    'description': 'Bad Request',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                'type': 'object',
+                                'properties': {
+                                    'error': {'type': 'string'},
+                                    'message': {'type': 'string'}
+                                }
+                            }
+                        }
+                    }
+                },
+                '500': {
+                    'description': 'Internal Server Error'
+                }
+            } | (responses or {})
+        })
+        return f
+    return decorator
+
+
 
 # First, let's create a base documentation template
 def create_base_doc_template(summary, description, parameters, responses):
