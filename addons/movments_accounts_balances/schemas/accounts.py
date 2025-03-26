@@ -259,7 +259,7 @@ class AccountListResponseModel(BaseModel):
 #     def create_account_response(self, account):
 #         return AccountResponseModel(
 #             Account=self.account_object(account),
-#             time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+#             time=format_date(datetime.datetime.now())
 #         ).to_dict()
     
 #     def list_account_response(self, accounts_data, startPosition, maxResults, totalCount):
@@ -271,7 +271,7 @@ class AccountListResponseModel(BaseModel):
 #             )
 #         return AccountListResponseModel(
 #             QueryResponse=QueryResponse,
-#             time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+#             time=format_date(datetime.datetime.now())
 #         ).to_dict()
 
 

@@ -8,11 +8,11 @@ class OptionModel(BaseModel):
 
 class HeaderModel(BaseModel):
     Time: str
-    ReportName: str = "GeneralLedger"
-    ReportBasis: str = "Accrual"
+    ReportName: str 
+    ReportBasis: str 
     StartPeriod: Optional[str] = None
     EndPeriod: Optional[str] = None
-    Currency: str = "USD"
+    Currency: str 
     Option: Optional[List[OptionModel]] = None
 
 class MetaDataModel(BaseModel):
@@ -21,7 +21,7 @@ class MetaDataModel(BaseModel):
 
 class ColumnModel(BaseModel):
     ColTitle: str
-    ColType: str = "String"
+    ColType: str 
     MetaData: List[MetaDataModel] = Field(default_factory=list)
 
 class ColumnsModel(BaseModel):
@@ -33,7 +33,7 @@ class ColDataModel(BaseModel):
 
 class DataRowModel(BaseModel):
     ColData: List[ColDataModel]
-    type: str = "Data"
+    type: str 
 
 class SummaryModel(BaseModel):
     ColData: List[ColDataModel]
@@ -47,7 +47,7 @@ class NestedRowsModel(BaseModel):
 class SectionRowModel(BaseModel):
     Header: SectionHeaderModel
     Rows: NestedRowsModel
-    type: str = "Section"
+    type: str 
     Summary: SummaryModel
 
 class RowsModel(BaseModel):

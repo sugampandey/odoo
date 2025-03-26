@@ -1,5 +1,23 @@
 from odoo.exceptions import UserError
 from .constants import CONSTANTS
+from .enums import GLReportColumns
+
+def format_date(date, format_pattern=None):
+    """
+    Format a date according to the specified format pattern
+    Args:
+        date: A datetime object to format
+        format_pattern: Optional string format pattern (defaults to CONSTANTS['DATE_FORMAT'])
+    Returns:
+        str: Formatted date string
+    """
+    try:
+        if format_pattern is None:
+            format_pattern = CONSTANTS['DATE_FORMAT']
+        return date.strftime(format_pattern)
+    except AttributeError:
+        raise ValueError("Input must be a valid datetime object")
+
 
 def validate_account(request, account_id, company_id, valid_account_types=None):
     """
@@ -200,23 +218,23 @@ def get_default_customer_category(request):
 
 
 def get_general_ledger_report_order(sort_by, sort_order):
-    sort_column = "date"
+    sort_column = GLReportColumns.TX_DATE.odoo_column_name
     if sort_by:
         match sort_by:
-            case "tx_date":
-                sort_column = "date"
-            case "name":
-                sort_column = "partner_id"
-            case "account_name":
-                sort_column = "account_id"
-            case "vend_name":
-                sort_column = "partner_id"
-            case "subt_nat_amount":
-                sort_column = "debit"
-            case "rbal_nat_amount":
-                sort_column = "balance"
+            case GLReportColumns.TX_DATE:
+                sort_column = GLReportColumns.TX_DATE.odoo_column_name
+            case GLReportColumns.NAME:
+                sort_column = GLReportColumns.NAME.odoo_column_name
+            case GLReportColumns.ACCOUNT_NAME:
+                sort_column = GLReportColumns.ACCOUNT_NAME.odoo_column_name
+            case GLReportColumns.VEND_NAME:
+                sort_column = GLReportColumns.NAME.odoo_column_name
+            case GLReportColumns.SUBT_NAT_AMOUNT:
+                sort_column = GLReportColumns.SUBT_NAT_AMOUNT.odoo_column_name
+            case GLReportColumns.RBAL_NAT_AMOUNT:
+                sort_column = GLReportColumns.RBAL_NAT_AMOUNT.odoo_column_name
             case _:
-                sort_column = "date"
+                sort_column = GLReportColumns.TX_DATE.odoo_column_name
 
     order = "desc"
     if sort_order:

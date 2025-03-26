@@ -3,24 +3,12 @@ from typing import Any, Dict, List, Iterator
 from decimal import Decimal
 from ..mapping.reports import MOVE_TYPE_MAPPING
 from ..constants import CONSTANTS
+from ..utils import format_date
+from ..enums import GLReportColumns
 from ..schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
                                RowsModel, MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
                                SectionHeaderModel, NestedRowsModel, SectionRowModel, GeneralLedgerResponseModel)
 
-
-GL_REPORT_COLUMNS = [
-    "tx_date",
-    "txn_type",
-    "doc_num",
-    "name",
-    "memo",
-    "split_acc",
-    "subt_nat_amount",
-    "rbal_nat_amount",
-    "account_name",
-    "vend_name",
-    "klass_name",
-]
 
 def get_opposite_accounts(request, move_lines):
     """
@@ -85,31 +73,25 @@ def get_opposite_accounts(request, move_lines):
     # Convert results to dictionary with safe type conversion
     opposite_accounts = {}
     for row in results:
-        try:
-            line_id = int(row['line_id'])
-            line_count = int(row['line_count'])
-            
-            if line_count > 2:
-                opposite_accounts[line_id] = ('-Split-', '')
-            else:
-                # Safely handle potentially NULL values
-                account_name = str(row['opposite_account_name'] or '-Split-')
-                account_id = str(row['opposite_account_id'] or '')
-                opposite_accounts[line_id] = (account_name, account_id)
-                
-        except (ValueError, TypeError, KeyError) as e:
-            print(f"Error processing row {row}: {str(e)}")
-            continue
+        line_id = int(row['line_id'])
+        line_count = int(row['line_count'])
+        
+        if line_count > 2:
+            opposite_accounts[line_id] = ('-Split-', '')
+        else:
+            # Safely handle potentially NULL values
+            account_name = str(row['opposite_account_name'] or '-Split-')
+            account_id = str(row['opposite_account_id'] or '')
+            opposite_accounts[line_id] = (account_name, account_id)
     
     return opposite_accounts
 
 
-def get_split_acc(request: Any, entry: Any, opposite_accounts: Dict):
+def get_split_acc(entry: Any, opposite_accounts: Dict):
     """
     Get the split account information for a given entry using pre-fetched opposite accounts.
     
     Args:
-        request: The Odoo request object
         entry: The account entry record
         opposite_accounts: Dictionary mapping move_line_id to opposite account info
         
@@ -127,45 +109,28 @@ def get_klass_name(entry):
 
 def create_header(start_date, end_date, currency: str = "USD") -> HeaderModel:
     """Create the header section of the response."""
-    # return {
-    #     "Time": datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT']),
-    #     "ReportName": "GeneralLedger",
-    #     "ReportBasis": "Accrual",
-    #     "StartPeriod": start_date.strftime(CONSTANTS['DATE_FORMAT']),
-    #     "EndPeriod": end_date.strftime(CONSTANTS['DATE_FORMAT']),
-    #     "Currency": currency or "USD",
-    #     "Option": [{"Name": "NoReportData", "Value": "false"}]
-    # }
     return HeaderModel(
-        Time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT']),
+        Time=format_date(datetime.datetime.now()),
         ReportName="GeneralLedger",
         ReportBasis="Accrual",
-        StartPeriod=start_date.strftime(CONSTANTS['DATE_FORMAT']) if start_date else None,
-        EndPeriod=end_date.strftime(CONSTANTS['DATE_FORMAT']) if end_date else None,
+        StartPeriod=format_date(start_date) if start_date else None,
+        EndPeriod=format_date(end_date) if end_date else None,
         Currency=currency or "USD",
         Option=[OptionModel(Name="NoReportData", Value="false")]
     )
 
 def create_column_definition(columns_list: List[str]) -> ColumnsModel:
     """Create the column definitions section."""
-    # return {
-    #     "Column": [
-    #         {
-    #             "ColTitle": col,
-    #             "ColType": "String",
-    #             "MetaData": [{"Name": "ColKey", "Value": col}]
-    #         }
-    #         for col in columns_list if col in GL_REPORT_COLUMNS
-    #     ]
-    # }
+    display_names = GLReportColumns.get_display_names()
+    types = GLReportColumns.get_types()
     return ColumnsModel(
         Column=[
             ColumnModel(
-                ColTitle=col,
-                ColType="String",
+                ColTitle=display_names[col],
+                ColType=types[col],
                 MetaData=[MetaDataModel(Name="ColKey", Value=col)]
             )
-            for col in columns_list if col in GL_REPORT_COLUMNS
+            for col in columns_list if col in GLReportColumns.get_names()
         ]
     )
 
@@ -173,63 +138,45 @@ def get_column_value(entry: Any, col: str, split_acc: str, split_id: str,
                     klass_name: str, klass_id: str) -> Dict[str, Any]:
     """Get the value for a specific column."""
     match col:
-        case "tx_date":
-            return ColDataModel(value=entry.date.strftime(CONSTANTS['DATE_FORMAT']))
-        case "txn_type":
+        case GLReportColumns.TX_DATE:
+            return ColDataModel(value=format_date(entry.date))
+        case GLReportColumns.TXN_TYPE:
             return ColDataModel(value=MOVE_TYPE_MAPPING.get(entry.move_type))
-        case "doc_num":
+        case GLReportColumns.DOC_NUM:
             return ColDataModel(value=entry.move_name)
-        case "name":
+        case GLReportColumns.NAME:
             return ColDataModel(value=entry.partner_id.name, id= entry.partner_id.id)
-        case "memo":
+        case GLReportColumns.MEMO:
             return ColDataModel(value=entry.ref)
-        case "split_acc":
+        case GLReportColumns.SPLIT_ACC:
             return ColDataModel(value=split_acc, id= split_id)
-        case "subt_nat_amount":
+        case GLReportColumns.SUBT_NAT_AMOUNT:
             return ColDataModel(value=float(entry.debit if entry.debit != 0 else entry.credit))
-        case "rbal_nat_amount":
+        case GLReportColumns.RBAL_NAT_AMOUNT:
             return ColDataModel(value=float(entry.balance))
-        case "account_name":
+        case GLReportColumns.ACCOUNT_NAME:
             return ColDataModel(value=entry.account_id.name, id= entry.account_id.id)
-        case "vend_name":
+        case GLReportColumns.VEND_NAME:
             return ColDataModel(value=entry.partner_id.name, id= entry.partner_id.id)
-        case "klass_name":
+        case GLReportColumns.KLASS_NAME:
             return ColDataModel(value=klass_name, id= klass_id)
         case _:
             return ColDataModel(value="")
 
 def create_account_section(account: Dict[str, Any], columns_list: List[str]) -> SectionRowModel:
     """Create an account section template."""
-    # return {
-    #     "Header": {
-    #         "ColData": [{"value": account["name"], "id": account["id"]}] + 
-    #                   [{"value": ""} for _ in range(len(columns_list) - 1)]
-    #     },
-    #     "Rows": {"Row": []},
-    #     "Summary": {
-    #         "ColData": [{"value": f"Total for {account['name']}", "id": account.get("id", "")}] + 
-    #                   [{"value": ""} for _ in range(len(columns_list) - 2)] +
-    #                   [{"value": 0}]
-    #     },
-    #     "type": "Section"
-    # }
     empty_col = ColDataModel(value="")
     header_cols = [ColDataModel(value=account['name'], id=account['id'])] + [empty_col for _ in range(len(columns_list) - 1)]
     summary_cols = [
         ColDataModel(value=f"Total for {account['name']}", id=account['id'])
     ] + [empty_col for _ in range(len(columns_list) - 2)] + [ColDataModel(value=0)]
-
     
     return SectionRowModel(
-        # Header={"ColData": header_cols},
-        # Rows={"Row": []},
-        # Summary={"ColData": summary_cols},
         Header=SectionHeaderModel(ColData=header_cols),
         Rows=NestedRowsModel(Row=[]),
         Summary=SummaryModel(ColData=summary_cols),
         type="Section"
     )
-
 
 
 def get_accounts(move_lines: List[Any]) -> List[Dict[str, Any]]:
@@ -239,18 +186,11 @@ def get_accounts(move_lines: List[Any]) -> List[Dict[str, Any]]:
         "id": str(account.id)
     } for account in move_lines.mapped('account_id')]
 
-def process_move_line(request: Any, entry: Any, opposite_accounts: Dict, columns_list: List[str]) -> Dict[str, Any]:
+def process_move_line(entry: Any, opposite_accounts: Dict, columns_list: List[str]) -> Dict[str, Any]:
     """Process a single move line and return row data."""
-    split_acc, split_id = get_split_acc(request, entry, opposite_accounts)
+    split_acc, split_id = get_split_acc(entry, opposite_accounts)
     klass_name, klass_id = get_klass_name(entry)
     
-    # return {
-    #     "ColData": [
-    #         get_column_value(entry, col, split_acc, split_id, klass_name, klass_id)
-    #         for col in columns_list
-    #     ],
-    #     "type": "Data"
-    # }
     return DataRowModel(
         ColData=[
             get_column_value(entry, col, split_acc, split_id, klass_name, klass_id)
@@ -261,9 +201,7 @@ def process_move_line(request: Any, entry: Any, opposite_accounts: Dict, columns
     )
 
 def process_account_move_lines(
-    request: Any, 
     account_move_lines: Iterator[Any], 
-    move_lines: Iterator[Any], 
     opposite_accounts: Dict, 
     columns_list: List[str]
 ) -> tuple[List[Dict[str, Any]], Decimal]:
@@ -272,14 +210,13 @@ def process_account_move_lines(
     account_total = Decimal('0')
     
     for entry in account_move_lines:
-        row_data = process_move_line(request, entry, opposite_accounts, columns_list)
+        row_data = process_move_line(entry, opposite_accounts, columns_list)
         rows.append(row_data)
         account_total += Decimal(str(entry.debit - entry.credit))
     
     return rows, account_total
 
 def process_account(
-    request: Any, 
     account: Dict[str, Any], 
     move_lines: List[Any], 
     opposite_accounts: Dict,
@@ -296,16 +233,12 @@ def process_account(
     
     # Process move lines and get total
     rows, account_total = process_account_move_lines(
-        request, 
         account_move_lines, 
-        move_lines,
         opposite_accounts,
         columns_list
     )
     
     # Update account section
-    # account_section["Rows"]["Row"].extend(rows)
-    # account_section["Summary"]["ColData"][-1]["value"] = float(account_total)
     account_section.Rows.Row.extend(rows)
     account_section.Summary.ColData[-1].value = float(account_total)
     
@@ -321,15 +254,9 @@ def prepare_general_ledger_response(
 ) -> GeneralLedgerResponseModel:
     """Prepare the response with account movements and balances."""
     # Initialize response structure
-    # response = {
-    #     "Header": create_header(start_date, end_date, currency),
-    #     "Columns": create_column_definition(columns_list),
-    #     "Rows": {"Row": []}
-    # }
     response = GeneralLedgerResponseModel(
         Header=create_header(start_date, end_date, currency),
         Columns=create_column_definition(columns_list),
-        # Rows={"Row": []}
         Rows=RowsModel(Row=[])
     
     )
@@ -340,13 +267,11 @@ def prepare_general_ledger_response(
     accounts = get_accounts(move_lines)
     for account in accounts:
         account_section = process_account(
-            request, 
             account, 
             move_lines, 
             opposite_accounts,
             columns_list
         )
-        # response["Rows"]["Row"].append(account_section)
         response.Rows.Row.append(account_section)
     
     return response

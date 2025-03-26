@@ -72,117 +72,104 @@ class ReportsAPI(http.Controller):
             'ledger_entries': ledger_entries,
         }
 
+    def validate_general_ledger_request_params(self, company_id, start_date=None, end_date=None, 
+                                               partner_id=None, account_id=None, analytic_class_id=None):
+        if not company_id:
+            return False, 'Company ID is required'
+        
+        is_valid, error_message = validate_company(request, company_id)
+        if not is_valid:
+            return False, error_message
+        
+        for param_id, validator in [
+                (partner_id, validate_partner),
+                (account_id, validate_account),
+                (analytic_class_id, validate_analytic_account)
+            ]:
+                if param_id:
+                    is_valid, error_message = validator(request, int(param_id), company_id)
+                    if not is_valid:
+                        return False, error_message
+
+        if start_date and end_date:
+            try:
+                start_date = fields.Date.from_string(start_date)
+                end_date = fields.Date.from_string(end_date)
+                return True, (start_date, end_date)
+            except ValueError:
+                return False, 'Invalid date format. Use YYYY-MM-DD'
+        
+        return True, None
+    
+    def build_general_ledger_domain(self, company_id, start_date=None, end_date=None, partner_id=None, 
+                       account_id=None):
+        domain = [('company_id', '=', int(company_id))]
+        
+        if start_date and end_date:
+            domain.extend([
+                ('date', '>=', start_date),
+                ('date', '<=', end_date)
+            ])
+        
+        if partner_id:
+            domain.append(('partner_id', '=', int(partner_id)))
+        
+        if account_id:
+            domain.append(('account_id', '=', int(account_id)))
+        
+        return domain
+    
+    def get_analytic_move_line_ids(self, analytic_class_id):
+        if not analytic_class_id:
+            return None
+            
+        analytic_account_id = int(analytic_class_id)
+        analytic_lines = request.env['account.analytic.line'].sudo().search([
+            ('account_id', '=', analytic_account_id)
+        ])
+        return analytic_lines.mapped('move_line_id').ids if analytic_lines else []
+
+    
     @http.route('/api/general_ledger', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(reports_docs['general_ledger'])
     def get_general_ledger(self, company_id, columns, start_date=None, end_date=None, partner_id=None, 
-                           account_id=None, analytic_class_id=None, sort_by=None, sort_order=None,
-                           include_unposted=False, **kwargs):
+                           account_id=None, analytic_class_id=None, sort_by=None, sort_order=None, **kwargs):
         try:
-            # Validate company
-            if not company_id:
-                return APIResponse.error_response(message='Company ID is required')
-            company = request.env['res.company'].sudo().browse(int(company_id))
-            if not company.exists():
-                return APIResponse.error_response(message=f'Invalid company_id: {company_id}')
-
-            # Build domain
-            domain = [('company_id', '=', int(company_id))]
-
-            if start_date and end_date:
-                try:
-                    start_date = fields.Date.from_string(start_date)
-                    end_date = fields.Date.from_string(end_date)
-                    # domain.extend([('date', '<=', end_date)])
-                    domain.extend([('date', '>=', start_date), ('date', '<=', end_date)])
-                except ValueError:
-                    return APIResponse.error_response(message='Invalid date format. Use YYYY-MM-DD')
-
-            # Partner validation and domain
-            if partner_id:
-                partner_id = int(partner_id)
-                is_valid, error_message = validate_partner(request, partner_id, company_id)
-                if not is_valid:
-                    return APIResponse.error_response(message=f'Invalid partner: {error_message}')
-                domain.append(('partner_id', '=', partner_id))
-
-            # Account validation and domain
-            if account_id:
-                account_id = int(account_id)
-                is_valid, error_message = validate_account(request, account_id, company_id)
-                if not is_valid:
-                    return APIResponse.error_response(message=f'Invalid account: {error_message}')
-                domain.append(('account_id', '=', account_id))
-
-            # Analytic account validation and domain
-            if analytic_class_id:
-                analytic_account_id = int(analytic_class_id)
-                is_valid, error_message = validate_analytic_account(request, analytic_account_id, company_id)
-                if not is_valid:
-                    return APIResponse.error_response(message=f'Invalid analytic class: {error_message}')
-                # First get move_line_ids from analytic lines
-                analytic_lines = request.env['account.analytic.line'].sudo().search([('account_id', '=', analytic_account_id)])
-                if analytic_lines:
-                    move_line_ids = analytic_lines.mapped('move_line_id').ids
-                    if move_line_ids:
-                        domain.append(('id', 'in', move_line_ids))
-
-            # Posted entries filter
-            if not include_unposted:
-                domain.append(('move_id.state', '=', 'posted'))
-
+            # Validate parameters
+            is_valid, result = self.validate_general_ledger_request_params(company_id, start_date, end_date)
+            if not is_valid:
+                return APIResponse.error_response(message=result)
             
+            if result:  # If dates were provided and validated
+                start_date, end_date = result
+            
+            # Build search domain
+            domain = self.build_general_ledger_domain(
+                company_id, start_date, end_date, partner_id, account_id)
+
+            try:
+                move_line_ids = self.get_analytic_move_line_ids(analytic_class_id)
+                if move_line_ids is not None:
+                    domain.append(('id', 'in', move_line_ids))
+            except ValueError as e:
+                return APIResponse.error_response(message=str(e))
+            
+            # Fetch and process move lines
             move_lines = request.env['account.move.line'].sudo().search(
                 domain,
                 order=get_general_ledger_report_order(sort_by, sort_order)
             )
-            # .with_context(
-            #     prefetch_fields=['analytic_line_ids', 'analytic_line_ids.account_id']
-            #     )
-            # entries = self.env['account.move.line'].search([...], prefetch=['analytic_line_ids', 'analytic_line_ids.account_id'])
+            
             columns_list = [col.strip() for col in columns.split(',')]
 
-            response_data = prepare_general_ledger_response(request, start_date, end_date, move_lines, columns_list)
+            response_data = prepare_general_ledger_response(
+                request, start_date, end_date, move_lines, columns_list
+            )
 
             return APIResponse.success_response(response_data.model_dump(mode='json'))
         except Exception as e:
             traceback.print_exc()
             return APIResponse.error_response(message=f'Error retrieving general ledger: {str(e)}', status=500)
-        
-    
-    # @http.route('/api/account_balance', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(reports_docs['account_balance'])
-    # def get_account_balance(self, company_id, end_date=None, account_id=None, **kwargs):
-    #     try:
-    #         # Validate company
-    #         if not company_id:
-    #             return APIResponse.error_response(message='Company ID is required')
-    #         company = request.env['res.company'].sudo().browse(int(company_id))
-    #         if not company.exists():
-    #             return APIResponse.error_response(message=f'Invalid company_id: {company_id}')
-
-    #         # Build domain
-    #         domain = [('company_id', '=', int(company_id))]
-
-    #         if end_date:
-    #             try:
-    #                 end_date = fields.Date.from_string(end_date)
-    #                 domain.extend([('date', '<=', end_date)])
-    #             except ValueError:
-    #                 return APIResponse.error_response(message='Invalid date format. Use YYYY-MM-DD')
-
-    #         # Account validation and domain
-    #         if account_id:
-    #             account_id = int(account_id)
-    #             is_valid, error_message = validate_account(request, account_id, company_id)
-    #             if not is_valid:
-    #                 return APIResponse.error_response(message=f'Invalid account: {error_message}')
-    #             domain.append(('account_id', '=', account_id))
-            
-    #         response_data = self.get_move_line_data(domain)
-            
-    #         return APIResponse.success_response(response_data)
-    #     except Exception as e:
-    #         return APIResponse.error_response(message=f'Error retrieving account balance: {str(e)}', status=500)
 
 
     @http.route('/api/account_balance', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
@@ -340,6 +327,42 @@ class ReportsAPI(http.Controller):
     #         return APIResponse.success_response(message='General Ledger retrieved successfully', data=ledger_data)
     #     except Exception as e:
     #         return APIResponse.error_response(message='Error retrieving General Ledger', errors=str(e), status=500)
+    
+    
+    # @http.route('/api/account_balance', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    # @swagger_doc(reports_docs['account_balance'])
+    # def get_account_balance(self, company_id, end_date=None, account_id=None, **kwargs):
+    #     try:
+    #         # Validate company
+    #         if not company_id:
+    #             return APIResponse.error_response(message='Company ID is required')
+    #         company = request.env['res.company'].sudo().browse(int(company_id))
+    #         if not company.exists():
+    #             return APIResponse.error_response(message=f'Invalid company_id: {company_id}')
+
+    #         # Build domain
+    #         domain = [('company_id', '=', int(company_id))]
+
+    #         if end_date:
+    #             try:
+    #                 end_date = fields.Date.from_string(end_date)
+    #                 domain.extend([('date', '<=', end_date)])
+    #             except ValueError:
+    #                 return APIResponse.error_response(message='Invalid date format. Use YYYY-MM-DD')
+
+    #         # Account validation and domain
+    #         if account_id:
+    #             account_id = int(account_id)
+    #             is_valid, error_message = validate_account(request, account_id, company_id)
+    #             if not is_valid:
+    #                 return APIResponse.error_response(message=f'Invalid account: {error_message}')
+    #             domain.append(('account_id', '=', account_id))
+            
+    #         response_data = self.get_move_line_data(domain)
+            
+    #         return APIResponse.success_response(response_data)
+    #     except Exception as e:
+    #         return APIResponse.error_response(message=f'Error retrieving account balance: {str(e)}', status=500)
     
     # @http.route('/api/get_journal_entries', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     # @swagger_doc(reports_docs['journal_entries'])

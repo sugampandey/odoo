@@ -3,7 +3,7 @@ from odoo import http
 from odoo.http import request
 import json
 from ..common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data
-from ..utils import validate_company, validate_partner_category, get_default_customer_category, get_default_vendor_category
+from ..utils import validate_company, validate_partner_category, get_default_customer_category, get_default_vendor_category, format_date
 from ..swagger.common import swagger_doc
 from ..swagger.partner import partners_docs
 from ..schemas.partner import (CUSTOMER_SCHEMA, CustomerModel, CustomerCreateRequestModel, CustomerResponseModel, CustomerListResponseModel, CustomerQueryResponseModel,
@@ -111,11 +111,11 @@ class PartnerAPI(http.Controller):
         if is_vendor:
             return VendorResponseModel(
                 Vendor=self.partner_object(partner, True),
-                time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+                time=format_date(datetime.datetime.now())
             ).to_dict()
         return CustomerResponseModel(
             Customer=self.partner_object(partner, False),
-            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+            time=format_date(datetime.datetime.now())
         ).to_dict()
     
     def list_partner_response(self, partner_data, startPosition, maxResults, totalCount, is_vendor=None):
@@ -128,7 +128,7 @@ class PartnerAPI(http.Controller):
                 )
             return VendorListResponseModel(
                 QueryResponse=QueryResponse,
-                time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+                time=format_date(datetime.datetime.now())
             ).to_dict()
         QueryResponse=CustomerQueryResponseModel(
                 startPosition=startPosition,
@@ -138,7 +138,7 @@ class PartnerAPI(http.Controller):
             )
         return CustomerListResponseModel(
             QueryResponse=QueryResponse,
-            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+            time=format_date(datetime.datetime.now())
         ).to_dict()
         
 

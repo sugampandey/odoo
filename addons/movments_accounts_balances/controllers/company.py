@@ -1,8 +1,9 @@
+
 from odoo import http
 from odoo.http import request
 import datetime
 from ..common import APIResponse, validate_and_convert_data, get_request_data
-
+from ..utils import format_date
 from ..swagger.common import swagger_doc
 from ..swagger.company import companies_docs
 from ..schemas.company import COMPANY_SCHEMA, CompanyModel, CompanyListResponseModel, CompanyCreateRequestModel, CompanyQueryResponseModel, CompanyResponseModel
@@ -64,7 +65,7 @@ class CreateCompany(http.Controller):
     def create_company_response(self, company):
         return CompanyResponseModel(
             Company=self.company_object(company),
-            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+            time=format_date(datetime.datetime.now())
         ).to_dict()
     
     def list_company_response(self, company_data, startPosition, maxResults, totalCount):
@@ -76,7 +77,7 @@ class CreateCompany(http.Controller):
             )
         return CompanyListResponseModel(
             QueryResponse=QueryResponse,
-            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+            time=format_date(datetime.datetime.now())
         ).to_dict()
     
     @http.route('/api/companies', type='http', auth='public', methods=['POST'], csrf=False, cors="*")

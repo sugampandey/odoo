@@ -3,7 +3,7 @@ import uuid, datetime
 from odoo.http import request
 from odoo.exceptions import ValidationError, UserError
 from ..common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data
-from ..utils import validate_company, validate_analytic_plan, validate_analytic_account
+from ..utils import validate_company, validate_analytic_plan, validate_analytic_account, format_date
 
 from ..swagger.common import swagger_doc
 from ..swagger.analytic_account import analytic_accounts_docs
@@ -53,7 +53,7 @@ class AnalyticAccountAPI(http.Controller):
     def create_analytic_account_response(self, analytic_account):
         return AnalyticClassResponseModel(
             Class=self.analytic_account_object(analytic_account),
-            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+            time=format_date(datetime.datetime.now())
         ).to_dict()
     
     def list_analytic_account_response(self, accounts_data, startPosition, maxResults, totalCount):
@@ -65,7 +65,7 @@ class AnalyticAccountAPI(http.Controller):
             )
         return AnalyticClassListResponseModel(
             QueryResponse=QueryResponse,
-            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+            time=format_date(datetime.datetime.now())
         ).to_dict()
         
     @http.route('/api/analytic-class', type='http', auth='public', methods=['POST'], csrf=False, cors="*")

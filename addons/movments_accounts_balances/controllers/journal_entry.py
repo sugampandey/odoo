@@ -3,7 +3,7 @@ from odoo import http
 from odoo.http import request
 import json
 from ..common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data
-from ..utils import validate_company, validate_journal, validate_partner, validate_account, validate_tax
+from ..utils import validate_company, validate_journal, validate_partner, validate_account, validate_tax, format_date
 
 from ..swagger.common import swagger_doc
 from ..swagger.journal_entry import journal_entries_docs
@@ -76,7 +76,7 @@ class JournalEntryController(http.Controller):
     def create_journal_entry_response(self, journal_entry):
         return JournalEntryResponseModel(
             JournalEntry=self.journal_entry_object(journal_entry),
-            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+            time=format_date(datetime.datetime.now())
         ).to_dict()
     
     def list_journal_entry_response(self, journal_entry_data, startPosition, maxResults, totalCount):
@@ -88,7 +88,7 @@ class JournalEntryController(http.Controller):
             )
         return JournalEntryListResponseModel(
             QueryResponse=QueryResponse,
-            time=datetime.datetime.now().strftime(CONSTANTS['DATE_FORMAT'])
+            time=format_date(datetime.datetime.now())
         ).to_dict()
 
         
