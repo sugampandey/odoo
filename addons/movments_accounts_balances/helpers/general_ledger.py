@@ -7,7 +7,7 @@ from ..utils import format_date
 from ..enums import GLReportColumns
 from ..schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
                                RowsModel, MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
-                               SectionHeaderModel, NestedRowsModel, SectionRowModel, GeneralLedgerResponseModel)
+                               SectionHeaderModel, NestedRowsModel, SectionRowModel, ReportResponseModel)
 
 
 def get_opposite_accounts(request, move_lines):
@@ -251,14 +251,13 @@ def prepare_general_ledger_response(
     move_lines: List[Any], 
     columns_list: List[str], 
     currency: str = None
-) -> GeneralLedgerResponseModel:
+) -> ReportResponseModel:
     """Prepare the response with account movements and balances."""
     # Initialize response structure
-    response = GeneralLedgerResponseModel(
+    response = ReportResponseModel(
         Header=create_header(start_date, end_date, currency),
         Columns=create_column_definition(columns_list),
         Rows=RowsModel(Row=[])
-    
     )
     # Get opposite accounts for all move lines in one query
     opposite_accounts = get_opposite_accounts(request, move_lines)

@@ -1,748 +1,186 @@
-{
-  "Header": {
-    "ReportName": "BalanceSheet", 
-    "Option": [
-      {
-        "Name": "AccountingStandard", 
-        "Value": "GAAP"
-      }, 
-      {
-        "Name": "NoReportData", 
-        "Value": "false"
-      }
-    ], 
-    "DateMacro": "this calendar year-to-date", 
-    "ReportBasis": "Accrual", 
-    "StartPeriod": "2016-01-01", 
-    "Currency": "USD", 
-    "EndPeriod": "2016-10-31", 
-    "Time": "2016-10-31T09:42:21-07:00", 
-    "SummarizeColumnsBy": "Total"
-  }, 
-  "Rows": {
-    "Row": [
-      {
-        "Header": {
-          "ColData": [
-            {
-              "value": "ASSETS"
-            }, 
-            {
-              "value": ""
-            }
-          ]
-        }, 
-        "Rows": {
-          "Row": [
-            {
-              "Header": {
-                "ColData": [
-                  {
-                    "value": "Current Assets"
-                  }, 
-                  {
-                    "value": ""
-                  }
-                ]
-              }, 
-              "Rows": {
-                "Row": [
-                  {
-                    "Header": {
-                      "ColData": [
-                        {
-                          "value": "Bank Accounts"
-                        }, 
-                        {
-                          "value": ""
-                        }
-                      ]
-                    }, 
-                    "Rows": {
-                      "Row": [
-                        {
-                          "ColData": [
-                            {
-                              "id": "35", 
-                              "value": "Checking"
-                            }, 
-                            {
-                              "value": "1350.55"
-                            }
-                          ], 
-                          "type": "Data"
-                        }, 
-                        {
-                          "ColData": [
-                            {
-                              "id": "36", 
-                              "value": "Savings"
-                            }, 
-                            {
-                              "value": "800.00"
-                            }
-                          ], 
-                          "type": "Data"
-                        }
-                      ]
-                    }, 
-                    "type": "Section", 
-                    "group": "BankAccounts", 
-                    "Summary": {
-                      "ColData": [
-                        {
-                          "value": "Total Bank Accounts"
-                        }, 
-                        {
-                          "value": "2150.55"
-                        }
-                      ]
-                    }
-                  }, 
-                  {
-                    "Header": {
-                      "ColData": [
-                        {
-                          "value": "Accounts Receivable"
-                        }, 
-                        {
-                          "value": ""
-                        }
-                      ]
-                    }, 
-                    "Rows": {
-                      "Row": [
-                        {
-                          "ColData": [
-                            {
-                              "id": "84", 
-                              "value": "Accounts Receivable (A/R)"
-                            }, 
-                            {
-                              "value": "6383.12"
-                            }
-                          ], 
-                          "type": "Data"
-                        }
-                      ]
-                    }, 
-                    "type": "Section", 
-                    "group": "AR", 
-                    "Summary": {
-                      "ColData": [
-                        {
-                          "value": "Total Accounts Receivable"
-                        }, 
-                        {
-                          "value": "6383.12"
-                        }
-                      ]
-                    }
-                  }, 
-                  {
-                    "Header": {
-                      "ColData": [
-                        {
-                          "value": "Other current assets"
-                        }, 
-                        {
-                          "value": ""
-                        }
-                      ]
-                    }, 
-                    "Rows": {
-                      "Row": [
-                        {
-                          "ColData": [
-                            {
-                              "id": "81", 
-                              "value": "Inventory Asset"
-                            }, 
-                            {
-                              "value": "596.25"
-                            }
-                          ], 
-                          "type": "Data"
-                        }, 
-                        {
-                          "ColData": [
-                            {
-                              "id": "4", 
-                              "value": "Undeposited Funds"
-                            }, 
-                            {
-                              "value": "2117.52"
-                            }
-                          ], 
-                          "type": "Data"
-                        }
-                      ]
-                    }, 
-                    "type": "Section", 
-                    "group": "OtherCurrentAssets", 
-                    "Summary": {
-                      "ColData": [
-                        {
-                          "value": "Total Other current assets"
-                        }, 
-                        {
-                          "value": "2713.77"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }, 
-              "type": "Section", 
-              "group": "CurrentAssets", 
-              "Summary": {
-                "ColData": [
-                  {
-                    "value": "Total Current Assets"
-                  }, 
-                  {
-                    "value": "11247.44"
-                  }
-                ]
-              }
-            }, 
-            {
-              "Header": {
-                "ColData": [
-                  {
-                    "value": "Fixed Assets"
-                  }, 
-                  {
-                    "value": ""
-                  }
-                ]
-              }, 
-              "Rows": {
-                "Row": [
-                  {
-                    "Header": {
-                      "ColData": [
-                        {
-                          "id": "37", 
-                          "value": "Truck"
-                        }, 
-                        {
-                          "value": ""
-                        }
-                      ]
-                    }, 
-                    "Rows": {
-                      "Row": [
-                        {
-                          "ColData": [
-                            {
-                              "id": "38", 
-                              "value": "Original Cost"
-                            }, 
-                            {
-                              "value": "13495.00"
-                            }
-                          ], 
-                          "type": "Data"
-                        }
-                      ]
-                    }, 
-                    "type": "Section", 
-                    "Summary": {
-                      "ColData": [
-                        {
-                          "value": "Total Truck"
-                        }, 
-                        {
-                          "value": "13495.00"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }, 
-              "type": "Section", 
-              "group": "FixedAssets", 
-              "Summary": {
-                "ColData": [
-                  {
-                    "value": "Total Fixed Assets"
-                  }, 
-                  {
-                    "value": "13495.00"
-                  }
-                ]
-              }
-            }
-          ]
-        }, 
-        "type": "Section", 
-        "group": "TotalAssets", 
-        "Summary": {
-          "ColData": [
-            {
-              "value": "TOTAL ASSETS"
-            }, 
-            {
-              "value": "24742.44"
-            }
-          ]
-        }
-      }, 
-      {
-        "Header": {
-          "ColData": [
-            {
-              "value": "LIABILITIES AND EQUITY"
-            }, 
-            {
-              "value": ""
-            }
-          ]
-        }, 
-        "Rows": {
-          "Row": [
-            {
-              "Header": {
-                "ColData": [
-                  {
-                    "value": "Liabilities"
-                  }, 
-                  {
-                    "value": ""
-                  }
-                ]
-              }, 
-              "Rows": {
-                "Row": [
-                  {
-                    "Header": {
-                      "ColData": [
-                        {
-                          "value": "Current Liabilities"
-                        }, 
-                        {
-                          "value": ""
-                        }
-                      ]
-                    }, 
-                    "Rows": {
-                      "Row": [
-                        {
-                          "Header": {
-                            "ColData": [
-                              {
-                                "value": "Accounts Payable"
-                              }, 
-                              {
-                                "value": ""
-                              }
-                            ]
-                          }, 
-                          "Rows": {
-                            "Row": [
-                              {
-                                "ColData": [
-                                  {
-                                    "id": "33", 
-                                    "value": "Accounts Payable (A/P)"
-                                  }, 
-                                  {
-                                    "value": "1984.17"
-                                  }
-                                ], 
-                                "type": "Data"
-                              }
-                            ]
-                          }, 
-                          "type": "Section", 
-                          "group": "AP", 
-                          "Summary": {
-                            "ColData": [
-                              {
-                                "value": "Total Accounts Payable"
-                              }, 
-                              {
-                                "value": "1984.17"
-                              }
-                            ]
-                          }
-                        }, 
-                        {
-                          "Header": {
-                            "ColData": [
-                              {
-                                "value": "Credit Cards"
-                              }, 
-                              {
-                                "value": ""
-                              }
-                            ]
-                          }, 
-                          "Rows": {
-                            "Row": [
-                              {
-                                "ColData": [
-                                  {
-                                    "id": "41", 
-                                    "value": "Mastercard"
-                                  }, 
-                                  {
-                                    "value": "157.72"
-                                  }
-                                ], 
-                                "type": "Data"
-                              }
-                            ]
-                          }, 
-                          "type": "Section", 
-                          "group": "CreditCards", 
-                          "Summary": {
-                            "ColData": [
-                              {
-                                "value": "Total Credit Cards"
-                              }, 
-                              {
-                                "value": "157.72"
-                              }
-                            ]
-                          }
-                        }, 
-                        {
-                          "Header": {
-                            "ColData": [
-                              {
-                                "value": "Other Current Liabilities"
-                              }, 
-                              {
-                                "value": ""
-                              }
-                            ]
-                          }, 
-                          "Rows": {
-                            "Row": [
-                              {
-                                "ColData": [
-                                  {
-                                    "id": "89", 
-                                    "value": "Arizona Dept. of Revenue Payable"
-                                  }, 
-                                  {
-                                    "value": "4.55"
-                                  }
-                                ], 
-                                "type": "Data"
-                              }, 
-                              {
-                                "ColData": [
-                                  {
-                                    "id": "90", 
-                                    "value": "Board of Equalization Payable"
-                                  }, 
-                                  {
-                                    "value": "401.98"
-                                  }
-                                ], 
-                                "type": "Data"
-                              }, 
-                              {
-                                "ColData": [
-                                  {
-                                    "id": "43", 
-                                    "value": "Loan Payable"
-                                  }, 
-                                  {
-                                    "value": "4000.00"
-                                  }
-                                ], 
-                                "type": "Data"
-                              }
-                            ]
-                          }, 
-                          "type": "Section", 
-                          "group": "OtherCurrentLiabilities", 
-                          "Summary": {
-                            "ColData": [
-                              {
-                                "value": "Total Other Current Liabilities"
-                              }, 
-                              {
-                                "value": "4406.53"
-                              }
-                            ]
-                          }
-                        }
-                      ]
-                    }, 
-                    "type": "Section", 
-                    "group": "CurrentLiabilities", 
-                    "Summary": {
-                      "ColData": [
-                        {
-                          "value": "Total Current Liabilities"
-                        }, 
-                        {
-                          "value": "6548.42"
-                        }
-                      ]
-                    }
-                  }, 
-                  {
-                    "Header": {
-                      "ColData": [
-                        {
-                          "value": "Long-Term Liabilities"
-                        }, 
-                        {
-                          "value": ""
-                        }
-                      ]
-                    }, 
-                    "Rows": {
-                      "Row": [
-                        {
-                          "ColData": [
-                            {
-                              "id": "44", 
-                              "value": "Notes Payable"
-                            }, 
-                            {
-                              "value": "25000.00"
-                            }
-                          ], 
-                          "type": "Data"
-                        }
-                      ]
-                    }, 
-                    "type": "Section", 
-                    "group": "LongTermLiabilities", 
-                    "Summary": {
-                      "ColData": [
-                        {
-                          "value": "Total Long-Term Liabilities"
-                        }, 
-                        {
-                          "value": "25000.00"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }, 
-              "type": "Section", 
-              "group": "Liabilities", 
-              "Summary": {
-                "ColData": [
-                  {
-                    "value": "Total Liabilities"
-                  }, 
-                  {
-                    "value": "31548.42"
-                  }
-                ]
-              }
-            }, 
-            {
-              "Header": {
-                "ColData": [
-                  {
-                    "value": "Equity"
-                  }, 
-                  {
-                    "value": ""
-                  }
-                ]
-              }, 
-              "Rows": {
-                "Row": [
-                  {
-                    "ColData": [
-                      {
-                        "id": "34", 
-                        "value": "Opening Balance Equity"
-                      }, 
-                      {
-                        "value": "-9337.50"
-                      }
-                    ], 
-                    "type": "Data"
-                  }, 
-                  {
-                    "ColData": [
-                      {
-                        "id": "2", 
-                        "value": "Retained Earnings"
-                      }, 
-                      {
-                        "value": "91.25"
-                      }
-                    ], 
-                    "type": "Data"
-                  }, 
-                  {
-                    "ColData": [
-                      {
-                        "value": "Net Income"
-                      }, 
-                      {
-                        "value": "2440.27"
-                      }
-                    ], 
-                    "type": "Data", 
-                    "group": "NetIncome"
-                  }
-                ]
-              }, 
-              "type": "Section", 
-              "group": "Equity", 
-              "Summary": {
-                "ColData": [
-                  {
-                    "value": "Total Equity"
-                  }, 
-                  {
-                    "value": "-6805.98"
-                  }
-                ]
-              }
-            }
-          ]
-        }, 
-        "type": "Section", 
-        "group": "TotalLiabilitiesAndEquity", 
-        "Summary": {
-          "ColData": [
-            {
-              "value": "TOTAL LIABILITIES AND EQUITY"
-            }, 
-            {
-              "value": "24742.44"
-            }
-          ]
-        }
-      }
-    ]
-  }, 
-  "Columns": {
-    "Column": [
-      {
-        "ColType": "Account", 
-        "ColTitle": "", 
-        "MetaData": [
-          {
-            "Name": "ColKey", 
-            "Value": "account"
-          }
+import datetime
+from typing import Any, Dict, List, Iterator, Optional, Union
+from decimal import Decimal
+from ..constants import CONSTANTS
+from ..enums import ClassificationType
+from ..utils import format_date
+from ..schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
+                               RowsModel, MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
+                               SectionHeaderModel, NestedRowsModel, SectionRowModel, ReportResponseModel)
+
+def create_header(start_date, end_date, currency: str = "USD") -> HeaderModel:
+    """Create the header section of the response."""
+    return HeaderModel(
+        Time=format_date(datetime.datetime.now()),
+        ReportName="GeneralLedger",
+        ReportBasis="Accrual",
+        StartPeriod=format_date(start_date) if start_date else None,
+        EndPeriod=format_date(end_date) if end_date else None,
+        Currency=currency or "USD",
+        Option=[
+            OptionModel(Name="AccountingStandard", Value="GAAP"),
+            OptionModel(Name="NoReportData", Value="false")
+            ],
+        SummarizeColumnsBy="Total"       
+    )
+
+def create_column_definition() -> ColumnsModel:
+    """Create the default ColumnsModel structure."""
+    return ColumnsModel(
+        Column=[
+            ColumnModel(
+                ColType="Account",
+                ColTitle="",
+                MetaData=[MetaDataModel(Name="ColKey", Value="account")]
+            ),
+            ColumnModel(
+                ColType="Money",
+                ColTitle="Total",
+                MetaData=[MetaDataModel(Name="ColKey", Value="total")]
+            )
         ]
-      }, 
-      {
-        "ColType": "Money", 
-        "ColTitle": "Total", 
-        "MetaData": [
-          {
-            "Name": "ColKey", 
-            "Value": "total"
-          }
-        ]
-      }
-    ]
-  }
-}
+    )
 
 
-@http.route('/api/balance_sheet', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-def get_balance_sheet(self, company_id, end_date=None, include_zero_balance=False, **kwargs):
-    try:
-        # Validate company
-        if not company_id:
-            return APIResponse.error_response(message='Company ID is required')
-        company = request.env['res.company'].sudo().browse(int(company_id))
-        if not company.exists():
-            return APIResponse.error_response(message=f'Invalid company_id: {company_id}')
+def create_data_row(id: Optional[str], value: str, amount: str) -> DataRowModel:
+    """Create a data row."""
+    return DataRowModel(
+        ColData=[
+            ColDataModel(id=id, value=value),
+            ColDataModel(value=amount)
+        ],
+        type="Data"
+    )
 
-        # Convert include_zero_balance to boolean
-        include_zero_balance = str(include_zero_balance).lower() == 'true'
-
-        # Get all accounts for the company
-        accounts = request.env['account.account'].sudo().search([
-            ('company_id', '=', int(company_id))
-        ], order='code, id')  # Order by code to maintain COA structure
-
-        # Build domain for move lines
-        domain = [
-            ('company_id', '=', int(company_id)),
-            ('move_id.state', '=', 'posted'),
-            ('account_id', 'in', accounts.ids)
-        ]
-
-        # Validate and add date filter
-        if end_date:
-            try:
-                end_date = fields.Date.from_string(end_date)
-                domain.append(('date', '<=', end_date))
-            except ValueError:
-                return APIResponse.error_response(message='Invalid date format. Use YYYY-MM-DD')
-
-        # Get all move lines
-        move_lines = request.env['account.move.line'].sudo().search(domain)
-
-        # Calculate balances for each account
-        account_balances = {}
-        for line in move_lines:
-            if line.account_id.id not in account_balances:
-                account_balances[line.account_id.id] = 0.0
-            account_balances[line.account_id.id] += line.balance
-
-        # Initialize balance sheet structure
-        balance_sheet = {
-            'assets': [],
-            'liabilities': [],
-            'equity': [],
-            'off_balance': []
-        }
-
-        # Process each account and add to appropriate section
-        for account in accounts:
-            balance = account_balances.get(account.id, 0.0)
-            if include_zero_balance or balance != 0:
-                account_data = {
-                    'id': account.id,
-                    'code': account.code,
-                    'name': account.name,
-                    'balance': balance,
-                    'account_type': account.account_type,
-                }
-
-                # Categorize based on internal group
-                if account.internal_group == 'asset':
-                    balance_sheet['assets'].append(account_data)
-                elif account.internal_group == 'liability':
-                    balance_sheet['liabilities'].append(account_data)
-                elif account.internal_group == 'equity':
-                    balance_sheet['equity'].append(account_data)
-                elif account.internal_group == 'off_balance':
-                    balance_sheet['off_balance'].append(account_data)
-
-        # Calculate totals
-        total_assets = sum(account['balance'] for account in balance_sheet['assets'])
-        total_liabilities = sum(account['balance'] for account in balance_sheet['liabilities'])
-        total_equity = sum(account['balance'] for account in balance_sheet['equity'])
-
-        # Add summary
-        balance_sheet['summary'] = {
-            'total_assets': total_assets,
-            'total_liabilities': total_liabilities,
-            'total_equity': total_equity,
-            'total_liabilities_and_equity': total_liabilities + total_equity,
-            'as_of_date': end_date.strftime('%Y-%m-%d') if end_date else fields.Date.today().strftime('%Y-%m-%d'),
-        }
-
-        return APIResponse.success_response(balance_sheet)
-
-    except Exception as e:
-        return APIResponse.error_response(
-            message='Error generating balance sheet',
-            errors=str(e),
-            status=500
+def create_section(title: str, data_rows: List[Union[SectionRowModel, DataRowModel]], group: Optional[str], total_value: str) -> SectionRowModel:
+    """Create a section with header, rows, and summary."""
+    return SectionRowModel(
+        Header=SectionHeaderModel(
+            ColData=[
+                ColDataModel(value=title),
+                ColDataModel(value="")
+            ]
+        ),
+        Rows=NestedRowsModel(Row=data_rows),
+        type="Section",
+        group=group,
+        Summary=SummaryModel(
+            ColData=[
+                ColDataModel(value=f"TOTAL {title}"),
+                ColDataModel(value=total_value)
+            ]
         )
+    )
+
+def prepare_account_balance_response(
+        request: Any, 
+        start_date: Any, 
+        end_date: Any,
+        company_id: int,
+        domain: List[Any],
+        currency: str = None
+        ):
+    ASSET = ClassificationType.ASSET
+    LIABILITY = ClassificationType.LIABILITY
+    EQUITY = ClassificationType.EQUITY
+
+    # Get accounts grouped by type
+    accounts = request.env['account.account'].sudo().search([
+        ('company_id', '=', company_id),
+        ('internal_group', 'in', [ASSET, LIABILITY, EQUITY])
+    ])
+    domain.append(('account_id', 'in', accounts.ids))
+
+    # Read account balances using read_group
+    account_balances = request.env['account.move.line'].sudo().read_group(
+        domain=domain,
+        fields=['account_id', 'balance'],
+        groupby=['account_id']
+    )
+
+    # Create balance lookup dictionary
+    balance_dict = {
+        group['account_id'][0]: group['balance'] 
+        for group in account_balances
+    }
+
+    # Initialize categories and totals
+    account_types = {
+        ASSET: {},
+        LIABILITY: {},
+        EQUITY: {}
+    }
+    totals = {
+        ASSET: {'total': 0, 'types': {}},
+        LIABILITY: {'total': 0, 'types': {}},
+        EQUITY: {'total': 0, 'types': {}}
+    }
+
+    # Process accounts and their balances
+    for account in accounts:
+        balance = balance_dict.get(account.id, 0.0)
+        account_type = account.account_type  
+        internal_group = account.internal_group 
         
+        # Create data row for the account
+        data_row = create_data_row(
+            id=str(account.id),
+            value=account.name,
+            amount=str(round(balance, 2))
+        )
+
+        # Initialize account type if not exists
+        if account_type not in account_types[internal_group]:
+            account_types[internal_group][account_type] = []
+        
+        # Initialize total for account type if not exists
+        if account_type not in totals[internal_group]['types']:
+            totals[internal_group]['types'][account_type] = 0
+
+        # Add data row to appropriate category
+        account_types[internal_group][account_type].append(data_row)
+        
+        # Update totals
+        totals[internal_group]['types'][account_type] += balance
+        totals[internal_group]['total'] += balance
+
+    response = ReportResponseModel(
+        Header=create_header(start_date, end_date, currency),
+        Columns=create_column_definition(),
+        Rows=RowsModel(Row=[])
+    )
+
+    # Create main sections (Assets, Liabilities, Equity)
+    main_sections = []
+    for group_name, group_data in [
+        ("ASSETS", (ASSET, account_types[ASSET])),
+        ("LIABILITIES", (LIABILITY, account_types[LIABILITY])),
+        ("EQUITY", (EQUITY, account_types[EQUITY]))
+    ]:
+        internal_group, type_data = group_data
+        type_sections = []
+
+        # Create sections for each account type
+        for acc_type, accounts_list in type_data.items():
+            if accounts_list:  # Only create section if there are accounts
+                type_section = create_section(
+                    acc_type.upper(),
+                    accounts_list,
+                    f"Total{acc_type.capitalize()}",
+                    str(round(totals[internal_group]['types'][acc_type], 2))
+                )
+                type_sections.append(type_section)
+
+        # Create main section with account type subsections
+        main_section = create_section(
+            group_name,
+            type_sections,
+            f"Total{group_name}",
+            str(round(totals[internal_group]['total'], 2))
+        )
+        main_sections.append(main_section)
+
+    # Update rows with all sections
+    response.Rows.Row = main_sections
+
+    return response

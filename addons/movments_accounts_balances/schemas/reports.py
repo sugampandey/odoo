@@ -6,6 +6,7 @@ class OptionModel(BaseModel):
     Name: Optional[str] = None
     Value: Optional[str] = None
 
+
 class HeaderModel(BaseModel):
     Time: str
     ReportName: str 
@@ -14,6 +15,9 @@ class HeaderModel(BaseModel):
     EndPeriod: Optional[str] = None
     Currency: str 
     Option: Optional[List[OptionModel]] = None
+    DateMacro: Optional[str] = None
+    SummarizeColumnsBy: Optional[str] = None
+
 
 class MetaDataModel(BaseModel):
     Name: str
@@ -49,11 +53,12 @@ class SectionRowModel(BaseModel):
     Rows: NestedRowsModel
     type: str 
     Summary: SummaryModel
+    group: Optional[str] = None
 
 class RowsModel(BaseModel):
     Row: List[SectionRowModel]
 
-class GeneralLedgerResponseModel(BaseModel):
+class ReportResponseModel(BaseModel):
     Header: HeaderModel
     Columns: ColumnsModel
     Rows: RowsModel

@@ -1,208 +1,18 @@
 from requests import Response
+from .repository.company import CompanyService
 from odoo.http import request
 import json
 from typing import Any, Dict, Optional, Union
 import datetime 
 from .schemas.error import ErrorResponseModel, ErrorDetail, FaultModel, ResponseHeaderModel, ResponseModel
 from http import HTTPStatus
+from pydantic import ValidationError
+from .logger.logger import logger
 
 class APIResponse:
     """
     Utility class for handling API responses with consistent formatting
     """
-
-    # @staticmethod
-    # def _create_response(
-    #     data: Dict[str, Any],
-    #     status: int = HTTPStatus.OK
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Creates a formatted response dictionary with headers
-        
-    #     Args:
-    #         data: Response data dictionary
-    #         status: HTTP status code
-            
-    #     Returns:
-    #         Dict containing response data and headers
-    #     """
-    #     return {
-    #         "response": data,
-    #         "headers": {
-    #             "Content-Type": "application/json",
-    #             "Access-Control-Allow-Origin": "*",
-    #             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    #             "Access-Control-Allow-Headers": "Content-Type, X-Company-Id"
-    #         },
-    #         "status": status
-    #     }
-
-    # @classmethod
-    # def success_response(
-    #     cls,
-    #     data: Dict[str, Any],
-    #     status: int = HTTPStatus.OK,
-    #     message: Optional[str] = None
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Creates a success response
-        
-    #     Args:
-    #         data: Response payload
-    #         status: HTTP status code (default: 200)
-    #         message: Optional success message
-            
-    #     Returns:
-    #         Dict containing formatted success response
-    #     """
-    #     response_data = {
-    #         "status": "success",
-    #         "data": data
-    #     }
-        
-    #     if message:
-    #         response_data["message"] = message
-            
-    #     return cls._create_response(response_data, status)
-
-    # @classmethod
-    # def error_response(
-    #     cls,
-    #     message: str,
-    #     errors: Any = None,
-    #     status: int = HTTPStatus.INTERNAL_SERVER_ERROR
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Creates an error response
-        
-    #     Args:
-    #         message: Error message
-    #         errors: Detailed error information (optional)
-    #         status: HTTP status code (default: 500)
-            
-    #     Returns:
-    #         Dict containing formatted error response
-    #     """
-    #     response_data = {
-    #         "status": "error",
-    #         "message": message
-    #     }
-        
-    #     if errors:
-    #         response_data["errors"] = errors
-            
-    #     return cls._create_response(response_data, status)
-
-    # @classmethod
-    # def validation_error_response(
-    #     cls,
-    #     message: str,
-    #     errors: Any
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Creates a validation error response
-        
-    #     Args:
-    #         message: Validation error message
-    #         errors: Validation error details
-            
-    #     Returns:
-    #         Dict containing formatted validation error response
-    #     """
-    #     return cls.error_response(
-    #         message=message,
-    #         errors=errors,
-    #         status=HTTPStatus.UNPROCESSABLE_ENTITY
-    #     )
-
-    # @classmethod
-    # def not_found_response(
-    #     cls,
-    #     message: str = "Resource not found",
-    #     errors: Any = None
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Creates a not found error response
-        
-    #     Args:
-    #         message: Not found message (default: "Resource not found")
-    #         errors: Additional error details (optional)
-            
-    #     Returns:
-    #         Dict containing formatted not found response
-    #     """
-    #     return cls.error_response(
-    #         message=message,
-    #         errors=errors,
-    #         status=HTTPStatus.NOT_FOUND
-    #     )
-
-    # @classmethod
-    # def bad_request_response(
-    #     cls,
-    #     message: str,
-    #     errors: Any = None
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Creates a bad request error response
-        
-    #     Args:
-    #         message: Bad request message
-    #         errors: Additional error details (optional)
-            
-    #     Returns:
-    #         Dict containing formatted bad request response
-    #     """
-    #     return cls.error_response(
-    #         message=message,
-    #         errors=errors,
-    #         status=HTTPStatus.BAD_REQUEST
-    #     )
-
-    # @classmethod
-    # def unauthorized_response(
-    #     cls,
-    #     message: str = "Unauthorized access",
-    #     errors: Any = None
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Creates an unauthorized error response
-        
-    #     Args:
-    #         message: Unauthorized message (default: "Unauthorized access")
-    #         errors: Additional error details (optional)
-            
-    #     Returns:
-    #         Dict containing formatted unauthorized response
-    #     """
-    #     return cls.error_response(
-    #         message=message,
-    #         errors=errors,
-    #         status=HTTPStatus.UNAUTHORIZED
-    #     )
-
-    # @staticmethod
-    # def format(success, message, data=None, errors=None, status=200):
-    #     """
-    #     Formats a standardized API response.
-        
-    #     Args:
-    #         success: Boolean indicating success or failure
-    #         message: A short message describing the response
-    #         data: The data payload (optional)
-    #         errors: Details about errors (optional)
-    #         status: HTTP status code (default: 200)
-        
-    #     Returns:
-    #         A formatted Response object
-    #     """
-    #     response = {
-    #         "success": success,
-    #         "data": data if data is not None else {},
-    #         "errors": errors if errors is not None else None,
-    #     }
-    #     return json_response(response, status)
-    
     @staticmethod
     def error_response(message, errors=None, status=400, error_type=None):
         """Creates an error response."""
@@ -585,3 +395,47 @@ def validate_and_convert_data(data: Dict, expected_fields: Dict):
         return False, validation_result
 
     return True, converted_data
+
+
+def validate_company_from_request(request) -> Optional[Dict[str, Any]]:
+    company_service = CompanyService(request.env)
+    company_id = get_company_from_headers(request)
+    if not company_id:
+        return APIResponse.error_response(message='Company ID is required',
+            errors='Missing CompanyId', status=HTTPStatus.BAD_REQUEST
+        )
+
+    is_valid, error_message = company_service.validate_company(company_id)
+    if not is_valid:
+        return APIResponse.error_response(message=f'Invalid company: {error_message}',
+            errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+        )
+
+    return None
+
+
+def validate_request_data(request, model_class) -> Dict[str, Any]:
+    """
+    Generic function to validate request data against a Pydantic model
+    
+    Args:
+        request: The incoming request object
+        model_class: The Pydantic model class to validate against
+        
+    Returns:
+        Dict[str, Any]: Validated model instance or error response
+    """
+    try:
+        data = get_request_data(request)
+        logger.debug(f"Received data: {data}")
+        
+        validated_model = model_class(**data)
+        return validated_model
+    except ValidationError as e:
+        return APIResponse.error_response(
+            message='Invalid request data',
+            errors=e.errors(), 
+            status=HTTPStatus.UNPROCESSABLE_ENTITY
+        )
+
+

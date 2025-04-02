@@ -2,8 +2,8 @@ from .payment_method import PaymentMethod
 from ..enums import PaymentMethodType, JournalType, AccountType
 
 class Journal:
-    asset_method_types = ['asset_cash', 'asset_current']
-    liability_method_types = ['liability_current', 'liability_credit_card']
+    asset_method_types = [AccountType.ASSET_CASH, AccountType.ASSET_CURRENT]
+    liability_method_types = [AccountType.LIABILITY_CURRENT, AccountType.LIABILITY_CREDIT_CARD]
 
     @classmethod
     def get_journal_code(cls, request, company_id):

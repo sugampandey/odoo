@@ -23,9 +23,33 @@ class PaymentMethodType(str, Enum):
 
 class AccountType(str, Enum):
     """Enum for account types"""
+    ASSET_RECEIVABLE = 'asset_receivable'
+    ASSET_CASH = 'asset_cash'
+    ASSET_CURRENT = 'asset_current'
+    ASSET_NON_CURRENT = 'asset_non_current'
+    ASSET_PREPAYMENTS = 'asset_prepayments'
+    ASSET_FIXED = 'asset_fixed'
+    LIABILITY_PAYABLE = 'liability_payable'
+    LIABILITY_CREDIT_CARD = 'liability_credit_card'
+    LIABILITY_CURRENT = 'liability_current'
+    LIABILITY_NON_CURRENT = 'liability_non_current'
+    EQUITY = 'equity'
+    EQUITY_UNAFFECTED = 'equity_unaffected'
+    INCOME = 'income'
+    INCOME_OTHER = 'income_other'
+    EXPENSE = 'expense'
+    EXPENSE_DEPRECIATION = 'expense_depreciation'
+    EXPENSE_DIRECT_COST = 'expense_direct_cost'
+    OFF_BALANCE = 'off_balance'
+
+class ClassificationType(str, Enum):
+    """Enum for classification types"""
+    ASSET = 'asset'
+    LIABILITY = 'liability'
+    EQUITY = 'equity'
     INCOME = 'income'
     EXPENSE = 'expense'
-
+    OFF_BALANCE = 'off_balance'
 
 class ColumnMapping(NamedTuple):
     column_type: type

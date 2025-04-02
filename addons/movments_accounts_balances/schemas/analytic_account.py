@@ -1,239 +1,180 @@
-from typing import Optional, Literal, get_type_hints, Type, Union, Any
+from typing import List, Optional, Literal, get_type_hints, Type, Union, Any
+import uuid
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from .common import ParentRefModel, MetaDataModel, HEADERS
+from .common import ParentRefModel, MetaDataModel, HEADERS, PaginationMixin
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
 
-class AnalyticClassCreateRequestModel(RequestSchemaGenerator):
-    def __init__(
-        self,
-        Name: str,
-        ParentRef: Optional[ParentRefModel] = None,
-    ):
-        self.Name = Name
-        self.ParentRef = ParentRef
 
-    def to_dict(self):
+class MetaDataModel(BaseModel):
+    CreateTime: datetime
+    LastUpdatedTime: datetime
+
+class ParentRefModel(BaseModel):
+    value: Optional[str] = None
+    name: Optional[str] = None
+
+class AnalyticClassCreateRequestModel(BaseModel):
+    Name: str = Field(..., min_length=1, max_length=256)
+    ParentRef: Optional[ParentRefModel] = Field(None, description="Parent reference")
+
+    class Config:
+        from_attributes = True
+
+    def create_analytic_class_vals(self, company_id: int) -> dict:
         return {
-            'Name': self.Name,
-            'ParentRef': self.ParentRef.to_dict() if self.ParentRef else None,
+            "name": self.Name,
+            "code": str(uuid.uuid4()).replace('-', '.'),
+            "company_id": company_id
         }
 
+
+class AnalyticClassModel(BaseModel):
+    Name: str = Field(..., min_length=1, max_length=256)
+    FullyQualifiedName: Optional[str] = None
+    domain: Optional[str] = None
+    SubClass: Optional[bool] = False
+    sparse: Optional[bool] = False
+    Active: Optional[bool] = True
+    Id: Optional[int] = None
+    MetaData: Optional[MetaDataModel] = None
+    ParentRef: Optional[ParentRefModel] = None
+    SyncToken: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
     @classmethod
-    def from_dict(cls, data: dict):
+    def analytic_class_object(cls, analytic_class: dict) -> "AnalyticClassModel":
+        meta_data = MetaDataModel(
+                CreateTime=analytic_class.create_date,
+                LastUpdatedTime=analytic_class.write_date
+            )
         return cls(
-            Name=data.get('Name'),
-            ParentRef=ParentRefModel.from_dict(data.get('ParentRef', {})),
+            Name=analytic_class.name,
+            Active=analytic_class.active,
+            Id=analytic_class.id,
+            MetaData=meta_data,
         )
 
-class AnalyticClassModel(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        Name: str,
-        FullyQualifiedName: Optional[str] = None,
-        domain: Optional[str] = None,
-        SubClass: Optional[bool] = None,
-        sparse: Optional[bool] = None,
-        Active: Optional[bool] = None,
-        Id: Optional[str] = None,
-        MetaData: Optional[MetaDataModel] = None,
-        ParentRef: Optional[ParentRefModel] = None,
-        SyncToken: Optional[str] = None,
-    ):
-        self.FullyQualifiedName = FullyQualifiedName
-        self.domain = domain
-        self.Name = Name
-        self.SubClass = SubClass
-        self.sparse = sparse
-        self.Active = Active
-        self.Id = Id
-        self.MetaData = MetaData
-        self.ParentRef = ParentRef
-        self.SyncToken = SyncToken
+class AnalyticClassQueryResponseModel(PaginationMixin):
+    totalCount: int = Field(..., description="Total count of records")
+    Class: List[AnalyticClassModel]
 
-    def to_dict(self):
-        return {
-            'FullyQualifiedName': self.FullyQualifiedName,
-            'domain': self.domain,
-            'Name': self.Name,
-            'SubClass': self.SubClass,
-            'sparse': self.sparse,
-            'Active': self.Active,
-            'Id': self.Id,
-            'MetaData': self.MetaData.to_dict() if self.MetaData else None,
-            'ParentRef': self.ParentRef.to_dict() if self.ParentRef else None,
-            'SyncToken': self.SyncToken,
-        }
+    @field_validator('Class')
+    def validate_class(cls, analytic_class: list[AnalyticClassModel]) -> list[AnalyticClassModel]:
+        if not analytic_class:
+            raise ValueError("No analytic class found")
+        return analytic_class
+    
+class AnalyticClassResponseModel(BaseModel):
+    Class: AnalyticClassModel
+    time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def create_analytic_class_response(cls, analytic_class: AnalyticClassModel) -> "AnalyticClassResponseModel":
         return cls(
-            FullyQualifiedName=data.get('FullyQualifiedName'),
-            domain=data.get('domain'),
-            Name=data.get('Name'),
-            SubClass=data.get('SubClass'),
-            sparse=data.get('sparse'),
-            Active=data.get('Active'),
-            Id=data.get('Id'),
-            MetaData=MetaDataModel.from_dict(data.get('MetaData', {})),
-            ParentRef=ParentRefModel.from_dict(data.get('ParentRef', {})),
-            SyncToken=data.get('SyncToken'),
-        )
-
-class AnalyticClassResponseModel(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        Class: AnalyticClassModel,
-        time: str
-    ):
-        self.Class = Class
-        self.time = time
-
-    def to_dict(self) -> dict:
-        return {
-            'Class': self.Class.to_dict(),
-            'time': self.time
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            Class=AnalyticClassModel.from_dict(data.get('Class', {})),
-            time=data.get('time', '')
+            Class=AnalyticClassModel.analytic_class_object(analytic_class),
+            time=datetime.now()
         )
     
 
-class AnalyticClassQueryResponseModel(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        startPosition: int,
-        Class: list[AnalyticClassModel],
-        maxResults: int,
-        totalCount: int
-    ):
-        self.startPosition = startPosition
-        self.Class = Class
-        self.maxResults = maxResults
-        self.totalCount = totalCount
-
-    def to_dict(self) -> dict:
-        return {
-            'startPosition': self.startPosition,
-            'Class': [Class.to_dict() for Class in self.Class],
-            'maxResults': self.maxResults,
-            'totalCount': self.totalCount
-        }
+class AnalyticClassListResponseModel(BaseModel):
+    QueryResponse: AnalyticClassQueryResponseModel = Field(..., description="Query response containing analytic class list")
+    time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
     @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            startPosition=data.get('startPosition', 0),
-            Class=[AnalyticClassModel.from_dict(Class_data) for Class_data in data.get('Class', [])],
-            maxResults=data.get('maxResults', 0),
-            totalCount=data.get('totalCount', 0)
+    def list_analytic_class_response(cls, analytic_classes: List[AnalyticClassModel], total_count : int, start_position: int = 0, max_results: int = 100) -> "AnalyticClassListResponseModel":
+        query_response = AnalyticClassQueryResponseModel(
+            startPosition=start_position,
+            maxResults=max_results,
+            totalCount=total_count,
+            Class=analytic_classes
         )
-
-
-class AnalyticClassListResponseModel(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        QueryResponse: AnalyticClassQueryResponseModel,
-        time: str
-    ):
-        self.QueryResponse = QueryResponse
-        self.time = time
-
-    def to_dict(self) -> dict:
-        return {
-            'QueryResponse': self.QueryResponse.to_dict(),
-            'time': self.time
-        }
-    
-    @classmethod
-    def from_dict(cls, data: dict):
         return cls(
-            QueryResponse=AnalyticClassQueryResponseModel.from_dict(data.get('QueryResponse', {})),
-            time=data.get('time', '')
+            QueryResponse=query_response,
+            time=datetime.now()
         )
     
-ANALYTIC_ACCOUNT_CREATE_RESPONSE = ANALYTIC_ACCOUNT_GET_RESPONSE = AnalyticClassResponseModel.get_response_schema()
-ANALYTIC_ACCOUNT_LIST_RESPONSE = AnalyticClassListResponseModel.get_response_schema()
+# ANALYTIC_ACCOUNT_CREATE_RESPONSE = ANALYTIC_ACCOUNT_GET_RESPONSE = AnalyticClassResponseModel.get_response_schema()
+# ANALYTIC_ACCOUNT_LIST_RESPONSE = AnalyticClassListResponseModel
 
-ANALYTIC_ACCOUNT_SCHEMA = AnalyticClassCreateRequestModel.get_request_schema()
+# ANALYTIC_ACCOUNT_SCHEMA = AnalyticClassCreateRequestModel
 
-ANALYTIC_ACCOUNT_CREATE_PARAMS = {
-    'headers': HEADERS,
-    'body': {
-        'schema': ANALYTIC_ACCOUNT_SCHEMA,
-        'required': True
-    }
-}
+# ANALYTIC_ACCOUNT_CREATE_PARAMS = {
+#     'headers': HEADERS,
+#     'body': {
+#         'schema': ANALYTIC_ACCOUNT_SCHEMA,
+#         'required': True
+#     }
+# }
 
-# Parameters for different endpoints
-ANALYTIC_ACCOUNT_LIST_PARAMS = {
-    'query': [
-        {
-            'name': 'company_id',
-            'type': 'integer',
-            'description': 'Filter by company ID',
-            'required': False
-        },
-        {
-            'name': 'active',
-            'type': 'boolean',
-            'description': 'Filter by active status',
-            'required': False
-        },
-        {
-            'name': 'maxresults',
-            'type': 'integer',
-            'description': 'Number of records to return (default: 100)',
-            'required': False,
-            'default': 100
-        },
-        {
-            'name': 'startposition',
-            'type': 'integer',
-            'description': 'Number of records to skip (default: 0)',
-            'required': False,
-            'default': 0
-        },
-    ]
-}
+# # Parameters for different endpoints
+# ANALYTIC_ACCOUNT_LIST_PARAMS = {
+#     'query': [
+#         {
+#             'name': 'company_id',
+#             'type': 'integer',
+#             'description': 'Filter by company ID',
+#             'required': False
+#         },
+#         {
+#             'name': 'active',
+#             'type': 'boolean',
+#             'description': 'Filter by active status',
+#             'required': False
+#         },
+#         {
+#             'name': 'maxresults',
+#             'type': 'integer',
+#             'description': 'Number of records to return (default: 100)',
+#             'required': False,
+#             'default': 100
+#         },
+#         {
+#             'name': 'startposition',
+#             'type': 'integer',
+#             'description': 'Number of records to skip (default: 0)',
+#             'required': False,
+#             'default': 0
+#         },
+#     ]
+# }
 
-ANALYTIC_ACCOUNT_GET_PARAMS = {
-    'path': [
-        {
-            'name': 'analytic_class_id',
-            'type': 'integer',
-            'description': 'ID of the analytic class to retrieve',
-            'required': True
-        }
-    ],
-    'query': [
-        {
-            'name': 'company_id',
-            'type': 'integer',
-            'description': 'Filter by company ID',
-            'required': True
-        },
-    ]
-}
+# ANALYTIC_ACCOUNT_GET_PARAMS = {
+#     'path': [
+#         {
+#             'name': 'analytic_class_id',
+#             'type': 'integer',
+#             'description': 'ID of the analytic class to retrieve',
+#             'required': True
+#         }
+#     ],
+#     'query': [
+#         {
+#             'name': 'company_id',
+#             'type': 'integer',
+#             'description': 'Filter by company ID',
+#             'required': True
+#         },
+#     ]
+# }
 
-ANALYTIC_ACCOUNT_DELETE_PARAMS = {
-    'path': [
-        {
-            'name': 'analytic_class_id',
-            'type': 'integer',
-            'description': 'ID of the analytic class to delete',
-            'required': True
-        }
-    ],
-    'query': [
-        {
-            'name': 'company_id',
-            'type': 'integer',
-            'description': 'Company ID for validation',
-            'required': True
-        }
-    ]
-}
+# ANALYTIC_ACCOUNT_DELETE_PARAMS = {
+#     'path': [
+#         {
+#             'name': 'analytic_class_id',
+#             'type': 'integer',
+#             'description': 'ID of the analytic class to delete',
+#             'required': True
+#         }
+#     ],
+#     'query': [
+#         {
+#             'name': 'company_id',
+#             'type': 'integer',
+#             'description': 'Company ID for validation',
+#             'required': True
+#         }
+#     ]
+# }
