@@ -1,9 +1,4 @@
-from typing import Any, Dict, Optional
-import uuid
-
-from ..common import validate_and_convert_data
-from ..controllers.accounts import ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
-from odoo import models, api, fields
+from odoo import models, fields
 
 
 # column mapping 

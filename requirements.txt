@@ -65,3 +65,4 @@ zeep==4.0.0
 
 PyPDF2==2.12.1
 pydantic==2.10.6
+pydantic[email]

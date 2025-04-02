@@ -21,13 +21,13 @@ class AccountAPI(http.Controller):
         try:
             # Get and validate request data
             data = validate_request_data(request, AccountCreateRequestModel)
-            if isinstance(data, dict):  # If error response
+            if not isinstance(data, AccountCreateRequestModel):  # If error response
                 return data
 
-            # Validate company
-            company_validation = validate_company_from_request(request)
-            if company_validation:
-                return company_validation
+            # # Validate company
+            # company_validation = validate_company_from_request(request)
+            # if company_validation:
+            #     return company_validation
 
             # Create account
             return self._create_account_record(request, data)
@@ -129,6 +129,9 @@ class AccountAPI(http.Controller):
     
     def _create_account_record(self, request, account_model: AccountCreateRequestModel) -> Dict[str, Any]:
         company_id = get_company_from_headers(request)
+        if not isinstance(company_id, int):  # If error response
+                return company_id
+        
         payment_method = get_payment_method_from_headers(request)
         account_vals = account_model.create_account_vals(request, company_id)
 

@@ -3,7 +3,7 @@ from odoo import http
 from http import HTTPStatus
 from odoo.http import request
 from pydantic import ValidationError
-from ..common import APIResponse, get_company_from_headers, validate_request_data, validate_company_from_request
+from ..common import APIResponse, get_company_from_headers, validate_request_data
 
 # from ..swagger.common import swagger_doc
 # from ..swagger.analytic_account import analytic_accounts_docs
@@ -20,13 +20,13 @@ class AnalyticAccountAPI(http.Controller):
         logger.info("Processing create Analytic Account request")
         try:
             data = validate_request_data(request, AnalyticClassCreateRequestModel)
-            if isinstance(data, dict):  # If error response
+            if not isinstance(data, AnalyticClassCreateRequestModel):  # If error response
                 return data
             
-            # Validate company
-            company_validation = validate_company_from_request(request)
-            if company_validation:
-                return company_validation
+            # # Validate company
+            # company_validation = validate_company_from_request(request)
+            # if company_validation:
+            #     return company_validation
             
             return self._create_analytic_account_record(request, data)
         except Exception as e:
@@ -137,6 +137,9 @@ class AnalyticAccountAPI(http.Controller):
     
     def _create_analytic_account_record(self, request, analytic_account_model: AnalyticClassCreateRequestModel) -> Dict[str, Any]:
         company_id = get_company_from_headers(request)
+        if not isinstance(company_id, int):  # If error response
+                return company_id
+        
         analytic_account_vals = analytic_account_model.create_analytic_class_vals(company_id)
 
         cursor = request.env.cr

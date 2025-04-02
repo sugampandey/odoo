@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Union
 import datetime 
 from .schemas.error import ErrorResponseModel, ErrorDetail, FaultModel, ResponseHeaderModel, ResponseModel
 from http import HTTPStatus
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from .logger.logger import logger
 
 class APIResponse:
@@ -58,7 +58,19 @@ def get_request_data(request):
         return request.params
     
 def get_company_from_headers(request):
-    return int(request.httprequest.headers.get('X-Company-Id')) if request.httprequest.headers.get('X-Company-Id') else None
+    company_id = int(request.httprequest.headers.get('X-Company-Id')) if request.httprequest.headers.get('X-Company-Id') else None
+    if not company_id:
+        return APIResponse.error_response(message='Company ID is required',
+            errors='Missing CompanyId', status=HTTPStatus.BAD_REQUEST
+        )
+
+    company_service = CompanyService(request.env)
+    is_valid, error_message = company_service.validate_company(company_id)
+    if not is_valid:
+        return APIResponse.error_response(message=f'Invalid company: {error_message}',
+            errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+        )
+    return company_id
 
 def get_payment_method_from_headers(request):
     return request.httprequest.headers.get('X-PaymentMethod') if request.httprequest.headers.get('X-PaymentMethod') else None
@@ -414,7 +426,7 @@ def validate_company_from_request(request) -> Optional[Dict[str, Any]]:
     return None
 
 
-def validate_request_data(request, model_class) -> Dict[str, Any]:
+def validate_request_data(request, model_class: type[BaseModel]) -> Union[BaseModel, Dict[str, Any]]:
     """
     Generic function to validate request data against a Pydantic model
     

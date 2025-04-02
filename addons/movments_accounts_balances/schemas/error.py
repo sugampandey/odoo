@@ -1,5 +1,5 @@
 from .schema_generator import ResponseSchemaGenerator
-from typing import List, Optional
+from typing import List, Optional, Any
 import time
 
 class ErrorDetail(ResponseSchemaGenerator):
@@ -7,7 +7,7 @@ class ErrorDetail(ResponseSchemaGenerator):
         self,
         message: str,
         code: Optional[str] = None,
-        detail: Optional[str] = None,
+        detail: Optional[Any] = None,
         element: Optional[str] = None
     ):
         self.message = message
