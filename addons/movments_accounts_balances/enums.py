@@ -3,7 +3,15 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Dict, Any, NamedTuple
 
+class PostingType(str, Enum):
+    DEBIT = "Debit"
+    CREDIT = "Credit"
 
+class DetailType(str, Enum):
+    JOURNAL_ENTRY = 'JournalEntryLineDetail'
+    DESCRIPTION = 'DescriptionLineDetail'
+
+    
 class JournalType(str, Enum):
     """Enum for journal types"""
     SALE = 'sale'

@@ -44,7 +44,7 @@ class ReportsAPI(http.Controller):
         domain = [('company_id', '=', int(company_id))]
         
         if start_date:
-            domain.extend(('date', '>=', start_date))
+            domain.append(('date', '>=', start_date))
         if end_date:
             domain.append(('date', '<=', end_date))
         if partner_id:

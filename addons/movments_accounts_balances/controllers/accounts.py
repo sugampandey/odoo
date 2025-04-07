@@ -8,7 +8,7 @@ from ..swagger.common import swagger_doc, swagger_document
 # from ..swagger.accounts import accounts_docs
 from ..schemas.accounts import AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountListResponseModel
 from ..mapping.accounts import ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING, ACCOUNT_TYPE_MAPPING
-from ..repository.journal import Journal
+from ..repository.journal import JournalService
 from ..repository.account import AccountService
 from ..repository.company import CompanyService
 
@@ -75,7 +75,7 @@ class AccountAPI(http.Controller):
             # Validate and add company filter
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
-                return [], APIResponse.error_response(message=f'Invalid company: {error_message}',
+                return APIResponse.error_response(message=f'Invalid company: {error_message}',
                     errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
                 )
             domain.append(('company_id', '=', int(company_id)))
@@ -150,8 +150,17 @@ class AccountAPI(http.Controller):
     def _save_account(self, request, account_vals: Dict[str, Any], payment_method: str) -> Any:
         account_service = AccountService(request.env)
         account = account_service.create(account_vals)
-        Journal.create(request, account.name, account.code, account.company_id.id, 
-                       account.id, account.account_type, payment_method)
+        
+        journal_vals = {
+            'name': account.name,
+            'code': account.code,
+            'company_id': account.company_id.id,
+            'default_account_id': account.id,
+            'account_type': account.account_type,
+            'payment_method': payment_method,
+        }
+        journal_service = JournalService(request.env)
+        journal_service.create(journal_vals)
         return account
 
     def _prepare_success_response(self, account: Any) -> Dict[str, Any]:

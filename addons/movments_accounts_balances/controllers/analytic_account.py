@@ -87,7 +87,7 @@ class AnalyticAccountAPI(http.Controller):
             # Validate and add company filter
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
-                return [], APIResponse.error_response(message=f'Invalid company: {error_message}',
+                return APIResponse.error_response(message=f'Invalid company: {error_message}',
                     errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
                 )
             domain.append(('company_id', '=', int(company_id)))

@@ -1,549 +1,334 @@
+from decimal import Decimal
+from pydantic import BaseModel, Field, field_validator, model_validator
+from datetime import datetime
 from typing import Optional, List
 from enum import Enum
-from .common import (CurrencyRefModel, MetaDataModel, TaxCodeRefModel, ClassRefModel, AccountRefModel, HEADERS)
-from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
 
+from ..utils import get_currency_id
+from .common import (CurrencyRefModel, MetaDataModel, PaginationMixin, TaxCodeRefModel, ClassRefModel, AccountRefModel, HEADERS)
+from ..enums import PostingType, DetailType
 
-class PostingType(str, Enum):
-    DEBIT = "Debit"
-    CREDIT = "Credit"
+# description = ref
+# account_ref ={name-name, value-id}
+# class_ref ={name-name, value-id}
+# entity = {type=Vendor/Customer , Entityref = {name-name, value-id}}
+# Amount = amount
+# postingtype = Debit/Credit -- debit/credit columns
+# Detailtype= JournalEntryLineDetail
+# Id = id
+
+class CurrencyRefModel(BaseModel):
+    name: Optional[str] = None
+    value: Optional[str] = None
+
+class MetaDataModel(BaseModel):
+    CreateTime: datetime
+    LastUpdatedTime: datetime
+
+class TaxCodeRefModel(BaseModel):
+    value: str = Field(..., description="Tax code value")
+    name: Optional[str] = Field(None, description="Tax code name")
+
+class ClassRefModel(BaseModel):
+    value: str = Field(..., description="Class reference value")
+    name: Optional[str] = Field(None, description="Class reference name")
+
+class AccountRefModel(BaseModel):
+    value: str = Field(..., description="Account reference value")
+    name: Optional[str] = Field(None, description="Account reference name")
+
+class EntityRefModel(BaseModel):
+    name: Optional[str] = Field(None, description="Entity reference name")
+    value: Optional[str] = Field(None, description="Entity reference value")
+
+    class Config:
+        from_attributes = True
+
+class EntityModel(BaseModel):
+    Type: Optional[str] = Field(None, description="Entity type")
+    EntityRef: Optional[EntityRefModel] = Field(None, description="Entity reference")
+
+    class Config:
+        from_attributes = True
     
-class EntityRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
-    def __init__(
-        self,
-        name: Optional[str] = None,
-        value: Optional[str] = None
-    ):
-        self.name = name
-        self.value = value
+class JournalEntryLineDetailModel(BaseModel):
+    PostingType: Optional[str] = Field(None, description="Type of posting (Debit/Credit)")
+    AccountRef: Optional[AccountRefModel] = Field(None, description="Account reference")
+    TaxApplicableOn: Optional[str] = Field(None, description="Tax applicable on")
+    ClassRef: Optional[ClassRefModel] = Field(None, description="Class reference")
+    TaxCodeRef: Optional[TaxCodeRefModel] = Field(None, description="Tax code reference")
+    Entity: Optional[EntityModel] = Field(None, description="Entity details")
+
+    class Config:
+        from_attributes = True
     
-    def to_dict(self) -> dict:
-        return {
-            'name': self.name,
-            'value': self.value
-        }
+    @field_validator('PostingType')
+    def validate_posting_type(cls, v):
+        if v and v not in [pt.value for pt in PostingType]:
+            raise ValueError(f"Invalid posting type: {v}")
+        return v
     
     @classmethod
-    def from_dict(cls, data: dict):
+    def create_from_move_line(cls, move_line) -> 'JournalEntryLineDetailModel':
+        """Creates a JournalEntryLineDetailModel instance from a move line."""
         return cls(
-            name=data.get('name', ''),
-            value=data.get('value', '')
+            PostingType=PostingType.DEBIT if move_line.debit != 0 else PostingType.CREDIT,
+            AccountRef=cls._create_account_ref(move_line),
+            ClassRef=cls._create_class_ref(move_line),
+            Entity=cls._create_entity(move_line)
         )
-    
 
-class EntityModel(RequestSchemaGenerator, ResponseSchemaGenerator):
-    def __init__(
-        self,
-        Type: Optional[str] = None,
-        EntityRef: Optional[EntityRefModel] = None,
-    ):
-        self.Type = Type
-        self.EntityRef = EntityRef
+    @staticmethod
+    def _create_account_ref(move_line) -> AccountRefModel:
+        return AccountRefModel(
+            name=move_line.account_id.name,
+            value=str(move_line.account_id.id),
+        )
 
-    def to_dict(self) -> dict:
+    @staticmethod
+    def _create_class_ref(move_line) -> Optional[ClassRefModel]:
+        analytic_class = move_line.analytic_line_ids
+        if not analytic_class:
+            return None
+        return ClassRefModel(
+            name=analytic_class.account_id.name,
+            value=str(analytic_class.account_id.id),
+        )
+
+    @staticmethod
+    def _create_entity(move_line) -> EntityModel:
+        entity_ref = EntityRefModel(
+            name=move_line.partner_id.name,
+            value=str(move_line.partner_id.id),
+        )
+        return EntityModel(
+            Type=move_line.partner_id.category_id.name,
+            EntityRef=entity_ref
+        )
+
+class LineRequestModel(BaseModel):
+    JournalEntryLineDetail: JournalEntryLineDetailModel
+    DetailType: Optional[str] = Field(None, description="Type of detail")
+    Amount: Optional[float] = Field(None, description="Transaction amount")
+    Description: Optional[str] = Field(None, description="Line item description")
+    Id: Optional[int] = Field(None, description="Line item ID")
+
+    class Config:
+        from_attributes = True
+
+    def create_line_vals(self, company_id: int) -> dict:
+        account_id = int(self.JournalEntryLineDetail.AccountRef.value) if self.JournalEntryLineDetail.AccountRef else None
+        posting_type = self.JournalEntryLineDetail.PostingType.lower() if self.JournalEntryLineDetail.PostingType else None
+        analytic_class_id = int(self.JournalEntryLineDetail.ClassRef.value) if self.JournalEntryLineDetail.ClassRef else None
+        partner_id = int(self.JournalEntryLineDetail.Entity.EntityRef.value) if self.JournalEntryLineDetail.Entity and self.JournalEntryLineDetail.Entity.EntityRef else None
         return {
-            'Type': self.Type,
-            'EntityRef': self.EntityRef.to_dict() if self.EntityRef else None
+            'company_id': company_id,
+            'account_id': account_id,
+            'ref': self.Description if self.Description else None,
+            'debit': self.Amount if posting_type == 'debit' else 0,
+            'credit': self.Amount if posting_type == 'credit' else 0,
+            'partner_id': partner_id,
+            'analytic_distribution': {analytic_class_id: 100} if analytic_class_id else None,
         }
 
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            Type=data.get('Type', ''),
-            EntityRef=EntityRefModel.from_dict(data.get('EntityRef', {})) if data.get('EntityRef') else None
+
+class JournalEntryRequestModel(BaseModel):
+    Line: List[LineRequestModel] = Field(..., description="Journal entry lines")
+    CurrencyRef: Optional[CurrencyRefModel] = Field(None, description="Currency reference")
+
+    class Config:
+        from_attributes = True
+
+    @field_validator('Line')
+    def validate_balanced_entry(cls, Line):
+        total_debit = sum(
+            move_line.Amount 
+            for move_line in Line 
+            if move_line.JournalEntryLineDetail.PostingType == PostingType.DEBIT
         )
-    
-
-class JournalEntryLineDetailModel(RequestSchemaGenerator, ResponseSchemaGenerator):
-    def __init__(
-        self,
-        PostingType: Optional[str] = None,
-        AccountRef: Optional[AccountRefModel] = None,
-        TaxApplicableOn : Optional[str] = None,
-        ClassRef : Optional[ClassRefModel] = None,
-        TaxCodeRef : Optional[TaxCodeRefModel] = None,
-        Entity: Optional[EntityModel] = None
-    ):
-        self.PostingType = PostingType
-        self.AccountRef = AccountRef
-        self.TaxApplicableOn = TaxApplicableOn
-        self.ClassRef = ClassRef
-        self.TaxCodeRef = TaxCodeRef
-        self.Entity = Entity
-
-    def to_dict(self) -> dict:
-        return {
-            'PostingType': self.PostingType,
-            'AccountRef': self.AccountRef.to_dict(),
-            'TaxApplicableOn': self.TaxApplicableOn,
-            'ClassRef': self.ClassRef.to_dict() if self.ClassRef else None,
-            'TaxCodeRef': self.TaxCodeRef.to_dict() if self.TaxCodeRef else None,
-            'Entity': self.Entity.to_dict() if self.Entity else None
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            PostingType=data.get('PostingType', ''),
-            AccountRef=AccountRefModel.from_dict(data.get('AccountRef', {})),
-            TaxApplicableOn=data.get('TaxApplicableOn', ''),
-            ClassRef=ClassRefModel.from_dict(data.get('ClassRef', {})) if data.get('ClassRef') else None,
-            TaxCodeRef=TaxCodeRefModel.from_dict(data.get('TaxCodeRef', {})) if data.get('TaxCodeRef') else None,
-            Entity=EntityModel.from_dict(data.get('Entity', {})) if data.get('Entity') else None,
+        total_credit = sum(
+            move_line.Amount 
+            for move_line in Line 
+            if move_line.JournalEntryLineDetail.PostingType == PostingType.CREDIT
         )
-
-
-class LineRequestModel(RequestSchemaGenerator):
-    def __init__(
-        self,
-        JournalEntryLineDetail: JournalEntryLineDetailModel,
-        DetailType: Optional[str] = None,
-        Amount: Optional[float] = None,
-        Description: Optional[str] = None,
-        Id: Optional[str] = None,
-    ):
-        self.JournalEntryLineDetail = JournalEntryLineDetail
-        self.DetailType = DetailType
-        self.Amount = Amount
-        self.Description = Description
-        self.Id = Id
-
-    def to_dict(self) -> dict:
-        return {
-            'JournalEntryLineDetail': self.JournalEntryLineDetail.to_dict(),
-            'DetailType': self.DetailType,
-            'Amount': self.Amount,
-            'Description': self.Description,
-            'Id': self.Id,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            JournalEntryLineDetail=JournalEntryLineDetailModel.from_dict(data.get('JournalEntryLineDetail', {})),
-            DetailType=data.get('DetailType', ''),
-            Amount=data.get('Amount', 0.0),
-            Description=data.get('Description', ''),
-            Id=data.get('Id', '')
-        )
-
-class JournalEntryRequestModel(RequestSchemaGenerator):
-    def __init__(
-        self,
-        Line: List[LineRequestModel],
-        CurrencyRef: Optional[CurrencyRefModel] = None,
-    ):
-        self.Line = Line
-        self.CurrencyRef = CurrencyRef
-
-    def to_dict(self) -> dict:
-        return {
-            'Line': [line.to_dict() for line in self.Line],
-            'CurrencyRef': self.CurrencyRef.to_dict() if self.CurrencyRef else None
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            Line=[LineRequestModel.from_dict(line_data) for line_data in data.get('Line', [])],
-            CurrencyRef=CurrencyRefModel.from_dict(data.get('CurrencyRef', {}))
-        )
-
-class DescriptionLineDetailModel(ResponseSchemaGenerator):
-    def __init__(
-            self,
-            TaxCodeRef : Optional[TaxCodeRefModel] = None,
-            ServiceDate : Optional[str] = None
-            ):
-        self.TaxCodeRef = TaxCodeRef
-        self.ServiceDate = ServiceDate
-    
-    def to_dict(self):
-        return {
-            'TaxCodeRef': self.TaxCodeRef.to_dict() if self.TaxCodeRef else None,
-            'ServiceDate': self.ServiceDate
-        }
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            TaxCodeRef=TaxCodeRefModel.from_dict(data.get('TaxCodeRef', {})) if data.get('TaxCodeRef') else None,
-            ServiceDate=data.get('ServiceDate', '')
-        )
-
-class LineResponseModel(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        DetailType: Optional[str] = None,
-        Amount: Optional[float] = None,
-        Description: Optional[str] = None,
-        Id: Optional[str] = None,
-        JournalEntryLineDetail: Optional[JournalEntryLineDetailModel] = None,
-        DescriptionLineDetail: Optional[DescriptionLineDetailModel] = None,
-    ):
-        if DetailType == 'JournalEntryLineDetail' and JournalEntryLineDetail is None:
-            raise ValueError("JournalEntryLineDetail is required when DetailType is 'JournalEntryLineDetail'")
-        if DetailType == 'DescriptionLineDetail' and DescriptionLineDetail is None:
-            raise ValueError("DescriptionLineDetail is required when DetailType is 'DescriptionLineDetail'")
         
-        self.JournalEntryLineDetail = JournalEntryLineDetail
-        self.DescriptionLineDetail = DescriptionLineDetail
-        self.DetailType = DetailType
-        self.Amount = Amount
-        self.Description = Description
-        self.Id = Id
-
-    def to_dict(self) -> dict:
-        result = {
-            'DetailType': self.DetailType,
-            'Amount': self.Amount,
-            'Description': self.Description,
-            'Id': self.Id
-        }
-
-        if self.DetailType == 'JournalEntryLineDetail' and self.JournalEntryLineDetail:
-            result['JournalEntryLineDetail'] = self.JournalEntryLineDetail.to_dict()
-        elif self.DetailType == 'DescriptionLineDetail' and self.DescriptionLineDetail:
-            result['DescriptionLineDetail'] = self.DescriptionLineDetail.to_dict()
-
-        return result
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        detail_type = data.get('DetailType', '')
-        
-        journal_entry_detail = None
-        description_detail = None
-        
-        if detail_type == 'JournalEntryLineDetail':
-            journal_entry_detail = JournalEntryLineDetailModel.from_dict(
-                data.get('JournalEntryLineDetail', {})
+        # Using a small tolerance for rounding differences
+        tolerance = Decimal('0.01')
+        if abs(total_debit - total_credit) > tolerance:
+            difference = abs(total_debit - total_credit)
+            raise ValueError(
+                f'Journal entry is not balanced. '
+                f'Difference between debit ({total_debit}) and credit ({total_credit}) '
+                f'is {difference}'
             )
-        elif detail_type == 'DescriptionLineDetail':
-            description_detail = DescriptionLineDetailModel.from_dict(
-                data.get('DescriptionLineDetail', {})
+        return Line
+    
+    @field_validator('Line')
+    def validate_non_zero_amounts(cls, Line):
+        for move_line in Line:
+            if move_line.Amount <= 0:
+                raise ValueError(
+                    f'Invalid amount {move_line.Amount}. Amount must be greater than 0'
+                )
+        return Line
+    
+    @field_validator('Line')
+    def validate_minimum_lines(cls, Line):
+        if len(Line) < 2:
+            raise ValueError(
+                'Journal entry must have at least 2 lines'
             )
+        return Line
 
-        return cls(
-            DetailType=detail_type,
-            Amount=data.get('Amount', 0.0),
-            Description=data.get('Description', ''),
-            JournalEntryLineDetail=journal_entry_detail,
-            DescriptionLineDetail=description_detail,
-            Id=data.get('Id')
-        )
-
-
-class JournalEntryModel(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        Line: List[LineResponseModel],
-        SyncToken: Optional[str] = None,
-        domain: Optional[str] = None,
-        TxnDate: Optional[str] = None,
-        sparse: Optional[bool] = None,
-        Adjustment: Optional[bool] = None,
-        Id: Optional[str] = None,
-        TxnTaxDetail: Optional[dict] = None,
-        MetaData: Optional[MetaDataModel] = None
-    ):
-        self.Line = Line
-        self.SyncToken = SyncToken
-        self.domain = domain
-        self.TxnDate = TxnDate
-        self.sparse = sparse
-        self.Adjustment = Adjustment
-        self.Id = Id
-        self.TxnTaxDetail = TxnTaxDetail
-        self.MetaData = MetaData
-
-    def to_dict(self) -> dict:
+    def create_journal_entry_vals(self, company_id: int) -> dict:
         return {
-            'Line': [line.to_dict() for line in self.Line],
-            'SyncToken': self.SyncToken,
-            'domain': self.domain,
-            'TxnDate': self.TxnDate,
-            'sparse': self.sparse,
-            'Adjustment': self.Adjustment,
-            'Id': self.Id,
-            'TxnTaxDetail': self.TxnTaxDetail,
-            'MetaData': self.MetaData.to_dict()
+            'move_type': 'entry',
+            # 'partner_id': partner_id,
+            'date': datetime.now().date(),
+            'company_id': company_id,
+            'invoice_line_ids': [(0,0, line.create_line_vals(company_id)) for line in self.Line]
         }
+        
+
+class DescriptionLineDetailModel(BaseModel):
+    TaxCodeRef: Optional[TaxCodeRefModel] = Field(None, description="Tax code reference")
+    ServiceDate: Optional[str] = Field(None, description="Service date")
+
+    class Config:
+        from_attributes = True
+
+class LineResponseModel(BaseModel):
+    DetailType: Optional[str] = Field(None, description="Type of detail")
+    Amount: Optional[float] = Field(None, description="Transaction amount")
+    Description: Optional[str] = Field(None, description="Line item description")
+    Id: Optional[int] = Field(None, description="Line item ID")
+    JournalEntryLineDetail: Optional[JournalEntryLineDetailModel] = None
+    DescriptionLineDetail: Optional[DescriptionLineDetailModel] = None
+
+    class Config:
+        from_attributes = True
+    
+    @model_validator(mode='after')
+    def validate_detail_type(self) -> 'LineResponseModel':
+        detail_type = self.DetailType
+        if detail_type == DetailType.JOURNAL_ENTRY and not self.JournalEntryLineDetail:
+            raise ValueError(f"{DetailType.JOURNAL_ENTRY} detail is required when DetailType is '{DetailType.JOURNAL_ENTRY}'")
+        if detail_type == DetailType.DESCRIPTION and not self.DescriptionLineDetail:
+            raise ValueError(f"{DetailType.DESCRIPTION} detail is required when DetailType is '{DetailType.DESCRIPTION}'")
+        return self
+    
+    @classmethod
+    def create_journal_lines(cls, journal_entry) -> List['LineResponseModel']:
+        """Creates a list of LineResponseModel instances from journal entry lines."""
+        print(journal_entry)
+        return [
+            cls(
+                DetailType=DetailType.JOURNAL_ENTRY,
+                Amount=cls._get_amount(move_line),
+                Id=move_line.id,
+                Description=move_line.ref if move_line.ref else None,
+                JournalEntryLineDetail=JournalEntryLineDetailModel.create_from_move_line(move_line)
+            ) 
+            for move_line in journal_entry.line_ids
+        ]
+
+    @staticmethod
+    def _get_amount(move_line) -> float:
+        """Determines the amount based on debit or credit value."""
+        return move_line.debit if move_line.debit != 0 else move_line.credit
+
+
+class JournalEntryModel(BaseModel):
+    Line: List[LineResponseModel] = Field(..., description="Journal entry lines")
+    SyncToken: Optional[str] = Field(None, description="Sync token")
+    domain: Optional[str] = Field(None, description="Domain")
+    TxnDate: Optional[datetime] = Field(None, description="Transaction date")
+    sparse: Optional[bool] = Field(None, description="Sparse flag")
+    Adjustment: Optional[bool] = Field(None, description="Adjustment flag")
+    Id: Optional[int] = Field(None, description="Journal entry ID")
+    TxnTaxDetail: Optional[dict] = Field(None, description="Transaction tax details")
+    MetaData: Optional[MetaDataModel] = Field(None, description="Metadata")
+
+    class Config:
+        from_attributes = True
 
     @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            Line=[LineResponseModel.from_dict(line_data) for line_data in data.get('Line', [])],
-            SyncToken=data.get('SyncToken', ''),
-            domain=data.get('domain', ''),
-            TxnDate=data.get('TxnDate', ''),
-            sparse=data.get('sparse', False),
-            Adjustment=data.get('Adjustment', False),
-            Id=data.get('Id', ''),
-            TxnTaxDetail=data.get('TxnTaxDetail', {}),
-            MetaData=MetaDataModel.from_dict(data.get('MetaData', {}))
-        )
+    def journal_entry_object(cls, journal_entry):
+        # description = ref
+        # account_ref ={name-name, value-id}
+        # class_ref ={name-name, value-id}
+        # entity = {type=Vendor/Customer , Entityref = {name-name, value-id}}
+        # Amount = amount
+        # postingtype = Debit/Credit -- debit/credit columns
+        # Detailtype= JournalEntryLineDetail
+        # Id = id
+        try:
+            meta_data = MetaDataModel(
+                CreateTime=journal_entry.create_date,
+                LastUpdatedTime=journal_entry.write_date
+            )
+            return cls(
+                Line=LineResponseModel.create_journal_lines(journal_entry),
+                MetaData=meta_data,
+                Id=journal_entry.id,
+                TxnDate=journal_entry.date
+            )
+        except Exception as e:
+            raise ValueError(f"Error converting: {str(e)}")
 
-class JournalEntryResponseModel(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        time: str,
-        JournalEntry: JournalEntryModel
-    ):
-        self.time = time
-        self.JournalEntry = JournalEntry
 
-    def to_dict(self) -> dict:
-        return {
-            'time': self.time,
-            'JournalEntry': self.JournalEntry.to_dict()
-        }
+class JournalEntryResponseModel(BaseModel):
+    time: datetime = Field(..., description="Response timestamp")
+    JournalEntry: JournalEntryModel = Field(..., description="Journal entry details")
+
+    class Config:
+        from_attributes = True
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def create_journal_entry_response(cls, journal_entry: JournalEntryModel) -> "JournalEntryResponseModel":
         return cls(
-            time=data.get('time', ''),
-            JournalEntry=JournalEntryModel.from_dict(data.get('JournalEntry', {}))
+            JournalEntry=JournalEntryModel.journal_entry_object(journal_entry),
+            time=datetime.now()
         )
     
-class JournalEntryQueryResponseModel(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        startPosition: int,
-        JournalEntry: list[JournalEntryModel],
-        maxResults: int,
-        totalCount: int
-    ):
-        self.startPosition = startPosition
-        self.JournalEntry = JournalEntry
-        self.maxResults = maxResults
-        self.totalCount = totalCount
+class JournalEntryQueryResponseModel(PaginationMixin):
+    JournalEntry: List[JournalEntryModel] = Field(..., description="List of journal entries")
+    totalCount: int = Field(0, description="Total count")
 
-    def to_dict(self) -> dict:
-        return {
-            'startPosition': self.startPosition,
-            'JournalEntry': [journalEntry.to_dict() for journalEntry in self.JournalEntry],
-            'maxResults': self.maxResults,
-            'totalCount': self.totalCount
-        }
-    
-    def from_dict(cls, data: dict):
-        return cls(
-            startPosition=data.get('startPosition', 0),
-            JournalEntry=[JournalEntryModel.from_dict(journalEntry_data) for journalEntry_data in data.get('JournalEntry', [])],
-            maxResults=data.get('maxResults', 0),
-            totalCount=data.get('totalCount', 0)
-        )
+    class Config:
+        from_attributes = True
+
+    @field_validator('JournalEntry')
+    def validate_journal_entries(cls, v):
+        if not v:
+            raise ValueError("Journal entry list cannot be empty")
+        return v
            
-class JournalEntryListResponseModel(ResponseSchemaGenerator):
-    def __init__(
-        self,
-        QueryResponse: JournalEntryQueryResponseModel,
-        time: str
-    ):
-        self.QueryResponse = QueryResponse
-        self.time = time
+class JournalEntryListResponseModel(BaseModel):
+    QueryResponse: JournalEntryQueryResponseModel = Field(..., description="Query response")
+    time: datetime = Field(..., description="Response timestamp")
 
-    def to_dict(self) -> dict:
-        return {
-            'QueryResponse': self.QueryResponse.to_dict(),
-            'time': self.time
-        }
-    
+    class Config:
+        from_attributes = True
+
     @classmethod
-    def from_dict(cls, data: dict):
+    def list_journal_entry_response(cls, journal_entries: List[JournalEntryModel], total_count : int, start_position: int = 0, max_results: int = 20) -> "JournalEntryListResponseModel":
+        query_response = JournalEntryQueryResponseModel(
+            startPosition=start_position,
+            maxResults=max_results,
+            totalCount=total_count,
+            JournalEntry=journal_entries
+        )
         return cls(
-            QueryResponse=JournalEntryQueryResponseModel.from_dict(data.get('QueryResponse', {})),
-            time=data.get('time', '')
+            QueryResponse=query_response,
+            time=datetime.now()
         )
 
 
-JOURNAL_ENTRY_CREATE_RESPONSE = JOURNAL_ENTRY_GET_RESPONSE = JournalEntryResponseModel.get_response_schema()
-JOURNAL_ENTRY_LIST_RESPONSE = JournalEntryListResponseModel.get_response_schema()
+JOURNAL_ENTRY_CREATE_RESPONSE = JOURNAL_ENTRY_GET_RESPONSE = JournalEntryResponseModel
+JOURNAL_ENTRY_LIST_RESPONSE = JournalEntryListResponseModel
 
-JOURNAL_ENTRY_SCHEMA = JournalEntryRequestModel.get_request_schema()
-
-# JOURNAL_ENTRY_RESPONSE = {
-#     'type': 'object',
-#     'properties': {
-#         'success': {'type': 'boolean'},
-#         'message': {'type': 'string'},
-#         'data': {
-#             'type': 'object',
-#             'properties': {
-#                 'id': {'type': 'integer'},
-#                 'name': {'type': 'string'},
-#                 'ref': {'type': 'string'},
-#                 'date': {'type': 'string', 'format': 'date'},
-#                 'state': {'type': 'string'},
-#                 'journal': {
-#                     'type': 'object',
-#                     'properties': {
-#                         'id': {'type': 'integer'},
-#                         'name': {'type': 'string'}
-#                     }
-#                 },
-#                 'company': {
-#                     'type': 'object',
-#                     'properties': {
-#                         'id': {'type': 'integer'},
-#                         'name': {'type': 'string'}
-#                     }
-#                 },
-#                 'lines': {
-#                     'type': 'array',
-#                     'items': {
-#                         'type': 'object',
-#                         'properties': {
-#                             'id': {'type': 'integer'},
-#                             'account': {
-#                                 'type': 'object',
-#                                 'properties': {
-#                                     'id': {'type': 'integer'},
-#                                     'code': {'type': 'string'},
-#                                     'name': {'type': 'string'}
-#                                 }
-#                             },
-#                             'name': {'type': 'string'},
-#                             'debit': {'type': 'number'},
-#                             'credit': {'type': 'number'},
-#                             'partner': {
-#                                 'type': 'object',
-#                                 'properties': {
-#                                     'id': {'type': 'integer'},
-#                                     'name': {'type': 'string'}
-#                                 },
-#                             }
-#                         }
-#                     }
-#                 }
-#             }
-#         }
-#     }
-# }
-
-# JOURNAL_ENTRY_LIST_RESPONSE = {
-#     'type': 'object',
-#     'properties': {
-#         'success': {'type': 'boolean'},
-#         'message': {'type': 'string'},
-#         'data': {
-#             'type': 'object',
-#             'properties': {
-#                 'journal_entries': {
-#                     'type': 'array',
-#                     'items': {
-#                         'type': 'object',
-#                         'properties': {
-#                             'id': {'type': 'integer'},
-#                             'name': {'type': 'string'},
-#                             'ref': {'type': 'string'},
-#                             'date': {'type': 'string', 'format': 'date'},
-#                             'journal_id': {
-#                                 'type': 'object',
-#                                 'properties': {
-#                                     'id': {'type': 'integer'},
-#                                     'name': {'type': 'string'}
-#                                 }
-#                             },
-#                             'state': {'type': 'string'},
-#                             'company': {
-#                                 'type': 'object',
-#                                 'properties': {
-#                                     'id': {'type': 'integer'},
-#                                     'name': {'type': 'string'}
-#                                 }
-#                             },
-#                         }
-#                     }
-#                 },
-#                 'pagination': {
-#                     'type': 'object',
-#                     'properties': {
-#                         'total_count': {'type': 'integer'},
-#                         'limit': {'type': 'integer'},
-#                         'offset': {'type': 'integer'}
-#                     }
-#                 }
-#             }
-#         }
-#     }
-# }
-
-# JOURNAL_ENTRY_SCHEMA = {
-#     'required': {
-#         'date': {
-#             'type': str,
-#             'display_name': 'Date',
-#             'format': 'date',
-#             'swagger_type': 'string'
-#         },
-#         'line_ids': {
-#             'type': list,
-#             'display_name': 'Line Items',
-#             'swagger_type': 'array',
-#             'items': {
-#                 'type': dict,
-#                 'required': {
-#                     'partner_id': {
-#                         'type': int,
-#                         'display_name': 'Partner',
-#                         'swagger_type': 'integer'
-#                     },
-#                     'amount': {
-#                         'type': float,
-#                         'display_name': 'Amount',
-#                         'swagger_type': 'number'
-#                     },
-#                     'amount_type': {
-#                         'type': str,
-#                         'display_name': 'Amount Type',
-#                         'swagger_type': 'string',
-#                         'enum': ['debit', 'credit']
-#                     },
-#                     'account_id': {
-#                         'type': int,
-#                         'display_name': 'Account',
-#                         'swagger_type': 'integer'
-#                     }
-#                 },
-#                 'optional': {
-#                     'ref' : {
-#                         'type': str,
-#                         'display_name': 'Reference',
-#                         'swagger_type': 'string'
-#                     },
-#                     'analytic_distribution': {
-#                         'type': str,
-#                         'display_name': 'Analytic Distribution',
-#                         'swagger_type': 'string'
-#                     }
-#                 }
-#             }
-#         },
-#         'company_id': {
-#             'type': int,
-#             'display_name': 'Company',
-#             'swagger_type': 'integer'
-#         }
-#     },
-#     'optional': {
-#         'partner_id': {
-#             'type': int,
-#             'display_name': 'Partner',
-#             'swagger_type': 'integer'
-#         },
-#         'name': {
-#             'type': str,
-#             'display_name': 'Name',
-#             'swagger_type': 'string'
-#         },
-#         'ref': {
-#             'type': str,
-#             'display_name': 'Reference',
-#             'swagger_type': 'string'
-#         },
-#     }
-# }
+JOURNAL_ENTRY_SCHEMA = JournalEntryRequestModel
 
 
 # Parameters for different endpoints
