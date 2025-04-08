@@ -3,12 +3,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from odoo import http
 from odoo.http import request
 from ..logger.logger import logger
-from ..common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data, validate_request_data
-from ..utils import validate_company, validate_partner_category, get_default_customer_category, get_default_vendor_category, format_date
+from ..utils import APIResponse, get_company_from_headers, validate_request_data
 
 from ..schemas.partner import (CustomerModel, CustomerCreateRequestModel, CustomerResponseModel, CustomerListResponseModel,
                                 VendorModel, VendorCreateRequestModel, VendorResponseModel, VendorListResponseModel)
-from ..constants import CONSTANTS
 from ..repository.partner import PartnerService
 from ..repository.company import CompanyService
 
@@ -16,40 +14,7 @@ from ..repository.company import CompanyService
 
 class PartnerAPI(http.Controller):
         
-    def _create_partner_record(self, request, partner_model: Union[CustomerCreateRequestModel, VendorCreateRequestModel], is_vendor: bool) -> Dict[str, Any]:
-        company_id = get_company_from_headers(request)
-        if not isinstance(company_id, int):  # If error response
-                return company_id
-        
-        if is_vendor:
-            partner_vals = partner_model.create_vendor_vals(company_id)
-        else:
-            partner_vals = partner_model.create_customer_vals(company_id)
-        cursor = request.env.cr
-        try:
-            with cursor.savepoint():
-                partner = self._save_partner(request, partner_vals)
-                return self._prepare_success_response(partner, is_vendor)
-        except Exception as e:
-            cursor.rollback()
-            logger.error(f"Failed to create partner: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',
-                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )
-    
-    def _save_partner(self, request, partner_vals: Dict[str, Any]) -> Any:
-        partner_service = PartnerService(request.env)
-        partner = partner_service.create(partner_vals)
-        return partner
-    
-    def _prepare_success_response(self, partner: Any, is_vendor:bool) -> Dict[str, Any]:
-        if is_vendor:
-            response_data = VendorResponseModel.create_vendor_response(partner)
-        else:
-            response_data = CustomerResponseModel.create_customer_response(partner)
-        return APIResponse.success_response(response_data.model_dump(mode='json'),
-            status=HTTPStatus.CREATED
-        )
+
     
     @http.route('/api/customers', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     # @swagger_doc(partners_docs['create_customer'])
@@ -85,32 +50,18 @@ class PartnerAPI(http.Controller):
             logger.error(f"Failed to create vendor: {str(e)}")
             return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
-    def _fetch_single_partner(self, domain: List[Tuple], is_vendor: bool) -> Dict[str, Any]:
-        partner_service = PartnerService(request.env)
-        partner = partner_service.search(domain, limit=1)
-        
-        if is_vendor:
-            if not partner.exists():
-                return APIResponse.error_response(message='Vendor not found',
-                    errors='Invalid vendor_id', status=HTTPStatus.NOT_FOUND
-                )
-            response_data = VendorResponseModel.create_vendor_response(partner)
-        else:
-            if not partner.exists():
-                return APIResponse.error_response(message='Customer not found',
-                    errors='Invalid customer_id', status=HTTPStatus.NOT_FOUND
-                )
-            response_data = CustomerResponseModel.create_customer_response(partner)
-        return APIResponse.success_response(response_data.model_dump(mode='json'))
+
     
     @http.route('/api/customers/<int:customer_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     # @swagger_doc(partners_docs['get_customer'])
     def get_customer(self, customer_id: int, company_id: int):
         try:
-            domain = [('id', '=', customer_id)]
-            category_id = get_default_customer_category(request)
-            domain.append(('category_id', 'child_of', int(category_id)))
             company_service = CompanyService(request.env)
+            partner_service = PartnerService(request.env)
+            domain = [('id', '=', customer_id)]
+            category_id = partner_service.get_default_customer_category()
+            domain.append(('category_id', 'child_of', int(category_id)))
+            
             
             # Validate and add company filter
             is_valid, error_message = company_service.validate_company(company_id)
@@ -132,10 +83,11 @@ class PartnerAPI(http.Controller):
     # @swagger_doc(partners_docs['get_vendor'])
     def get_vendor(self, vendor_id: int, company_id: int):
         try:
-            domain = [('id', '=', vendor_id)]
-            category_id = get_default_vendor_category(request)
-            domain.append(('category_id', 'child_of', int(category_id)))
+            partner_service = PartnerService(request.env)
             company_service = CompanyService(request.env)
+            domain = [('id', '=', vendor_id)]
+            category_id = partner_service.get_default_vendor_category()
+            domain.append(('category_id', 'child_of', int(category_id)))
             
             # Validate and add company filter
             is_valid, error_message = company_service.validate_company(company_id)
@@ -153,71 +105,6 @@ class PartnerAPI(http.Controller):
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )
         
-        
-    def _build_search_domain(self, DisplayName: Optional[str], company_id: int, active: Optional[str], is_vendor: bool
-                             ) -> Tuple[List[Tuple], Optional[Dict[str, Any]]]:
-        domain = []
-        company_service = CompanyService(request.env)
-
-        # Validate and add company filter
-        if company_id:
-            is_valid, error_message = company_service.validate_company(company_id)
-            if not is_valid:
-                return [], APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
-                )
-            domain.append(('company_id', '=', int(company_id)))
-            logger.debug(f"Added company_id filter: {company_id}")
-
-        # Add active status filter
-        if active is not None:
-            deprecated = not (active.lower() == 'true')
-            domain.append(('deprecated', '=', deprecated))
-            logger.debug(f"Added deprecated filter: {deprecated}")
-
-        # Add name filter
-        if DisplayName:
-            domain.append(('name', 'ilike', DisplayName))
-            logger.debug(f"Added name filter: {DisplayName}")
-        
-        category_id = get_default_vendor_category(request) if is_vendor else get_default_customer_category(request)
-        domain.append(('category_id', 'child_of', int(category_id)))
-
-        logger.debug(f"Final search domain: {domain}")
-        return domain, None
-    
-    def _fetch_partners(self, domain: List[Tuple], start_position: int, max_results: int, is_vendor: bool) -> Dict[str, Any]:
-        # Get total count
-        partner_service = PartnerService(request.env)
-        total_count = partner_service.search_count(domain)
-        logger.info(f"Total matching partners: {total_count}")
-
-        # Search for partners
-        partners = partner_service.search(
-            domain,
-            limit=max_results,
-            offset=start_position,
-            order='id DESC'
-        )
-        logger.info(f"Retrieved {len(partners)} partners")
-
-        return self._prepare_list_response(
-            partners, total_count, start_position, is_vendor
-        )
-
-    def _prepare_list_response(self, partners: Any, total_count: int, start_position: int, is_vendor: bool) -> Dict[str, Any]:
-        if is_vendor:
-            vendor_data = [VendorModel.vendor_object(partner) for partner in partners]
-            response_data = VendorListResponseModel.list_vendor_response(
-                vendor_data, total_count, start_position, len(partners)
-            )
-        else:
-            customer_data = [CustomerModel.customer_object(partner) for partner in partners]
-            response_data = CustomerListResponseModel.list_customer_response(
-                customer_data, total_count, start_position, len(partners)
-            )
-        
-        return APIResponse.success_response(response_data.model_dump(mode='json'))
     
     @http.route('/api/vendors/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     # @swagger_doc(partners_docs['list_vendors'])
@@ -262,16 +149,6 @@ class PartnerAPI(http.Controller):
             )
         
 
-    def delete_partner(self, partner_id):
-        partner_service = PartnerService(request.env)
-        partner = partner_service.browse(partner_id)
-        if not partner.exists():
-            return APIResponse.error_response(message='Partner not found', errors='Invalid partner_id', status=404)
-            
-        # partner.unlink()  # Delete the partner
-        partner.write({'active': False})
-        
-
     @http.route('/api/vendors/<int:vendor_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
     # @swagger_doc(partners_docs['delete_vendor'])
     def delete_vendor(self, vendor_id, **kwargs):
@@ -279,7 +156,7 @@ class PartnerAPI(http.Controller):
         try:
             with cursor.savepoint():
                 self.delete_partner(vendor_id)
-                return APIResponse.success_response(message='Venodr deleted successfully')
+                return APIResponse.success_response({'message':'Venodr deleted successfully'})
         except Exception as e:
             cursor.rollback()  
             return APIResponse.error_response(message='An error occurred while deleting the vendor', errors=str(e), status=500)
@@ -291,11 +168,139 @@ class PartnerAPI(http.Controller):
         try:
             with cursor.savepoint():
                 self.delete_partner(customer_id)
-                return APIResponse.success_response(message='Customer deleted successfully')
+                return APIResponse.success_response({'message':'Customer deleted successfully'})
         except Exception as e:
             cursor.rollback()  
             return APIResponse.error_response(message='An error occurred while deleting the customer', errors=str(e), status=500)
         
         
 
+    def _create_partner_record(self, request, partner_model: Union[CustomerCreateRequestModel, VendorCreateRequestModel], is_vendor: bool) -> Dict[str, Any]:
+        company_id = get_company_from_headers(request)
+        if not isinstance(company_id, int):  # If error response
+                return company_id
+        
+        if is_vendor:
+            partner_vals = partner_model.create_vendor_vals(company_id)
+        else:
+            partner_vals = partner_model.create_customer_vals(company_id)
+        cursor = request.env.cr
+        try:
+            with cursor.savepoint():
+                partner = self._save_partner(request, partner_vals)
+                return self._prepare_success_response(partner, is_vendor)
+        except Exception as e:
+            cursor.rollback()
+            logger.error(f"Failed to create partner: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request',
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
+            )
+    
+    def _save_partner(self, request, partner_vals: Dict[str, Any]) -> Any:
+        partner_service = PartnerService(request.env)
+        partner = partner_service.create(partner_vals)
+        return partner
+    
+    def _prepare_success_response(self, partner: Any, is_vendor:bool) -> Dict[str, Any]:
+        if is_vendor:
+            response_data = VendorResponseModel.create_vendor_response(partner)
+        else:
+            response_data = CustomerResponseModel.create_customer_response(partner)
+        return APIResponse.success_response(response_data.model_dump(mode='json'),
+            status=HTTPStatus.CREATED
+        )
 
+    def _build_search_domain(self, DisplayName: Optional[str], company_id: int, active: Optional[str], is_vendor: bool
+                             ) -> Tuple[List[Tuple], Optional[Dict[str, Any]]]:
+        domain = []
+        company_service = CompanyService(request.env)
+        partner_service = PartnerService(request.env)
+
+        # Validate and add company filter
+        if company_id:
+            is_valid, error_message = company_service.validate_company(company_id)
+            if not is_valid:
+                return [], APIResponse.error_response(message=f'Invalid company: {error_message}',
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                )
+            domain.append(('company_id', '=', int(company_id)))
+            logger.debug(f"Added company_id filter: {company_id}")
+
+        # Add active status filter
+        if active is not None:
+            deprecated = not (active.lower() == 'true')
+            domain.append(('deprecated', '=', deprecated))
+            logger.debug(f"Added deprecated filter: {deprecated}")
+
+        # Add name filter
+        if DisplayName:
+            domain.append(('name', 'ilike', DisplayName))
+            logger.debug(f"Added name filter: {DisplayName}")
+        
+        category_id = partner_service.get_default_vendor_category() if is_vendor else partner_service.get_default_customer_category()
+        domain.append(('category_id', 'child_of', int(category_id)))
+
+        logger.debug(f"Final search domain: {domain}")
+        return domain, None
+    
+    def _fetch_partners(self, domain: List[Tuple], start_position: int, max_results: int, is_vendor: bool) -> Dict[str, Any]:
+        # Get total count
+        partner_service = PartnerService(request.env)
+        total_count = partner_service.search_count(domain)
+        logger.info(f"Total matching partners: {total_count}")
+
+        # Search for partners
+        partners = partner_service.search(
+            domain,
+            limit=max_results,
+            offset=start_position,
+            order='id DESC'
+        )
+        logger.info(f"Retrieved {len(partners)} partners")
+
+        return self._prepare_list_response(
+            partners, total_count, start_position, is_vendor
+        )
+
+    def _prepare_list_response(self, partners: Any, total_count: int, start_position: int, is_vendor: bool) -> Dict[str, Any]:
+        if is_vendor:
+            vendor_data = [VendorModel.vendor_object(partner) for partner in partners]
+            response_data = VendorListResponseModel.list_vendor_response(
+                vendor_data, total_count, start_position, len(partners)
+            )
+        else:
+            customer_data = [CustomerModel.customer_object(partner) for partner in partners]
+            response_data = CustomerListResponseModel.list_customer_response(
+                customer_data, total_count, start_position, len(partners)
+            )
+        
+        return APIResponse.success_response(response_data.model_dump(mode='json'))
+    
+
+    def _fetch_single_partner(self, domain: List[Tuple], is_vendor: bool) -> Dict[str, Any]:
+        partner_service = PartnerService(request.env)
+        partner = partner_service.search(domain, limit=1)
+        
+        if is_vendor:
+            if not partner.exists():
+                return APIResponse.error_response(message='Vendor not found',
+                    errors='Invalid vendor_id', status=HTTPStatus.NOT_FOUND
+                )
+            response_data = VendorResponseModel.create_vendor_response(partner)
+        else:
+            if not partner.exists():
+                return APIResponse.error_response(message='Customer not found',
+                    errors='Invalid customer_id', status=HTTPStatus.NOT_FOUND
+                )
+            response_data = CustomerResponseModel.create_customer_response(partner)
+        return APIResponse.success_response(response_data.model_dump(mode='json'))
+    
+
+    def delete_partner(self, partner_id):
+        partner_service = PartnerService(request.env)
+        partner = partner_service.browse(partner_id)
+        if not partner.exists():
+            return APIResponse.error_response(message='Partner not found', errors='Invalid partner_id', status=404)
+            
+        # partner.unlink()  # Delete the partner
+        partner.write({'active': False})

@@ -2,10 +2,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import datetime
 from typing import Optional, List
-from enum import Enum
-
-from ..utils import get_currency_id
-from .common import (CurrencyRefModel, MetaDataModel, PaginationMixin, TaxCodeRefModel, ClassRefModel, AccountRefModel, HEADERS)
+from .common import (MetaDataModel, PaginationResponseModel, RefModel, HEADERS)
 from ..enums import PostingType, DetailType
 
 # description = ref
@@ -17,46 +14,24 @@ from ..enums import PostingType, DetailType
 # Detailtype= JournalEntryLineDetail
 # Id = id
 
-class CurrencyRefModel(BaseModel):
-    name: Optional[str] = None
-    value: Optional[str] = None
 
 class MetaDataModel(BaseModel):
     CreateTime: datetime
     LastUpdatedTime: datetime
 
-class TaxCodeRefModel(BaseModel):
-    value: str = Field(..., description="Tax code value")
-    name: Optional[str] = Field(None, description="Tax code name")
-
-class ClassRefModel(BaseModel):
-    value: str = Field(..., description="Class reference value")
-    name: Optional[str] = Field(None, description="Class reference name")
-
-class AccountRefModel(BaseModel):
-    value: str = Field(..., description="Account reference value")
-    name: Optional[str] = Field(None, description="Account reference name")
-
-class EntityRefModel(BaseModel):
-    name: Optional[str] = Field(None, description="Entity reference name")
-    value: Optional[str] = Field(None, description="Entity reference value")
-
-    class Config:
-        from_attributes = True
-
 class EntityModel(BaseModel):
     Type: Optional[str] = Field(None, description="Entity type")
-    EntityRef: Optional[EntityRefModel] = Field(None, description="Entity reference")
+    EntityRef: Optional[RefModel] = Field(None, description="Entity reference")
 
     class Config:
         from_attributes = True
     
 class JournalEntryLineDetailModel(BaseModel):
     PostingType: Optional[str] = Field(None, description="Type of posting (Debit/Credit)")
-    AccountRef: Optional[AccountRefModel] = Field(None, description="Account reference")
+    AccountRef: Optional[RefModel] = Field(None, description="Account reference")
     TaxApplicableOn: Optional[str] = Field(None, description="Tax applicable on")
-    ClassRef: Optional[ClassRefModel] = Field(None, description="Class reference")
-    TaxCodeRef: Optional[TaxCodeRefModel] = Field(None, description="Tax code reference")
+    ClassRef: Optional[RefModel] = Field(None, description="Class reference")
+    TaxCodeRef: Optional[RefModel] = Field(None, description="Tax code reference")
     Entity: Optional[EntityModel] = Field(None, description="Entity details")
 
     class Config:
@@ -79,25 +54,25 @@ class JournalEntryLineDetailModel(BaseModel):
         )
 
     @staticmethod
-    def _create_account_ref(move_line) -> AccountRefModel:
-        return AccountRefModel(
+    def _create_account_ref(move_line) -> RefModel:
+        return RefModel(
             name=move_line.account_id.name,
             value=str(move_line.account_id.id),
         )
 
     @staticmethod
-    def _create_class_ref(move_line) -> Optional[ClassRefModel]:
+    def _create_class_ref(move_line) -> Optional[RefModel]:
         analytic_class = move_line.analytic_line_ids
         if not analytic_class:
             return None
-        return ClassRefModel(
+        return RefModel(
             name=analytic_class.account_id.name,
             value=str(analytic_class.account_id.id),
         )
 
     @staticmethod
     def _create_entity(move_line) -> EntityModel:
-        entity_ref = EntityRefModel(
+        entity_ref = RefModel(
             name=move_line.partner_id.name,
             value=str(move_line.partner_id.id),
         )
@@ -134,7 +109,7 @@ class LineRequestModel(BaseModel):
 
 class JournalEntryRequestModel(BaseModel):
     Line: List[LineRequestModel] = Field(..., description="Journal entry lines")
-    CurrencyRef: Optional[CurrencyRefModel] = Field(None, description="Currency reference")
+    CurrencyRef: Optional[RefModel] = Field(None, description="Currency reference")
 
     class Config:
         from_attributes = True
@@ -191,7 +166,7 @@ class JournalEntryRequestModel(BaseModel):
         
 
 class DescriptionLineDetailModel(BaseModel):
-    TaxCodeRef: Optional[TaxCodeRefModel] = Field(None, description="Tax code reference")
+    TaxCodeRef: Optional[RefModel] = Field(None, description="Tax code reference")
     ServiceDate: Optional[str] = Field(None, description="Service date")
 
     class Config:
@@ -291,9 +266,8 @@ class JournalEntryResponseModel(BaseModel):
             time=datetime.now()
         )
     
-class JournalEntryQueryResponseModel(PaginationMixin):
+class JournalEntryQueryResponseModel(PaginationResponseModel):
     JournalEntry: List[JournalEntryModel] = Field(..., description="List of journal entries")
-    totalCount: int = Field(0, description="Total count")
 
     class Config:
         from_attributes = True

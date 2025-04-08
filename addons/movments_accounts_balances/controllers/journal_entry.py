@@ -3,18 +3,15 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 from odoo import http
 from odoo.http import request
-import json
-from ..common import APIResponse, get_company_from_headers, validate_and_convert_data, get_request_data, validate_request_data
-from ..utils import validate_company, validate_journal, validate_partner, validate_account, format_date
+
+from ..utils import APIResponse, get_company_from_headers, validate_request_data
 from ..logger.logger import logger
 from ..swagger.common import swagger_doc
 # from ..swagger.journal_entry import journal_entries_docs
-from ..schemas.journal_entry import (JOURNAL_ENTRY_SCHEMA, JournalEntryRequestModel, JournalEntryModel, JournalEntryResponseModel, JournalEntryQueryResponseModel, JournalEntryListResponseModel, 
-                                    LineResponseModel, JournalEntryLineDetailModel, AccountRefModel, EntityModel, EntityRefModel)
-from ..schemas.common import CurrencyRefModel, MetaDataModel, ClassRefModel
-from ..constants import CONSTANTS
+from ..schemas.journal_entry import (JournalEntryRequestModel, JournalEntryModel, JournalEntryResponseModel, JournalEntryListResponseModel)
 from ..repository.account_move import AccountMoveService
 from ..repository.company import CompanyService
+from ..repository.journal import JournalService
 
 class JournalEntryController(http.Controller):
 
@@ -106,7 +103,8 @@ class JournalEntryController(http.Controller):
         cursor = request.env.cr
         try:
             with cursor.savepoint():
-                move = request.env['account.move'].sudo().browse(int(journal_entry_id))
+                account_move_service = AccountMoveService(request.env)
+                move = account_move_service.browse(int(journal_entry_id))
                 if not move.exists():
                     return APIResponse.error_response(message='Journal entry not found', errors='Journal entry not found', status=404)
 
@@ -138,11 +136,12 @@ class JournalEntryController(http.Controller):
         """
         cursor = request.env.cr
         try:
-            with cursor.savepoint():
-                move = request.env['account.move'].sudo().browse(int(journal_entry_id))
-                if not move.exists():
-                    return APIResponse.error_response(message='Journal entry not found', errors='Journal entry not found', status=404)
+            account_move_service = AccountMoveService(request.env)
+            move = account_move_service.browse(int(journal_entry_id))
+            if not move.exists():
+                return APIResponse.error_response(message='Journal entry not found', errors='Journal entry not found', status=404)
 
+            with cursor.savepoint():
                 # Check the state of the journal entry
                 if move.state == 'posted':
                     # Reset to draft first
@@ -199,6 +198,7 @@ class JournalEntryController(http.Controller):
                 ('payment_id', '=', None),
             ]
         company_service = CompanyService(request.env)
+        journal_service = JournalService(request.env)
 
         # Validate and add company filter
         if company_id:
@@ -216,7 +216,7 @@ class JournalEntryController(http.Controller):
             domain.append(('date', '<=', date_to))
 
         if journal_id:  
-            is_valid, error_message = validate_journal(request, journal_id, company_id)
+            is_valid, error_message = journal_service.validate_journal(journal_id, company_id)
             if not is_valid:
                 return [], APIResponse.error_response(f'Invalid journal: {error_message}', f'Invalid journal_id: {journal_id}')
             domain.append(('journal_id', '=', int(journal_id)))

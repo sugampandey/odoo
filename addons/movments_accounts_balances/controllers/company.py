@@ -1,49 +1,17 @@
-
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 from odoo import http
 from odoo.http import request
-import datetime
-from ..common import APIResponse, validate_request_data
-from ..utils import format_date
+from ..utils import APIResponse, validate_request_data
 from ..logger.logger import logger
 
 # from ..swagger.common import swagger_doc
 # from ..swagger.company import companies_docs
 from ..schemas.company import CompanyModel, CompanyListResponseModel, CompanyCreateRequestModel, CompanyResponseModel
-from ..schemas.common import CurrencyRefModel, MetaDataModel, PhoneNumberModel, EmailAddressModel
-from ..constants import CONSTANTS
 from ..repository.company import CompanyService
 from ..repository.product import ProductTemplateService
 
 class CreateCompany(http.Controller):
-    
-    def _save_company(self, request, company_vals: Dict[str, Any]) -> Any:
-        company_service = CompanyService(request.env)
-        company = company_service.create(company_vals)
-        return company
-
-    def _prepare_success_response(self, company: Any) -> Dict[str, Any]:
-        response_data = CompanyResponseModel.create_company_response(company)
-        return APIResponse.success_response(response_data.model_dump(mode='json'),
-            status=HTTPStatus.CREATED
-        )
-    
-    def _create_company_record(self, request, company_model: CompanyCreateRequestModel) -> Dict[str, Any]:
-        product_service = ProductTemplateService(request.env)
-        company_vals = company_model.create_company_vals(request)
-        try:
-            cursor = request.env.cr
-            with cursor.savepoint():
-                company = self._save_company(request, company_vals)
-                product_service.create_default_product(company.id)
-                return self._prepare_success_response(company)
-        except Exception as e:
-            cursor.rollback()
-            logger.error(f"Failed to create company: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',
-                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )
     
     @http.route('/api/companies', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     # @swagger_doc(companies_docs['create_company'])
@@ -81,7 +49,72 @@ class CreateCompany(http.Controller):
             return APIResponse.success_response(response_data.model_dump(mode='json'))
         except Exception as e:
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
+
+    
+    @http.route('/api/companies/', type='http', auth='public', methods=['GET'], csrf=False)
+    # @swagger_doc(companies_docs['list_companies'])
+    def list_companies(self, name: Optional[str] = None, active: Optional[str] = None, 
+                       maxresults: int = 100, startposition: int = 0, **kwargs):
+        try:
+            # Build search domain and validate company
+            domain, error_response = self._build_search_domain(name, active)
+            if error_response:
+                return error_response
+
+            return self._fetch_companies(
+                domain, int(startposition), int(maxresults)
+            )
+        except Exception as e:
+            logger.error(f"Error in list_accounts: {str(e)}")
+            return APIResponse.error_response(message=f'An error occurred: {str(e)}',
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
+            )        
+
+    @http.route('/api/companies/<int:company_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    # @swagger_doc(companies_docs['delete_company'])
+    def delete_company(self, company_id, **kwargs):
+        try:
+            company_service = CompanyService(request.env)
+            company = company_service.browse(company_id)
+            if not company.exists():
+                return APIResponse.error_response(message='Company not found', errors='Invalid company_id', status=HTTPStatus.NOT_FOUND)
+
+            # Delete the company
+            company.write({'active': False}) 
+
+            return APIResponse.success_response({'message':'Company deactivated successfully'})
+        except Exception as e:
+            return APIResponse.error_response(message='An error occurred while deleting the company', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
+
+
+    def _save_company(self, request, company_vals: Dict[str, Any]) -> Any:
+        company_service = CompanyService(request.env)
+        company = company_service.create(company_vals)
+        return company
+
+    def _prepare_success_response(self, company: Any) -> Dict[str, Any]:
+        response_data = CompanyResponseModel.create_company_response(company)
+        return APIResponse.success_response(response_data.model_dump(mode='json'),
+            status=HTTPStatus.CREATED
+        )
+    
+    def _create_company_record(self, request, company_model: CompanyCreateRequestModel) -> Dict[str, Any]:
+        product_service = ProductTemplateService(request.env)
+        company_vals = company_model.create_company_vals(request)
+        try:
+            cursor = request.env.cr
+            with cursor.savepoint():
+                company = self._save_company(request, company_vals)
+                product_service.create_default_product(company.id)
+                return self._prepare_success_response(company)
+        except Exception as e:
+            cursor.rollback()
+            logger.error(f"Failed to create company: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request',
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
+            )
+
     def _build_search_domain(self, name: Optional[str], active: Optional[str]
                              ) -> Tuple[List[Tuple], Optional[Dict[str, Any]]]:
         domain = []
@@ -126,42 +159,5 @@ class CreateCompany(http.Controller):
         )
         
         return APIResponse.success_response(response_data.model_dump(mode='json'))
-    
-    @http.route('/api/companies/', type='http', auth='public', methods=['GET'], csrf=False)
-    # @swagger_doc(companies_docs['list_companies'])
-    def list_companies(self, name: Optional[str] = None, active: Optional[str] = None, 
-                       maxresults: int = 100, startposition: int = 0, **kwargs):
-        try:
-            # Build search domain and validate company
-            domain, error_response = self._build_search_domain(name, active)
-            if error_response:
-                return error_response
-
-            return self._fetch_companies(
-                domain, int(startposition), int(maxresults)
-            )
-        except Exception as e:
-            logger.error(f"Error in list_accounts: {str(e)}")
-            return APIResponse.error_response(message=f'An error occurred: {str(e)}',
-                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )        
-
-    @http.route('/api/companies/<int:company_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    # @swagger_doc(companies_docs['delete_company'])
-    def delete_company(self, company_id, **kwargs):
-        company_service = CompanyService(request.env)
-        company = company_service.browse(company_id)
-        if not company.exists():
-            return APIResponse.error_response(message='Company not found', errors='Invalid company_id', status=HTTPStatus.NOT_FOUND)
-        cursor = request.env.cr
-        try:
-            with cursor.savepoint():
-                # Delete the company
-                company.write({'active': False}) 
-
-                return APIResponse.success_response({'message':'Company deactivated successfully'})
-        except Exception as e:
-            cursor.rollback()
-            return APIResponse.error_response(message='An error occurred while deleting the company', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
 

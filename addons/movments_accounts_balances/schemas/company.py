@@ -1,17 +1,11 @@
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, EmailStr
-import uuid
-
-from .common import (CurrencyRefModel, MetaDataModel, BillAddrModel,
-                     PhoneNumberModel, EmailAddressModel, HEADERS, PaginationMixin)
-from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
+from .common import (RefModel, MetaDataModel, BillAddrModel,
+                     PhoneNumberModel, EmailAddressModel, PaginationResponseModel)
 from ..repository.currency import CurrencyService
 
 # TODO: Move these to common module
-class CurrencyRefModel(BaseModel):
-    name: Optional[str] = None
-    value: Optional[str] = None
 
 class MetaDataModel(BaseModel):
     CreateTime: datetime
@@ -48,7 +42,7 @@ class CompanyCreateRequestModel(BaseModel):
     PrimaryEmailAddr: Optional[EmailAddressModel] = Field(None, description="Primary email address")
     PrimaryPhone: Optional[PhoneNumberModel] = Field(None, description="Primary phone number")
     BillAddr: Optional[BillAddrModel] = Field(None, description="Billing address")
-    CurrencyRef: Optional[CurrencyRefModel] = Field(None, description="Currency reference")
+    CurrencyRef: Optional[RefModel] = Field(None, description="Currency reference")
 
     class Config:
         from_attributes = True
@@ -69,7 +63,7 @@ class CompanyModel(BaseModel):
     PrimaryEmailAddr: Optional[EmailAddressModel] = None
     PrimaryPhone: Optional[PhoneNumberModel] = None
     BillAddr: Optional[BillAddrModel] = None
-    CurrencyRef: Optional[CurrencyRefModel] = None
+    CurrencyRef: Optional[RefModel] = None
     MetaData: Optional[MetaDataModel] = None
     Active: bool = Field(True, description="Whether the company is active")
     SyncToken: Optional[str] = None
@@ -87,7 +81,7 @@ class CompanyModel(BaseModel):
 
             currency_ref = None
             if company.currency_id:
-                currency_ref = CurrencyRefModel(
+                currency_ref = RefModel(
                     name=company.currency_id.full_name,
                     value=company.currency_id.name
                 )
@@ -118,11 +112,10 @@ class CompanyResponseModel(BaseModel):
             time=datetime.now()
         )
     
-class CompanyQueryResponseModel(PaginationMixin):
+class CompanyQueryResponseModel(PaginationResponseModel):
     """
     Response model for company queries with pagination
     """
-    totalCount: int = Field(..., ge=0, description="Total count of records")
     Company: List[CompanyModel] = Field(..., description="List of companies")
 
     @field_validator('Company')

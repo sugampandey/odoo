@@ -1,28 +1,38 @@
 from odoo import http, fields
 from odoo.http import request
-from ..common import APIResponse
-from ..utils import validate_analytic_account, validate_journal, validate_partner, validate_account, validate_company, get_general_ledger_report_order
+from ..utils import APIResponse, get_general_ledger_report_order
 from ..swagger.common import swagger_doc
 from ..swagger.reports import reports_docs
-from ..helpers.general_ledger import prepare_general_ledger_response
-import traceback
-from ..helpers.balance_sheet import prepare_account_balance_response
+from ..schemas.helpers.general_ledger import prepare_general_ledger_response
+from ..schemas.helpers.balance_sheet import prepare_account_balance_response
+
+from ..repository.analytic_account import AnalyticAccountService
+from ..repository.partner import PartnerService
+from ..repository.account import AccountService
+from ..repository.company import CompanyService
+
 
 class ReportsAPI(http.Controller):
+    
 
     def validate_report_request_params(self, company_id, start_date=None, end_date=None, 
                                                partner_id=None, account_id=None, analytic_class_id=None):
+        company_service = CompanyService(request.env)
+        analytic_account_service = AnalyticAccountService(request.env)
+        partner_service = PartnerService(request.env)
+        account_service = AccountService(request.env)
+        
         if not company_id:
             return False, 'Company ID is required'
         
-        is_valid, error_message = validate_company(request, company_id)
+        is_valid, error_message = company_service.validate_company(company_id)
         if not is_valid:
             return False, error_message
         
         for param_id, validator in [
-                (partner_id, validate_partner),
-                (account_id, validate_account),
-                (analytic_class_id, validate_analytic_account)
+                (partner_id, partner_service.validate_partner),
+                (account_id, account_service.validate_account),
+                (analytic_class_id, analytic_account_service.validate_analytic_account)
             ]:
                 if param_id:
                     is_valid, error_message = validator(request, int(param_id), company_id)
@@ -138,7 +148,6 @@ class ReportsAPI(http.Controller):
             return APIResponse.success_response(balance_sheet.model_dump(mode='json'))
 
         except Exception as e:
-            traceback.print_exc()
             return APIResponse.error_response(
                 message='Error generating balance sheet',
                 errors=str(e),

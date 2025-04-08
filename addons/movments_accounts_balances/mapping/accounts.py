@@ -1,4 +1,4 @@
-from .utils import BidirectionalMapper
+from .bidirectional_mapper import BidirectionalMapper
 
 TYPE_PREFIX_MAPPING = {
     'asset_receivable': 'AR',      # Accounts Receivable
@@ -45,5 +45,5 @@ ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING = {
     'Other Expense': 'expense_depreciation',
 }
 
-CLASSIFICATION_MAPPING = BidirectionalMapper(CLASSIFICATION_DOCYT_TO_ODOO_MAPPING) 
+ACCOUNT_CLASSIFICATION_MAPPING = BidirectionalMapper(CLASSIFICATION_DOCYT_TO_ODOO_MAPPING) 
 ACCOUNT_TYPE_MAPPING = BidirectionalMapper(ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING)

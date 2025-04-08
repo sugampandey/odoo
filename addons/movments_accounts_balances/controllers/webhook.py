@@ -1,8 +1,9 @@
 from odoo import http
 from odoo.http import request
-from ..common import get_request_data, APIResponse
+from ..utils import get_request_data, APIResponse
 from ..swagger.common import swagger_doc
 from ..swagger.webhook import webhooks_docs
+from ..repository.config_parameter import ConfigParamService
 
 class WebhookController(http.Controller):
     
@@ -10,7 +11,8 @@ class WebhookController(http.Controller):
     @swagger_doc(webhooks_docs['get_webhook_config'])
     def get_webhook_url(self):
         try:
-            webhook_url = request.env['ir.config_parameter'].sudo().get_param('account_move.webhook_url', '')
+            config_param_service = ConfigParamService(request.env)
+            webhook_url = config_param_service.get_param('account_move.webhook_url')
             return APIResponse.success_response({'webhook_url': webhook_url})
         except Exception as e:
             return APIResponse.error_response(message='Failed to retrieve webhook URL', errors=str(e), status=500)
@@ -18,6 +20,7 @@ class WebhookController(http.Controller):
     @http.route('/api/webhook/config', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     @swagger_doc(webhooks_docs['update_webhook_config'])
     def update_webhook_url(self):
+        config_param_service = ConfigParamService(request.env)
         cursor = request.env.cr
         try:
             with cursor.savepoint():
@@ -31,10 +34,7 @@ class WebhookController(http.Controller):
                 if webhook_url and not webhook_url.startswith(('http://', 'https://')):
                     return APIResponse.error_response(message='Invalid URL format. Must start with http:// or https://')
 
-                request.env['ir.config_parameter'].sudo().set_param(
-                    'account_move.webhook_url', 
-                    webhook_url
-                )
+                config_param_service.set_param('account_move.webhook_url', webhook_url)
                 return APIResponse.success_response({'webhook_url': webhook_url})
         except Exception as e:
             cursor.rollback()
@@ -44,10 +44,11 @@ class WebhookController(http.Controller):
     @http.route('/api/webhook/config', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
     @swagger_doc(webhooks_docs['delete_webhook_config'])
     def delete_webhook_url(self):
+        config_param_service = ConfigParamService(request.env)
         cursor = request.env.cr
         try:
             with cursor.savepoint():
-                request.env['ir.config_parameter'].sudo().set_param('account_move.webhook_url', '')
+                config_param_service.set_param('account_move.webhook_url', '')
                 return APIResponse.success_response({'message':'Webhook URL removed successfully'})
         except Exception as e:
             cursor.rollback()  

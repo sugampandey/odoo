@@ -22,4 +22,41 @@ class ProductTemplateService(BaseOdooService):
             'standard_price': 0.0,
         })
 
+class ProductService(BaseOdooService):
+    def _get_model(self) -> models.Model:
+        return self.env['product.product'].sudo()
+    
+    def get_default_product(self, company_id):
+        model = self._get_model()
+        domain = [
+            ('product_tmpl_id.company_id', '=', int(company_id)),
+            ('default_code', '=', CONSTANTS['PRODUCT_DEFAULT_CODE'])
+        ]
+        default_product = model.search(domain, limit=1)
+        return default_product
+
+    def validate_product(self, product_id, company_id):
+        """
+        Validate product based on company association
+        Args:
+            product_id: ID of the product to validate
+        Returns:
+            tuple: (bool, str) - (is_valid, error_message)
+        """
+        model = self._get_model()
+        product = model.browse(int(product_id))
+
+        # Basic validations
+        if not product.exists():
+            return False, "Product does not exist"
+        
+        if product.product_tmpl_id.company_id:
+            if product.product_tmpl_id.company_id.id != int(company_id):
+                return False, "Product belongs to different company"
+        
+        if product.active == False:
+            return False, "Product is not active"
+
+        return True, ""
+
 

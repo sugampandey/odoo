@@ -1,12 +1,13 @@
 import datetime
-from typing import Any, Dict, List, Iterator, Optional, Union
-from decimal import Decimal
-from ..constants import CONSTANTS
-from ..enums import ClassificationType
-from ..utils import format_date
-from ..schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
+from typing import Any, List, Optional, Union
+from ...enums import ClassificationType
+from ...utils import format_date
+from ...schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
                                RowsModel, MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
                                SectionHeaderModel, NestedRowsModel, SectionRowModel, ReportResponseModel)
+from ...repository.account import AccountService
+from ...repository.account_move import AccountMoveLineService
+
 
 def create_header(start_date, end_date, currency: str = "USD") -> HeaderModel:
     """Create the header section of the response."""
@@ -84,15 +85,18 @@ def prepare_account_balance_response(
     LIABILITY = ClassificationType.LIABILITY
     EQUITY = ClassificationType.EQUITY
 
+    account_service = AccountService(request.env)
+    account_move_line_service = AccountMoveLineService(request.env)
+
     # Get accounts grouped by type
-    accounts = request.env['account.account'].sudo().search([
+    accounts = account_service.search([
         ('company_id', '=', company_id),
         ('internal_group', 'in', [ASSET, LIABILITY, EQUITY])
     ])
     domain.append(('account_id', 'in', accounts.ids))
 
     # Read account balances using read_group
-    account_balances = request.env['account.move.line'].sudo().read_group(
+    account_balances = account_move_line_service.read_group(
         domain=domain,
         fields=['account_id', 'balance'],
         groupby=['account_id']

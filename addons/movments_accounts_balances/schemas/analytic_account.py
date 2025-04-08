@@ -2,21 +2,17 @@ from typing import List, Optional, Literal, get_type_hints, Type, Union, Any
 import uuid
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from .common import ParentRefModel, MetaDataModel, HEADERS, PaginationMixin
-from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
+from .common import PaginationResponseModel, RefModel
 
 
 class MetaDataModel(BaseModel):
     CreateTime: datetime
     LastUpdatedTime: datetime
 
-class ParentRefModel(BaseModel):
-    value: Optional[str] = None
-    name: Optional[str] = None
 
 class AnalyticClassCreateRequestModel(BaseModel):
     Name: str = Field(..., min_length=1, max_length=256)
-    ParentRef: Optional[ParentRefModel] = Field(None, description="Parent reference")
+    ParentRef: Optional[RefModel] = Field(None, description="Parent reference")
 
     class Config:
         from_attributes = True
@@ -38,7 +34,7 @@ class AnalyticClassModel(BaseModel):
     Active: Optional[bool] = True
     Id: Optional[int] = None
     MetaData: Optional[MetaDataModel] = None
-    ParentRef: Optional[ParentRefModel] = None
+    ParentRef: Optional[RefModel] = None
     SyncToken: Optional[str] = None
 
     class Config:
@@ -57,8 +53,7 @@ class AnalyticClassModel(BaseModel):
             MetaData=meta_data,
         )
 
-class AnalyticClassQueryResponseModel(PaginationMixin):
-    totalCount: int = Field(..., description="Total count of records")
+class AnalyticClassQueryResponseModel(PaginationResponseModel):
     Class: List[AnalyticClassModel]
 
     @field_validator('Class')

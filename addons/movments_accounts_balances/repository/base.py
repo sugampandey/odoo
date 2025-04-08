@@ -46,6 +46,20 @@ class BaseOdooService:
             order=order
         )
     
+    def read_group(self, domain: List, fields: List[str], groupby: List[str],
+                  offset: int = 0, limit: Optional[int] = None,
+                  orderby: Optional[str] = None, lazy: bool = True) -> List[Dict[str, Any]]:
+        model = self._get_model()
+        return model.read_group(
+            domain=domain,
+            fields=fields,
+            groupby=groupby,
+            offset=offset,
+            limit=limit,
+            orderby=orderby,
+            lazy=lazy
+        )
+    
     
     def search_count(self, domain: List) -> int:
         model = self._get_model()

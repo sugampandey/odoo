@@ -1,29 +1,17 @@
 import uuid
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Literal, get_type_hints, Type, Union, Any, List
+from typing import Optional, List
 from datetime import datetime
-from ..constants import CONSTANTS
-from ..utils import get_currency_id
-from .common import CurrencyRefModel, MetaDataModel, TaxCodeRefModel, ParentRefModel, HEADERS, PaginationMixin
-from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
-from ..mapping.accounts import CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING, TYPE_PREFIX_MAPPING
+from .common import MetaDataModel, PaginationResponseModel, RefModel
+from ..mapping.accounts import ACCOUNT_CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
+from ..repository.currency import CurrencyService
 
 # TODO: Move these to common module
-class CurrencyRefModel(BaseModel):
-    name: Optional[str] = None
-    value: Optional[str] = None
 
 class MetaDataModel(BaseModel):
     CreateTime: datetime
     LastUpdatedTime: datetime
 
-class TaxCodeRefModel(BaseModel):
-    value: Optional[str] = None
-    name: Optional[str] = None
-
-class ParentRefModel(BaseModel):
-    value: Optional[str] = None
-    name: Optional[str] = None
 
 
 class AccountCreateRequestModel(BaseModel):
@@ -31,7 +19,7 @@ class AccountCreateRequestModel(BaseModel):
     AcctNum: str = Field(..., description="Account Number")
     AccountType: str = Field(..., description="Account Type")
     AccountSubType: Optional[str] = Field(None, description="Sub-type of account")
-    CurrencyRef: Optional[CurrencyRefModel] = Field(None, description="Currency reference")
+    CurrencyRef: Optional[RefModel] = Field(None, description="Currency reference")
 
     @field_validator('AccountType')
     def validate_account_type(cls, value: str) -> str:
@@ -49,6 +37,7 @@ class AccountCreateRequestModel(BaseModel):
     
     def create_account_vals(self, request, company_id: int) -> dict:
         currency_value = self.CurrencyRef.value if self.CurrencyRef else 'USD'
+        currency_service = CurrencyService(request.env)
         return {
             'name': self.Name,
             'code': self.get_unique_account_code(self.AccountType),
@@ -56,7 +45,7 @@ class AccountCreateRequestModel(BaseModel):
             'account_number': self.AcctNum,
             'sub_type_code': self.AccountSubType,
             'company_id': company_id,
-            'currency_id': get_currency_id(request, currency_value) if currency_value else None
+            'currency_id': currency_service.get_currency_id(currency_value) if currency_value else None
         }
 
 
@@ -70,7 +59,7 @@ class AccountModel(BaseModel):
     AcctNum: Optional[str] = Field(None, description="Account Number")
     CurrentBalance: Optional[float] = Field(0.0, description="Current balance")
     CurrentBalanceWithSubAccounts: Optional[float] = Field(0.0, description="Current balance including sub-accounts")
-    CurrencyRef: Optional[CurrencyRefModel] = Field(None, description="Currency reference")
+    CurrencyRef: Optional[RefModel] = Field(None, description="Currency reference")
     Active: Optional[bool] = Field(True, description="Whether the account is active")
     domain: Optional[str] = None
     sparse: Optional[bool] = False
@@ -80,15 +69,15 @@ class AccountModel(BaseModel):
     Description: Optional[str] = None
     TxnLocationType: Optional[str] = None
     AccountAlias: Optional[str] = None
-    TaxCodeRef: Optional[TaxCodeRefModel] = None
-    ParentRef: Optional[ParentRefModel] = None
+    TaxCodeRef: Optional[RefModel] = None
+    ParentRef: Optional[RefModel] = None
 
     class Config:
         from_attributes = True  # Allows conversion from ORM objects
     
     @staticmethod
     def get_classification(classification: str) -> str:
-        return CLASSIFICATION_MAPPING.get(classification)
+        return ACCOUNT_CLASSIFICATION_MAPPING.get(classification)
     
     @staticmethod
     def get_account_type(account_type: str) -> str:
@@ -104,7 +93,7 @@ class AccountModel(BaseModel):
 
             currency_ref = None
             if account.currency_id:
-                currency_ref = CurrencyRefModel(
+                currency_ref = RefModel(
                     name=account.currency_id.full_name,
                     value=account.currency_id.name
                 )
@@ -125,11 +114,10 @@ class AccountModel(BaseModel):
             raise ValueError(f"Error converting: {str(e)}")
 
 
-class AccountQueryResponseModel(PaginationMixin):
+class AccountQueryResponseModel(PaginationResponseModel):
     """
     Response model for account queries with pagination
     """
-    totalCount: int = Field(..., ge=0, description="Total count of records")
     Account: List[AccountModel] = Field(..., description="List of accounts")
 
     @field_validator('Account')

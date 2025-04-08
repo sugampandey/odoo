@@ -1,16 +1,18 @@
 from datetime import datetime
 from odoo import http
 from odoo.http import request
-from odoo.exceptions import ValidationError, UserError
-import json
+from odoo.exceptions import UserError
 
 from odoo.fields import float_compare
-from ..common import APIResponse, validate_and_convert_data, get_request_data
-from ..utils import validate_account, validate_company, get_payment_method_line, validate_partner
+from ..utils import APIResponse, validate_and_convert_data, get_request_data
 
 from ..swagger.common import swagger_doc
 from ..swagger.invoice_payment import invoice_payments_docs
 from ..schemas.invoice_payment import INVOICE_PAYMENT_SCHEMA
+from ..repository.partner import PartnerService
+from ..repository.account import AccountService
+from ..repository.company import CompanyService
+from ..repository.payment_method import PaymentMethodLineService
 
 class InvocePaymentController(http.Controller):
     ASSET_ACCOUNT_TYPES = ['asset_cash', 'asset_current', 'asset_receivable']
@@ -19,8 +21,9 @@ class InvocePaymentController(http.Controller):
         """
         Helper method to create an unapplied payment (credit) for a customer.
         """
+        payment_method_line_service = PaymentMethodLineService(request.env)
         # check payment method
-        payment_method_line = get_payment_method_line(request, int(data['payment_method_id']))
+        payment_method_line = payment_method_line_service.get_payment_method_line(int(data['payment_method_id']))
         payment_method_id = payment_method_line.payment_method_id.id
         destination_journal_id = payment_method_line.journal_id.id
 
@@ -69,6 +72,9 @@ class InvocePaymentController(http.Controller):
         return APIResponse.success_response(message='Unapplied payment created as a credit for future use', data=response_data)
 
     def validate_and_prepare_invoice_payment_data(self, data, invoice_payment_expected_fields):
+        payment_method_line_service = PaymentMethodLineService(request.env)
+        company_service = CompanyService(request.env)
+        account_service = AccountService(request.env)
         success, converted_data = validate_and_convert_data(data, invoice_payment_expected_fields)
         if success is not True:
             return False, converted_data, converted_data
@@ -78,7 +84,7 @@ class InvocePaymentController(http.Controller):
         
         # Validate company 
         company_id = converted_data['company_id']
-        is_valid, error_message = validate_company(request, company_id)
+        is_valid, error_message = company_service.validate_company(company_id)
         if not is_valid:
             return False, APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}'), converted_data
         
@@ -121,7 +127,7 @@ class InvocePaymentController(http.Controller):
         # check if destination_account_id is of asset account_type
         destination_account_id = int(converted_data.get('account_id')) if converted_data.get('account_id') else None
         if destination_account_id:
-            is_valid, error_message = validate_account(request, destination_account_id, company_id, self.ASSET_ACCOUNT_TYPES)
+            is_valid, error_message = account_service.validate_account(destination_account_id, company_id, self.ASSET_ACCOUNT_TYPES)
             if not is_valid:
                 return False, APIResponse.error_response(f'Invalid account: {error_message}', f'Invalid account_id: {destination_account_id}'), converted_data
         else:
@@ -133,7 +139,7 @@ class InvocePaymentController(http.Controller):
                 destination_account_id = receivable_line.account_id.id
 
         outstanding_account_id = int(converted_data.get('payment_account_id'))
-        payment_method_line = get_payment_method_line(request, outstanding_account_id, 'inbound')
+        payment_method_line = payment_method_line_service.get_payment_method_line(outstanding_account_id, 'inbound')
         payment_method_id = payment_method_line.payment_method_id.id
         destination_journal_id = payment_method_line.journal_id.id
 
@@ -147,7 +153,7 @@ class InvocePaymentController(http.Controller):
             'destination_journal_id': destination_journal_id,
             'payment_method_id': payment_method_id,
             'payment_method_line_id' : payment_method_line.id,
-            'payment_reference': converted_data.get('payment_reference') if converted_data.get('payment_reference') else ', '.join(invoice.mapped('name')), 
+            'payment_reference': converted_data.get('payment_reference') if converted_data.get('payment_reference') else ', '.join(invoices.mapped('name')), 
         }
         return True, payment_vals, converted_data
     
@@ -221,8 +227,9 @@ class InvocePaymentController(http.Controller):
     @http.route('/api/invoice-payments/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @swagger_doc(invoice_payments_docs['list_invoice_payments'])
     def list_invoice_payments(self, partner_id, company_id, limit=20, offset=0, date_from=None, date_to=None, **kwargs):
+        partner_service = PartnerService(request.env)
         try:
-            is_valid, error_message = validate_partner(request, int(partner_id), int(company_id))
+            is_valid, error_message = partner_service.validate_partner(int(partner_id), int(company_id))
             if not is_valid:
                 return APIResponse.error_response(message=f'Invalid Partner: {error_message}', errors=f'Invalid partner_id: {partner_id}', status=404)
             domain = [

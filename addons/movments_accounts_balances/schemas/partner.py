@@ -1,8 +1,8 @@
 from typing import Any, Dict, Optional, List
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from .common import (MetaDataModel, TaxCodeRefModel, BillAddrModel,
-                     PhoneNumberModel, EmailAddressModel, WebAddrModel, HEADERS, PaginationMixin)
+from .common import (MetaDataModel, RefModel, BillAddrModel,
+                     PhoneNumberModel, EmailAddressModel, WebAddrModel, HEADERS, PaginationResponseModel)
 
 
 # Base Models
@@ -10,10 +10,6 @@ from .common import (MetaDataModel, TaxCodeRefModel, BillAddrModel,
 class MetaDataModel(BaseModel):
     CreateTime: datetime
     LastUpdatedTime: datetime
-
-class TaxCodeRefModel(BaseModel):
-    value: str = Field(..., description="Tax code value")
-    name: Optional[str] = Field(None, description="Tax code name")
 
 class BillAddrModel(BaseModel):
     City: Optional[str] = Field(None, description="City name")
@@ -190,7 +186,7 @@ class CustomerModel(BasePartnerModel):
     BalanceWithJobs: Optional[float] = Field(0.0, description="Balance including jobs")
     Taxable: Optional[bool] = Field(True, description="Taxable status")
     Notes: Optional[str] = None
-    DefaultTaxCodeRef: Optional[TaxCodeRefModel] = None
+    DefaultTaxCodeRef: Optional[RefModel] = None
 
     @classmethod
     def customer_object(cls, customer) -> "CustomerModel":
@@ -236,8 +232,7 @@ class CustomerResponseModel(BaseModel):
             time=datetime.now()
         )
 
-class VendorQueryResponseModel(PaginationMixin):
-    totalCount: int = Field(..., ge=0, description="Total count of records")
+class VendorQueryResponseModel(PaginationResponseModel):
     Vendor: List[VendorModel] = Field(..., description="List of vendors")
 
     @field_validator('Vendor')
@@ -246,8 +241,7 @@ class VendorQueryResponseModel(PaginationMixin):
             raise ValueError("Vendor list cannot be empty")
         return vendors
 
-class CustomerQueryResponseModel(PaginationMixin):
-    totalCount: int = Field(..., ge=0, description="Total count of records")
+class CustomerQueryResponseModel(PaginationResponseModel):
     Customer: List[CustomerModel] = Field(..., description="List of customers")
 
     @field_validator('Customer')

@@ -1,5 +1,6 @@
 from odoo import models, api
 from ..constants import CONSTANTS
+from ..repository.partner import PartnerCategoryService
 
 class Initializer(models.Model):
     _name = 'initializer.initializer'
@@ -12,23 +13,24 @@ class Initializer(models.Model):
         return res
     
     def _create_default_partner_categories(self):
+        partner_category_service = PartnerCategoryService(self.env)
 
-        default_vendor_category = self.env['res.partner.category'].search([
+        default_vendor_category = partner_category_service.search([
             ('name', '=', CONSTANTS['VENDOR_CATEGORY_NAME'])
         ], limit=1)
 
         if not default_vendor_category:
-            self.env['res.partner.category'].create({
+            partner_category_service.create({
                 'name': CONSTANTS['VENDOR_CATEGORY_NAME'],
                 'active': True,
             })
 
-        default_customer_category = self.env['res.partner.category'].search([
+        default_customer_category = partner_category_service.search([
             ('name', '=', CONSTANTS['CUSTOMER_CATEGORY_NAME'])
         ], limit=1)
         
         if not default_customer_category:
-            self.env['res.partner.category'].create({
+            partner_category_service.create({
                 'name': CONSTANTS['CUSTOMER_CATEGORY_NAME'],
                 'active': True,
             })

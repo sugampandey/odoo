@@ -1,19 +1,27 @@
 from datetime import datetime
 from odoo import http
 from odoo.http import request
-import json
-from ..common import APIResponse, validate_and_convert_data, get_request_data
-from ..utils import get_default_product, validate_account, validate_partner, validate_analytic_plan, validate_company, validate_product, validate_tax
+from ..utils import APIResponse, validate_and_convert_data, get_request_data
+# from ..utils import get_default_product, validate_account, validate_company
 
 from ..swagger.common import swagger_doc
 from ..swagger.bills import bills_docs
 from ..schemas.bills import BILL_SCHEMA
+from ..repository.partner import PartnerService
+from ..repository.account import AccountService
+from ..repository.company import CompanyService
+from ..repository.product import ProductService
 
 
 class BillController(http.Controller):
     PAYABLE_ACCOUNT_TYPES = ['liability_payable']
 
     def validate_and_prepare_bill_data(self, data, bill_expected_fields):
+        partner_service = PartnerService(request.env)
+        product_service = ProductService(request.env)
+        account_service = AccountService(request.env)
+        company_service = CompanyService(request.env)
+
         success, converted_data = validate_and_convert_data(data, bill_expected_fields)
         if success is not True:
             return False, converted_data, converted_data
@@ -21,20 +29,20 @@ class BillController(http.Controller):
         # Validate company if provided
         company_id = converted_data.get('company_id')
         if company_id:
-            is_valid, error_message = validate_company(request, company_id)
+            is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return False, APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}'), converted_data
         
         # validate partner
         partner_id = converted_data.get('partner_id')
         if partner_id:
-            is_valid, error_message = validate_partner(request, partner_id, company_id)
+            is_valid, error_message = partner_service.validate_partner(partner_id, company_id)
             if not is_valid:
                 return False, APIResponse.error_response(f'Invalid partner: {error_message}', f'Invalid partner_id: {partner_id}'), converted_data
         
         # Validate payable account if provided
         if converted_data.get('payable_account_id'):
-            is_valid, error_message = validate_account(request, converted_data['payable_account_id'], company_id, self.PAYABLE_ACCOUNT_TYPES)
+            is_valid, error_message = account_service.validate_account(converted_data['payable_account_id'], company_id, self.PAYABLE_ACCOUNT_TYPES)
             if not is_valid:
                 return False, APIResponse.error_response(f'Invalid account: {error_message}', f'Invalid payable_account_id: {converted_data["payable_account_id"]}'), converted_data
 
@@ -47,11 +55,11 @@ class BillController(http.Controller):
         for line in converted_data['line_ids']:
             # Validate account
             if line.get('account_id'):
-                is_valid, error_message = validate_account(request, line['account_id'], company_id)
+                is_valid, error_message = account_service.validate_account(line['account_id'], company_id)
                 if not is_valid:
                     return False, APIResponse.error_response(f'Invalid account: {error_message}', f'Invalid account_id: {line["account_id"]}'), converted_data
             
-            default_product = get_default_product(request, company_id)
+            default_product = product_service.get_default_product(company_id)
             
             # Prepare bill line values
             bill_line_vals = {
@@ -137,13 +145,15 @@ class BillController(http.Controller):
     def get_bills(self, company_id, partner_id=None, state=None, 
                   limit=20, offset=0, date_from=None, date_to=None, **kwargs):
         try:
+            company_service = CompanyService(request.env)
+            partner_service = PartnerService(request.env)
             domain = [('move_type', '=', 'in_invoice')]
-            is_valid, error_message = validate_company(request, company_id)
+            is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
             domain.append(('company_id', '=', int(company_id)))
             if partner_id:
-                is_valid, error_message = validate_partner(request, int(partner_id), int(company_id))
+                is_valid, error_message = partner_service.validate_partner(int(partner_id), int(company_id))
                 if not is_valid:
                     return APIResponse.error_response(message=f'Invalid Partner: {error_message}', errors=f'Invalid partner_id: {partner_id}', status=404)
                 domain.append(('partner_id', '=', int(partner_id)))

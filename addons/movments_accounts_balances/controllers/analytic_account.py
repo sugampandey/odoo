@@ -3,7 +3,7 @@ from odoo import http
 from http import HTTPStatus
 from odoo.http import request
 from pydantic import ValidationError
-from ..common import APIResponse, get_company_from_headers, validate_request_data
+from ..utils import APIResponse, get_company_from_headers, validate_request_data
 
 # from ..swagger.common import swagger_doc
 # from ..swagger.analytic_account import analytic_accounts_docs
@@ -22,11 +22,6 @@ class AnalyticAccountAPI(http.Controller):
             data = validate_request_data(request, AnalyticClassCreateRequestModel)
             if not isinstance(data, AnalyticClassCreateRequestModel):  # If error response
                 return data
-            
-            # # Validate company
-            # company_validation = validate_company_from_request(request)
-            # if company_validation:
-            #     return company_validation
             
             return self._create_analytic_account_record(request, data)
         except Exception as e:
@@ -53,7 +48,6 @@ class AnalyticAccountAPI(http.Controller):
             if error_response:
                 return error_response
 
-            # return APIResponse.success_response(response_data)
             return self._fetch_analytic_accounts(
                 domain, int(startposition), int(maxresults)
             )
@@ -101,38 +95,35 @@ class AnalyticAccountAPI(http.Controller):
     @http.route('/api/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
     # @swagger_doc(analytic_accounts_docs['delete_analytic_account'])
     def delete_analytic_account(self, analytic_class_id, **kwargs):
-        company_service = CompanyService(request.env)
-        analytic_account_service = AnalyticAccountService(request.env)
-
-        analytic_account_id = analytic_class_id
-        company_id = int(kwargs.get('company_id')) if kwargs.get('company_id') else kwargs.get('company_id')
-        if not company_id:
-            return APIResponse.error_response(message='Company ID not provided', errors='company_id is required')
-        
-        # Validate company
-        is_valid, error_message = company_service.validate_company(company_id)
-        if not is_valid:
-            return APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
-        
-        cursor = request.env.cr
         try:
-            with cursor.savepoint():
-                # Attempt to retrieve the analytic account using the provided ID
-                account = analytic_account_service.browse(analytic_account_id)
+            company_service = CompanyService(request.env)
+            analytic_account_service = AnalyticAccountService(request.env)
 
-                # Check if the analytic account actually exists
-                if not account.exists():
-                    raise ValidationError(f"Analytic class with ID {analytic_account_id} does not exist.")
-                
-                if account.company_id.id != company_id:
-                    return APIResponse.error_response(message='Analytic class does not belong to the specified company', errors=f'Analytic account {analytic_account_id} does not belong to company {company_id}')
+            analytic_account_id = analytic_class_id
+            company_id = int(kwargs.get('company_id')) if kwargs.get('company_id') else kwargs.get('company_id')
+            if not company_id:
+                return APIResponse.error_response(message='Company ID not provided', errors='company_id is required')
+            
+            # Validate company
+            is_valid, error_message = company_service.validate_company(company_id)
+            if not is_valid:
+                return APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
+        
+            # Attempt to retrieve the analytic account using the provided ID
+            account = analytic_account_service.browse(analytic_account_id)
 
-                # Delete the analytic account
-                account.write({'active': False})
+            # Check if the analytic account actually exists
+            if not account.exists():
+                raise ValidationError(f"Analytic class with ID {analytic_account_id} does not exist.")
+            
+            if account.company_id.id != company_id:
+                return APIResponse.error_response(message='Analytic class does not belong to the specified company', errors=f'Analytic account {analytic_account_id} does not belong to company {company_id}')
 
-                return APIResponse.success_response(message='Analytic class deactivated successfully')
+            # Delete the analytic account
+            account.write({'active': False})
+
+            return APIResponse.success_response({'message':'Analytic class deactivated successfully'})
         except Exception as e:
-            cursor.rollback()
             return APIResponse.error_response(message='An error occurred while deactivating the analytic class', errors=str(e), status=500)
     
     def _create_analytic_account_record(self, request, analytic_account_model: AnalyticClassCreateRequestModel) -> Dict[str, Any]:

@@ -4,13 +4,12 @@ from . import journal
 from . import payment_methods
 from . import tax
 from . import journal_entry
-from . import swagger_controller
+from . import swagger
 from . import accounts
 from . import invoice
 from . import invoice_payment
 from . import analytic_account
 from . import partner
-from . import payments
 from . import bills
 from . import bill_payment
 from . import reports

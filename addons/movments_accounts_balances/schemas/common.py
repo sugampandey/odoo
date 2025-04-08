@@ -14,7 +14,7 @@ HEADERS = [
 ]
 
 
-class PaginationMixin(BaseModel):
+class PaginationModel(BaseModel):
     """Base class for pagination parameters"""
     startPosition: int = Field(
         0, 
@@ -27,6 +27,13 @@ class PaginationMixin(BaseModel):
         le=100,
         description="Maximum number of results to return"
     )
+
+class PaginationResponseModel(PaginationModel):
+    totalCount: int = Field(..., ge=0, description="Total count of records")
+
+class RefModel(BaseModel):
+    name: Optional[str] = None
+    value: Optional[str] = None
 
 class ParentRefModel(RequestSchemaGenerator, ResponseSchemaGenerator):
     def __init__(

@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from http import HTTPStatus
 from odoo import http
 from odoo.http import request
-from ..common import APIResponse, get_company_from_headers, get_payment_method_from_headers, validate_request_data, validate_company_from_request
+from ..utils import APIResponse, get_company_from_headers, get_payment_method_from_headers, validate_request_data
 from ..logger.logger import logger
 from ..swagger.common import swagger_doc, swagger_document
 # from ..swagger.accounts import accounts_docs
@@ -23,11 +23,6 @@ class AccountAPI(http.Controller):
             data = validate_request_data(request, AccountCreateRequestModel)
             if not isinstance(data, AccountCreateRequestModel):  # If error response
                 return data
-
-            # # Validate company
-            # company_validation = validate_company_from_request(request)
-            # if company_validation:
-            #     return company_validation
 
             # Create account
             return self._create_account_record(request, data)
@@ -92,33 +87,30 @@ class AccountAPI(http.Controller):
     @http.route('/api/accounts/<int:account_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
     # @swagger_doc(accounts_docs['delete_account'])
     def delete_account(self, account_id, **kwargs):
-        company_service = CompanyService(request.env)
-        account_service = AccountService(request.env)
-        company_id = int(kwargs.get('company_id')) if kwargs.get('company_id') else kwargs.get('company_id')
-        if not company_id:
-            return APIResponse.error_response(message='Company ID not provided', errors='company_id is required')
-        
-        # Validate company
-        is_valid, error_message = company_service.validate_company(company_id)
-        if not is_valid:
-            return APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
-        
-        # Validate account
-        is_valid, error_message = account_service.validate_account(account_id, company_id)
-        if not is_valid:
-            return APIResponse.error_response(f'Invalid account: {error_message}', f'Invalid account_id: {account_id}')
-        
-        cursor = request.env.cr
         try:
-            with cursor.savepoint():
-                # Retrieve the account
-                account = account_service.browse(account_id)
+            company_service = CompanyService(request.env)
+            account_service = AccountService(request.env)
+            company_id = int(kwargs.get('company_id')) if kwargs.get('company_id') else kwargs.get('company_id')
+            if not company_id:
+                return APIResponse.error_response(message='Company ID not provided', errors='company_id is required')
+            
+            # Validate company
+            is_valid, error_message = company_service.validate_company(company_id)
+            if not is_valid:
+                return APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
+            
+            # Validate account
+            is_valid, error_message = account_service.validate_account(account_id, company_id)
+            if not is_valid:
+                return APIResponse.error_response(f'Invalid account: {error_message}', f'Invalid account_id: {account_id}')
+        
+            # Retrieve the account
+            account = account_service.browse(account_id)
 
-                # Delete the account
-                account.write({'deprecated': True})
-                return APIResponse.success_response()
+            # Delete the account
+            account.write({'deprecated': True})
+            return APIResponse.success_response()
         except Exception as e:
-            cursor.rollback()
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=500)
         
       

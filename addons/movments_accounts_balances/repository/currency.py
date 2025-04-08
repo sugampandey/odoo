@@ -1,4 +1,3 @@
-from typing import Any, Dict, List, Optional, Union
 from odoo import models
 from odoo.exceptions import UserError
 from .base import BaseOdooService
