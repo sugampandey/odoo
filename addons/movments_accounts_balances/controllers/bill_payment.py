@@ -5,10 +5,6 @@ from odoo.exceptions import UserError
 
 from odoo.fields import float_compare
 from ..utils import APIResponse, validate_and_convert_data, get_request_data
-# from ..utils import get_payment_method_line, validate_account, validate_company
-
-from ..swagger.common import swagger_doc
-from ..swagger.bill_payment import bill_payments_docs
 from ..schemas.bill_payment import BILL_PAYMENT_SCHEMA
 from ..repository.partner import PartnerService
 from ..repository.account import AccountService
@@ -109,7 +105,7 @@ class BillPaymentController(http.Controller):
         return True, payment_vals, converted_data
 
     @http.route('/api/bill-payments', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    @swagger_doc(bill_payments_docs['create_bill_payment'])
+    # @swagger_doc(bill_payments_docs['create_bill_payment'])
     def create_bill_payment(self, **kwargs):
         """
         Creates a payment for vendor bills.
@@ -165,7 +161,7 @@ class BillPaymentController(http.Controller):
         
 
     @http.route('/api/bill-payments', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(bill_payments_docs['list_bill_payments'])
+    # @swagger_doc(bill_payments_docs['list_bill_payments'])
     def list_bill_payments(self, partner_id, company_id, limit=20, offset=0, date_from=None, date_to=None, **kwargs):
         try:
             partner_service = PartnerService(request.env)
@@ -235,7 +231,7 @@ class BillPaymentController(http.Controller):
         
 
     @http.route('/api/bill-payments/<int:payment_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(bill_payments_docs['get_bill_payment'])
+    # @swagger_doc(bill_payments_docs['get_bill_payment'])
     def get_bill_payment(self, **kwargs):
         try:
             # Retrieve the payment record
@@ -269,7 +265,7 @@ class BillPaymentController(http.Controller):
             return APIResponse.error_response(message=str(e), errors=str(e), status=500)
         
     @http.route('/api/bill-payments/<int:payment_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    @swagger_doc(bill_payments_docs['delete_bill_payment'])
+    # @swagger_doc(bill_payments_docs['delete_bill_payment'])
     def delete_bill_payment(self, **kwargs):
         cursor = request.env.cr
         try:

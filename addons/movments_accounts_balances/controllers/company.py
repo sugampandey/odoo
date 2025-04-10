@@ -4,9 +4,7 @@ from odoo import http
 from odoo.http import request
 from ..utils import APIResponse, validate_request_data
 from ..logger.logger import logger
-
-# from ..swagger.common import swagger_doc
-# from ..swagger.company import companies_docs
+from ..swagger.swagger_generator import swagger_gen
 from ..schemas.company import CompanyModel, CompanyListResponseModel, CompanyCreateRequestModel, CompanyResponseModel
 from ..repository.company import CompanyService
 from ..repository.product import ProductTemplateService
@@ -14,7 +12,13 @@ from ..repository.product import ProductTemplateService
 class CreateCompany(http.Controller):
     
     @http.route('/api/companies', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    # @swagger_doc(companies_docs['create_company'])
+    @swagger_gen.swagger_doc(
+        operation='create',
+        resource_name='company',
+        request_model=CompanyCreateRequestModel,
+        response_model=CompanyResponseModel,
+        tags=['Companies'],
+    )
     def create_company(self, **kwargs):
         cursor = request.env.cr
         try:
@@ -31,10 +35,17 @@ class CreateCompany(http.Controller):
         
     
     @http.route('/api/companies/<int:company_id>', type='http', auth='public', methods=['GET'], csrf=False)
-    # @swagger_doc(companies_docs['get_company'])
+    @swagger_gen.swagger_doc(
+        operation='get',
+        resource_name='company',
+        response_model=CompanyResponseModel,
+        tags=['Companies']
+    )
     def get_company(self, company_id: int, **kwargs):
-        """
-            Get Company Details
+        """Get company details by ID
+        
+        Args:
+            company_id: The unique identifier of the company
         """
         try:
             company_service = CompanyService(request.env)
@@ -51,8 +62,13 @@ class CreateCompany(http.Controller):
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
 
     
-    @http.route('/api/companies/', type='http', auth='public', methods=['GET'], csrf=False)
-    # @swagger_doc(companies_docs['list_companies'])
+    @http.route('/api/companies', type='http', auth='public', methods=['GET'], csrf=False)
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='company',
+        response_model=CompanyListResponseModel,
+        tags=['Companies'],
+    )
     def list_companies(self, name: Optional[str] = None, active: Optional[str] = None, 
                        maxresults: int = 100, startposition: int = 0, **kwargs):
         try:
@@ -71,8 +87,17 @@ class CreateCompany(http.Controller):
             )        
 
     @http.route('/api/companies/<int:company_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    # @swagger_doc(companies_docs['delete_company'])
-    def delete_company(self, company_id, **kwargs):
+    @swagger_gen.swagger_doc(
+        operation='delete',
+        resource_name='company',
+        tags=['Companies']
+    )
+    def delete_company(self, company_id: int, **kwargs):
+        """Delete (deactivate) a company by ID
+        
+        Args:
+            company_id: The unique identifier of the company to delete
+        """
         try:
             company_service = CompanyService(request.env)
             company = company_service.browse(company_id)
@@ -120,9 +145,9 @@ class CreateCompany(http.Controller):
         domain = []
         # Add active status filter
         if active is not None:
-            deprecated = not (active.lower() == 'true')
-            domain.append(('deprecated', '=', deprecated))
-            logger.debug(f"Added deprecated filter: {deprecated}")
+            active = active.lower() == 'true'
+            domain.append(('active', '=', active))
+            logger.debug(f"Added active filter: {active}")
 
         # Add name filter
         if name:

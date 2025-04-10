@@ -5,9 +5,6 @@ from odoo.exceptions import UserError
 
 from odoo.fields import float_compare
 from ..utils import APIResponse, validate_and_convert_data, get_request_data
-
-from ..swagger.common import swagger_doc
-from ..swagger.invoice_payment import invoice_payments_docs
 from ..schemas.invoice_payment import INVOICE_PAYMENT_SCHEMA
 from ..repository.partner import PartnerService
 from ..repository.account import AccountService
@@ -159,7 +156,7 @@ class InvocePaymentController(http.Controller):
     
 
     @http.route('/api/invoice-payments', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    @swagger_doc(invoice_payments_docs['create_invoice_payment'])
+    # @swagger_doc(invoice_payments_docs['create_invoice_payment'])
     def create_invoice_payment(self, **kwargs):
         """
         Make a payment for an AR invoice.
@@ -225,7 +222,7 @@ class InvocePaymentController(http.Controller):
 
     
     @http.route('/api/invoice-payments/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(invoice_payments_docs['list_invoice_payments'])
+    # @swagger_doc(invoice_payments_docs['list_invoice_payments'])
     def list_invoice_payments(self, partner_id, company_id, limit=20, offset=0, date_from=None, date_to=None, **kwargs):
         partner_service = PartnerService(request.env)
         try:
@@ -295,7 +292,7 @@ class InvocePaymentController(http.Controller):
             return APIResponse.error_response('An error occurred while retrieving payment details', str(e), status=500)
         
     @http.route('/api/invoice-payments/<int:payment_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(invoice_payments_docs['get_invoice_payment'])
+    # @swagger_doc(invoice_payments_docs['get_invoice_payment'])
     def get_invoice_payment(self, payment_id, **kwargs):
         try:
             # Retrieve the payment record
@@ -332,7 +329,7 @@ class InvocePaymentController(http.Controller):
             return APIResponse.error_response('An error occurred while retrieving payment details', str(e), status=500)
         
     @http.route('/api/invoice-payments/<int:payment_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    @swagger_doc(invoice_payments_docs['delete_invoice_payment'])
+    # @swagger_doc(invoice_payments_docs['delete_invoice_payment'])
     def delete_invoice_payment(self, payment_id, **kwargs):
         cursor = request.env.cr
         try:

@@ -2,7 +2,7 @@ import uuid
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
-from .common import MetaDataModel, PaginationResponseModel, RefModel
+from .common import HEADERS, MetaDataModel, PaginationResponseModel, RefModel
 from ..mapping.accounts import ACCOUNT_CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
 from ..repository.currency import CurrencyService
 
@@ -159,123 +159,14 @@ class AccountListResponseModel(BaseModel):
 
 
 
-# ACCOUNT_CREATE_RESPONSE = ACCOUNT_GET_RESPONSE = AccountResponseModel.get_response_schema()
-# ACCOUNT_LIST_RESPONSE = AccountListResponseModel.get_response_schema()
+ACCOUNT_HEADERS = [
+    {
+        'name': 'X-PaymentMethod',
+        'type': 'string',
+        'description': 'Payment Method',
+        'required': False,
+        'enum': ['none', 'cash', 'bank', 'credit_card']
+    }
+] + HEADERS
 
-# ACCOUNT_SCHEMA = {}
 
-
-# # PARAMS
-# ACCOUNT_HEADERS = [
-#     {
-#         'name': 'X-PaymentMethod',
-#         'type': 'string',
-#         'description': 'Payment Method',
-#         'required': False,
-#         'enum': ['none', 'cash', 'bank', 'credit_card']
-#     }
-# ]
-# ACCOUNT_CREATE_PARAMS = {
-#     'headers': ACCOUNT_HEADERS + HEADERS,
-#     'body': {
-#         'schema': ACCOUNT_SCHEMA,
-#         'required': True
-#     }
-# }
-
-# ACCOUNT_GET_PARAMS = {
-#     'path': [
-#         {
-#             'name': 'account_id',
-#             'type': 'integer',
-#             'description': 'ID of the account to retrieve',
-#             'required': True
-#         }
-#     ],
-#     'query': [
-#         {
-#             'name': 'company_id',
-#             'type': 'integer',
-#             'description': 'Filter by company ID',
-#             'required': True
-#         },
-#     ]
-# }
-
-# ACCOUNT_LIST_PARAMS = {
-#     'query': [
-#         {
-#             'name': 'account_type',
-#             'type': 'string',
-#             'description': 'Filter by account type',
-#             'required': False,
-#             'enum': list(ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING.keys())
-#         },
-#         {
-#             'name': 'company_id',
-#             'type': 'integer',
-#             'description': 'Filter by company ID',
-#             'required': True
-#         },
-#         {
-#             'name': 'name',
-#             'type': 'string',
-#             'description': 'Filter by name',
-#             'required': False
-#         },
-#         {
-#             'name': 'active',
-#             'type': 'boolean',
-#             'description': 'Filter by active',
-#             'required': False
-#         },
-#         {
-#             'name': 'maxresults',
-#             'type': 'integer',
-#             'description': 'Number of records to return (default: 100)',
-#             'required': False,
-#             'default': 20
-#         },
-#         {
-#             'name': 'startposition',
-#             'type': 'integer',
-#             'description': 'Number of records to skip (default: 0)',
-#             'required': False,
-#             'default': 0
-#         },
-#     ]
-# }
-
-# ACCOUNT_DELETE_PARAMS = {
-#     'path': [
-#         {
-#             'name': 'account_id',
-#             'type': 'integer',
-#             'description': 'ID of the account to delete',
-#             'required': True
-#         },
-#     ],
-#     'query': [
-#         {
-#             'name': 'company_id',
-#             'type': 'integer',
-#             'description': 'company ID of the account to delete',
-#             'required': True
-#         },
-#     ]
-# }
-
-# ACCOUNT_UPDATE_PARAMS = {
-#     'path': [
-#         {
-#             'name': 'account_id',
-#             'type': 'integer',
-#             'description': 'ID of the account to update',
-#             'required': True
-#         }
-#     ],
-#     'body': {
-#         'schema': ACCOUNT_SCHEMA,
-#         'required': True
-#     }
-# }

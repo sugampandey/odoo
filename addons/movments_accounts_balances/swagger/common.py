@@ -1,5 +1,13 @@
 from ..schemas.error import ERROR_SCHEMA
-
+from typing import Any, Dict, List, Optional, Type, get_type_hints
+from pydantic import BaseModel
+from datetime import datetime
+import inspect
+from functools import wraps
+import os
+import importlib
+import pkgutil
+from pathlib import Path
 
 def generate_swagger_schema(schema):
     """Convert our unified schema to Swagger format"""
@@ -90,46 +98,124 @@ def generate_swagger_schema(schema):
     }
 
 
-def swagger_doc(documentation):
-    """
-    Decorator to add Swagger documentation to a route
-    """
-    def decorator(f):
-        f._swagger_doc = documentation
-        return f
-    return decorator
+def get_pydantic_schema(model: Type[BaseModel]) -> Dict[str, Any]:
+    """Convert a Pydantic model to OpenAPI schema"""
+    if model is None:
+        return {}
+        
+    schema = model.model_json_schema()
+    processed_schema = doc_generator._process_schema(schema)
+    
+    # Clean up the schema
+    if 'title' in processed_schema:
+        del processed_schema['title']
+    if 'description' in processed_schema:
+        del processed_schema['description']
+    
+    return processed_schema
 
-from functools import wraps
-from typing import Type, Dict, Any
-from pydantic import BaseModel
-
-def swagger_document(
-    summary: str,
+def swagger_doc(
+    summary: str = None,
     request_model: Type[BaseModel] = None,
     response_model: Type[BaseModel] = None,
     tags: list = None,
-    responses: Dict[int, Dict[str, Any]] = None
+    responses: Dict[int, Dict[str, Any]] = None,
+    parameters: List[Dict[str, Any]] = None,
+    query_params: List[Dict[str, Any]] = None,
+    path_params: List[Dict[str, Any]] = None,
+    headers: List[Dict[str, Any]] = None
 ):
+    """
+    Decorator to add Swagger documentation to a route
+    
+    Args:
+        summary: A brief summary of the endpoint
+        request_model: Pydantic model for request body
+        response_model: Pydantic model for response
+        tags: List of tags for grouping endpoints
+        responses: Custom responses dictionary
+        parameters: List of parameters (for backward compatibility)
+        query_params: List of query parameters, each being a dict with:
+            - name: Parameter name
+            - required: Boolean
+            - description: Parameter description
+            - type: Parameter type (string, integer, etc.)
+            - format: Optional format (date-time, date, etc.)
+        path_params: List of path parameters, similar structure to query_params
+        headers: List of required headers, similar structure to query_params
+    """
     def decorator(f):
         if not hasattr(f, '_swagger_doc'):
             f._swagger_doc = {}
         
-        f._swagger_doc.update({
-            'summary': summary,
-            'tags': tags or [],
-            'requestBody': {
-                'content': {
-                    'application/json': {
-                        'schema': request_model.model_json_schema() if request_model else {}
+        # Register request and response models
+        if request_model:
+            doc_generator.register_model(request_model)
+        if response_model:
+            doc_generator.register_model(response_model)
+
+        # Process parameters
+        processed_parameters = []
+        
+        # Add path parameters
+        if path_params:
+            for param in path_params:
+                processed_parameters.append({
+                    'name': param['name'],
+                    'in': 'path',
+                    'required': param.get('required', True),  # Path params are typically required
+                    'description': param.get('description', ''),
+                    'schema': {
+                        'type': param.get('type', 'string')
                     }
-                }
-            } if request_model else None,
+                })
+                if 'format' in param:
+                    processed_parameters[-1]['schema']['format'] = param['format']
+
+        # Add query parameters
+        if query_params:
+            for param in query_params:
+                processed_parameters.append({
+                    'name': param['name'],
+                    'in': 'query',
+                    'required': param.get('required', False),
+                    'description': param.get('description', ''),
+                    'schema': {
+                        'type': param.get('type', 'string')
+                    }
+                })
+                if 'format' in param:
+                    processed_parameters[-1]['schema']['format'] = param['format']
+                if 'enum' in param:
+                    processed_parameters[-1]['schema']['enum'] = param['enum']
+
+        # Add headers
+        if headers:
+            for header in headers:
+                processed_parameters.append({
+                    'name': header['name'],
+                    'in': 'header',
+                    'required': header.get('required', False),
+                    'description': header.get('description', ''),
+                    'schema': {
+                        'type': header.get('type', 'string')
+                    }
+                })
+
+        # Add any additional parameters (for backward compatibility)
+        if parameters:
+            processed_parameters.extend(parameters)
+
+        doc = {
+            'summary': summary or f.__name__,
+            'tags': tags or [],
+            'parameters': processed_parameters,
             'responses': {
-                '201': {
+                '200': {
                     'description': 'Success',
                     'content': {
                         'application/json': {
-                            'schema': response_model.model_json_schema() if response_model else {}
+                            'schema': get_pydantic_schema(response_model)
                         }
                     }
                 },
@@ -151,7 +237,18 @@ def swagger_document(
                     'description': 'Internal Server Error'
                 }
             } | (responses or {})
-        })
+        }
+
+        if request_model:
+            doc['requestBody'] = {
+                'content': {
+                    'application/json': {
+                        'schema': get_pydantic_schema(request_model)
+                    }
+                }
+            }
+
+        f._swagger_doc.update(doc)
         return f
     return decorator
 
@@ -214,6 +311,7 @@ class SwaggerDocGenerator:
         self.docs = {}
         self.tags = []
         self.schemas = {}
+        self._registered_models = set()
 
     def add_tag(self, name, description=None, external_docs=None):
         """Add a tag for grouping endpoints"""
@@ -225,9 +323,110 @@ class SwaggerDocGenerator:
             tag['externalDocs'] = external_docs
         self.tags.append(tag)
 
-    def add_schema(self, name, schema):
-        """Add a reusable schema"""
-        self.schemas[name] = schema
+    def _process_schema(self, schema: dict) -> dict:
+        """Process a schema and its nested schemas, transforming all references"""
+        processed_schema = {}
+        
+        for key, value in schema.items():
+            if key == '$defs':
+                # Register all definitions as separate schemas
+                for def_name, def_schema in value.items():
+                    if def_name not in self.schemas:
+                        self.schemas[def_name] = self._process_schema(def_schema)
+                continue
+                
+            elif isinstance(value, dict):
+                if '$ref' in value:
+                    # Transform reference
+                    ref = value['$ref'].split('/')[-1]
+                    processed_schema[key] = {'$ref': f'#/components/schemas/{ref}'}
+                    # Preserve additional properties if they exist
+                    for k, v in value.items():
+                        if k != '$ref':
+                            processed_schema[key][k] = v
+                elif 'anyOf' in value:
+                    # Check if this is a nullable reference pattern
+                    refs = [item for item in value['anyOf'] if '$ref' in item]
+                    null_types = [item for item in value['anyOf'] if item.get('type') == 'null']
+                    
+                    if len(refs) == 1 and len(null_types) == 1:
+                        # Convert to nullable reference
+                        ref = refs[0]['$ref'].split('/')[-1]
+                        processed_schema[key] = {
+                            '$ref': f'#/components/schemas/{ref}',
+                            'nullable': True
+                        }
+                        # Preserve description and default if present
+                        if 'description' in value:
+                            processed_schema[key]['description'] = value['description']
+                        if 'default' in value:
+                            processed_schema[key]['default'] = value['default']
+                    else:
+                        # Process anyOf references that aren't simple nullable patterns
+                        processed_anyof = []
+                        for item in value['anyOf']:
+                            if '$ref' in item:
+                                ref = item['$ref'].split('/')[-1]
+                                processed_anyof.append({'$ref': f'#/components/schemas/{ref}'})
+                            else:
+                                processed_anyof.append(item)
+                        processed_schema[key] = {'anyOf': processed_anyof}
+                        if 'default' in value:
+                            processed_schema[key]['default'] = value['default']
+                        if 'description' in value:
+                            processed_schema[key]['description'] = value['description']
+                elif 'items' in value:
+                    # Process array items
+                    processed_items = {}
+                    items = value['items']
+                    
+                    if isinstance(items, dict):
+                        if '$ref' in items:
+                            # Transform reference in items
+                            ref = items['$ref'].split('/')[-1]
+                            processed_items = {'$ref': f'#/components/schemas/{ref}'}
+                        else:
+                            processed_items = self._process_schema(items)
+                    
+                    processed_schema[key] = {
+                        'type': 'array',
+                        'items': processed_items
+                    }
+                    
+                    # Preserve additional array properties
+                    for k, v in value.items():
+                        if k != 'items':
+                            processed_schema[key][k] = v
+                else:
+                    # Recursively process nested objects
+                    processed_schema[key] = self._process_schema(value)
+            elif isinstance(value, list):
+                processed_schema[key] = [
+                    self._process_schema(item) if isinstance(item, dict) else item
+                    for item in value
+                ]
+            else:
+                processed_schema[key] = value
+                
+        return processed_schema
+
+    def register_model(self, model: Type[BaseModel]) -> None:
+        """Register a Pydantic model and all its nested models"""
+        if not model or not issubclass(model, BaseModel) or model in self._registered_models:
+            return
+
+        self._registered_models.add(model)
+        schema = model.model_json_schema()
+        
+        # Process the schema and all its nested components
+        processed_schema = self._process_schema(schema)
+        
+        # Register the processed schema
+        self.schemas[model.__name__] = processed_schema
+
+    def add_schema(self, name: str, schema: dict) -> None:
+        """Add a schema directly"""
+        self.schemas[name] = self._process_schema(schema)
 
     def _create_parameters(self, param_schema):
         """
@@ -431,3 +630,80 @@ class SwaggerDocGenerator:
 
 
 doc_generator = SwaggerDocGenerator()
+
+def get_route_params(func) -> Dict[str, Any]:
+    """Extract route parameters from a function"""
+    params = {}
+    sig = inspect.signature(func)
+    
+    for name, param in sig.parameters.items():
+        if name in ['self', 'request', 'kwargs']:
+            continue
+            
+        param_info = {
+            'name': name,
+            'in': 'query',
+            'required': param.default == inspect.Parameter.empty,
+            'schema': {
+                'type': 'string'  # Default type, can be overridden
+            }
+        }
+        
+        # Try to get type from type hints
+        type_hints = get_type_hints(func)
+        if name in type_hints:
+            param_type = type_hints[name]
+            if param_type == int:
+                param_info['schema']['type'] = 'integer'
+            elif param_type == bool:
+                param_info['schema']['type'] = 'boolean'
+            elif param_type == float:
+                param_info['schema']['type'] = 'number'
+            elif param_type == datetime:
+                param_info['schema']['type'] = 'string'
+                param_info['schema']['format'] = 'date-time'
+        
+        params[name] = param_info
+    
+    return params
+
+def generate_swagger_spec(controllers: List[Any]) -> Dict[str, Any]:
+    """Generate complete OpenAPI specification from controllers"""
+    paths = {}
+    
+    for controller in controllers:
+        for name, method in inspect.getmembers(controller, inspect.isfunction):
+            if not hasattr(method, '_swagger_doc'):
+                continue
+                
+            doc = method._swagger_doc
+            route = method.original_routing.get('routes')[0] if method.original_routing.get('routes') else ''
+            http_method = method.original_routing.get('methods', ['GET'])[0].lower()
+            
+            if not route or not http_method:
+                continue
+                
+            if route not in paths:
+                paths[route] = {}
+            
+            paths[route][http_method] = {
+                'summary': doc.get('summary', ''),
+                'tags': doc.get('tags', []),
+                'requestBody': doc.get('requestBody', None),
+                'responses': doc.get('responses', {})
+            }
+    
+    spec = {
+        'openapi': '3.0.0',
+        'info': {
+            'title': 'Odoo API Documentation',
+            'version': '1.0.0',
+            'description': 'API documentation for Odoo controllers'
+        },
+        'paths': paths,
+        'components': {
+            'schemas': doc_generator.schemas
+        }
+    }
+    
+    return spec

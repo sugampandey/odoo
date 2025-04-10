@@ -5,10 +5,22 @@
             <head>
                 <title>API Documentation</title>
                 <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@3/swagger-ui.css" />
+                <style>
+                    body {
+                        margin: 0;
+                        padding: 0;
+                    }
+                    #swagger-ui {
+                        max-width: 1460px;
+                        margin: 0 auto;
+                        padding: 20px;
+                    }
+                </style>
             </head>
             <body>
                 <div id="swagger-ui"></div>
                 <script src="https://unpkg.com/swagger-ui-dist@3/swagger-ui-bundle.js"></script>
+                <script src="https://unpkg.com/swagger-ui-dist@3/swagger-ui-standalone-preset.js"></script>
                 <script>
                     window.onload = function() {
                         SwaggerUIBundle({
@@ -21,7 +33,6 @@
         </html>
     </template>
 </odoo>
-
 
 
 <!-- <?xml version="1.0" encoding="UTF-8"?>

@@ -4,11 +4,12 @@ from odoo import http
 from odoo.http import request
 from ..logger.logger import logger
 from ..utils import APIResponse, get_company_from_headers, validate_request_data
-
+from ..schemas.common import HEADERS
 from ..schemas.partner import (CustomerModel, CustomerCreateRequestModel, CustomerResponseModel, CustomerListResponseModel,
                                 VendorModel, VendorCreateRequestModel, VendorResponseModel, VendorListResponseModel)
 from ..repository.partner import PartnerService
 from ..repository.company import CompanyService
+from ..swagger.swagger_generator import swagger_gen
 
 
 
@@ -17,7 +18,14 @@ class PartnerAPI(http.Controller):
 
     
     @http.route('/api/customers', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    # @swagger_doc(partners_docs['create_customer'])
+    @swagger_gen.swagger_doc(
+        operation='create',
+        resource_name='customer',
+        request_model=CustomerCreateRequestModel,
+        response_model=CustomerResponseModel,
+        tags=['Customers'],
+        additional_headers=HEADERS
+    )
     def create_customer(self, **kwargs):
         # """
         # Create a new customer in Odoo.
@@ -34,7 +42,14 @@ class PartnerAPI(http.Controller):
             return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
     @http.route('/api/vendors', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    # @swagger_doc(partners_docs['create_vendor'])
+    @swagger_gen.swagger_doc(
+        operation='create',
+        resource_name='vendor',
+        request_model=VendorCreateRequestModel,
+        response_model=VendorResponseModel,
+        tags=['Vendors'],
+        additional_headers=HEADERS
+    )
     def create_vendor(self, **kwargs):
         # """
         # Create a new vendor in Odoo.
@@ -53,7 +68,12 @@ class PartnerAPI(http.Controller):
 
     
     @http.route('/api/customers/<int:customer_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(partners_docs['get_customer'])
+    @swagger_gen.swagger_doc(
+        operation='get',
+        resource_name='customer',
+        response_model=CustomerResponseModel,
+        tags=['Customers']
+    )
     def get_customer(self, customer_id: int, company_id: int):
         try:
             company_service = CompanyService(request.env)
@@ -80,7 +100,12 @@ class PartnerAPI(http.Controller):
             )
         
     @http.route('/api/vendors/<int:vendor_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(partners_docs['get_vendor'])
+    @swagger_gen.swagger_doc(
+        operation='get',
+        resource_name='vendor',
+        response_model=VendorResponseModel,
+        tags=['Vendors']
+    )
     def get_vendor(self, vendor_id: int, company_id: int):
         try:
             partner_service = PartnerService(request.env)
@@ -107,7 +132,12 @@ class PartnerAPI(http.Controller):
         
     
     @http.route('/api/vendors/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(partners_docs['list_vendors'])
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='vendor',
+        response_model=VendorListResponseModel,
+        tags=['Vendors']
+    )
     def list_vendors(self, company_id: int, DisplayName: Optional[str] = None, active: Optional[str] = None, 
                      maxresults: int = 100, startposition: int = 0, **kwargs
                      ) -> Dict[str, Any]:
@@ -128,7 +158,12 @@ class PartnerAPI(http.Controller):
             )
         
     @http.route('/api/customers/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(partners_docs['list_customers'])
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='customer',
+        response_model=CustomerListResponseModel,
+        tags=['Customers']
+    )
     def list_customers(self, company_id: int, DisplayName: Optional[str] = None, active: Optional[str] = None, 
                        maxresults: int = 100, startposition: int = 0, **kwargs
                      ) -> Dict[str, Any]:
@@ -150,7 +185,11 @@ class PartnerAPI(http.Controller):
         
 
     @http.route('/api/vendors/<int:vendor_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    # @swagger_doc(partners_docs['delete_vendor'])
+    @swagger_gen.swagger_doc(
+        operation='delete',
+        resource_name='vendor',
+        tags=['Vendors']
+    )
     def delete_vendor(self, vendor_id, **kwargs):
         cursor = request.env.cr
         try:
@@ -162,7 +201,11 @@ class PartnerAPI(http.Controller):
             return APIResponse.error_response(message='An error occurred while deleting the vendor', errors=str(e), status=500)
         
     @http.route('/api/customers/<int:customer_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    # @swagger_doc(partners_docs['delete_customer'])
+    @swagger_gen.swagger_doc(
+        operation='delete',
+        resource_name='customer',
+        tags=['Customers']
+    )
     def delete_customer(self, customer_id, **kwargs):
         cursor = request.env.cr
         try:
@@ -228,9 +271,9 @@ class PartnerAPI(http.Controller):
 
         # Add active status filter
         if active is not None:
-            deprecated = not (active.lower() == 'true')
-            domain.append(('deprecated', '=', deprecated))
-            logger.debug(f"Added deprecated filter: {deprecated}")
+            active = active.lower() == 'true'
+            domain.append(('active', '=', active))
+            logger.debug(f"Added active filter: {active}")
 
         # Add name filter
         if DisplayName:

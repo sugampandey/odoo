@@ -4,9 +4,8 @@ from odoo import http
 from odoo.http import request
 from ..utils import APIResponse, get_company_from_headers, get_payment_method_from_headers, validate_request_data
 from ..logger.logger import logger
-from ..swagger.common import swagger_doc, swagger_document
-# from ..swagger.accounts import accounts_docs
-from ..schemas.accounts import AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountListResponseModel
+from ..swagger.swagger_generator import swagger_gen
+from ..schemas.accounts import AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountListResponseModel, ACCOUNT_HEADERS
 from ..mapping.accounts import ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING, ACCOUNT_TYPE_MAPPING
 from ..repository.journal import JournalService
 from ..repository.account import AccountService
@@ -15,6 +14,14 @@ from ..repository.company import CompanyService
 class AccountAPI(http.Controller):
 
     @http.route('/api/accounts', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @swagger_gen.swagger_doc(
+        operation='create',
+        resource_name='account',
+        request_model=AccountCreateRequestModel,
+        response_model=AccountResponseModel,
+        tags=['Accounts'],
+        additional_headers=ACCOUNT_HEADERS
+    )
     def create_account(self, **kwargs) -> Dict[str, Any]:
         logger.info("Processing create account request")
         
@@ -32,6 +39,12 @@ class AccountAPI(http.Controller):
 
     
     @http.route('/api/accounts', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='account',
+        response_model=AccountListResponseModel,
+        tags=['Accounts']
+    )
     def list_accounts(self, company_id: int, name: Optional[str] = None, account_type: Optional[str] = None,
         active: Optional[str] = None, maxresults: int = 100, startposition: int = 0, **kwargs
     ) -> Dict[str, Any]:
@@ -62,6 +75,12 @@ class AccountAPI(http.Controller):
     
     
     @http.route('/api/accounts/<int:account_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @swagger_gen.swagger_doc(
+        operation='get',
+        resource_name='account',
+        response_model=AccountResponseModel,
+        tags=['Accounts']
+    )
     def get_account(self, account_id: int, company_id: int) -> Dict[str, Any]:
         try:
             domain = [('id', '=', account_id)]
@@ -85,7 +104,11 @@ class AccountAPI(http.Controller):
 
 
     @http.route('/api/accounts/<int:account_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    # @swagger_doc(accounts_docs['delete_account'])
+    @swagger_gen.swagger_doc(
+        operation='delete',
+        resource_name='account',
+        tags=['Accounts']
+    )
     def delete_account(self, account_id, **kwargs):
         try:
             company_service = CompanyService(request.env)
@@ -115,6 +138,11 @@ class AccountAPI(http.Controller):
         
       
     @http.route('/api/account-types', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='account-type',
+        tags=['Accounts']
+    )
     def get_account_types(self, **kwargs):
         account_types = [{"code": ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING[key], "name": key} for key in ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING.keys()]
         return APIResponse.success_response(account_types)

@@ -1,14 +1,17 @@
 from odoo import http
 from odoo.http import request
 from ..utils import get_request_data, APIResponse
-from ..swagger.common import swagger_doc
-from ..swagger.webhook import webhooks_docs
+from ..swagger.swagger_generator import swagger_gen
 from ..repository.config_parameter import ConfigParamService
 
-class WebhookController(http.Controller):
+class WebhookAPI(http.Controller):
     
     @http.route('/api/webhook/config', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(webhooks_docs['get_webhook_config'])
+    @swagger_gen.swagger_doc(
+        operation='get',
+        resource_name='webhook',
+        tags=['Webhook'],
+    )
     def get_webhook_url(self):
         try:
             config_param_service = ConfigParamService(request.env)
@@ -18,7 +21,11 @@ class WebhookController(http.Controller):
             return APIResponse.error_response(message='Failed to retrieve webhook URL', errors=str(e), status=500)
 
     @http.route('/api/webhook/config', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    @swagger_doc(webhooks_docs['update_webhook_config'])
+    @swagger_gen.swagger_doc(
+        operation='update',
+        resource_name='webhook',
+        tags=['Webhook'],
+    )
     def update_webhook_url(self):
         config_param_service = ConfigParamService(request.env)
         cursor = request.env.cr
@@ -42,7 +49,11 @@ class WebhookController(http.Controller):
 
 
     @http.route('/api/webhook/config', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    @swagger_doc(webhooks_docs['delete_webhook_config'])
+    @swagger_gen.swagger_doc(
+        operation='delete',
+        resource_name='webhook',
+        tags=['Webhook'],
+    )
     def delete_webhook_url(self):
         config_param_service = ConfigParamService(request.env)
         cursor = request.env.cr

@@ -6,22 +6,30 @@ from odoo.http import request
 
 from ..utils import APIResponse, get_company_from_headers, validate_request_data
 from ..logger.logger import logger
-from ..swagger.common import swagger_doc
-# from ..swagger.journal_entry import journal_entries_docs
+from ..swagger.swagger_generator import swagger_gen
 from ..schemas.journal_entry import (JournalEntryRequestModel, JournalEntryModel, JournalEntryResponseModel, JournalEntryListResponseModel)
+from ..schemas.common import HEADERS
 from ..repository.account_move import AccountMoveService
 from ..repository.company import CompanyService
 from ..repository.journal import JournalService
 
-class JournalEntryController(http.Controller):
+class JournalEntryAPI(http.Controller):
 
     
     @http.route('/api/journal-entries', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    # @swagger_doc(journal_entries_docs['create_journal_entry'])
+    @swagger_gen.swagger_doc(
+        operation='create',
+        resource_name='journal-entry',
+        request_model=JournalEntryRequestModel,
+        response_model=JournalEntryResponseModel,
+        tags=['Journal Entries'],
+        additional_headers=HEADERS
+    )
     def create_journal_entry(self, *args, **post):
         """
         Creates a new journal entry in Odoo.
         """
+        logger.info("Processing create journal entry request")
         try:
             # Get and validate request data
             data = validate_request_data(request, JournalEntryRequestModel)
@@ -36,7 +44,12 @@ class JournalEntryController(http.Controller):
         
     
     @http.route('/api/journal-entries/<int:journal_entry_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(journal_entries_docs['get_journal_entry'])
+    @swagger_gen.swagger_doc(
+        operation='get',
+        resource_name='journal-entry',
+        response_model=JournalEntryResponseModel,
+        tags=['Journal Entries']
+    )
     def get_journal_entry(self, journal_entry_id: int, company_id: int):
         """
         Retrieves a specific journal entry by its ID.
@@ -63,7 +76,12 @@ class JournalEntryController(http.Controller):
     
     
     @http.route('/api/journal-entries', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(journal_entries_docs['list_journal_entries'])
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='journal-entry',
+        response_model=JournalEntryListResponseModel,
+        tags=['Journal Entries']
+    )
     def list_journal_entry(self, company_id: int, journal_id: Optional[int]=None, 
                            maxresults: int = 100, startposition: int = 0, 
                            date_from=None, date_to=None, **kwargs) -> Dict[str, Any]:
@@ -92,7 +110,11 @@ class JournalEntryController(http.Controller):
     
         
     @http.route('/api/journal-entries/<int:journal_entry_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    # @swagger_doc(journal_entries_docs['delete_journal_entry'])
+    @swagger_gen.swagger_doc(
+        operation='delete',
+        resource_name='journal-entry',
+        tags=['Journal Entries']
+    )
     def delete_journal_entry(self, journal_entry_id, **kwargs):
         """
         Deletes a specific journal entry by its ID.

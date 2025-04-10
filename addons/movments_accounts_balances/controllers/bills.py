@@ -2,10 +2,6 @@ from datetime import datetime
 from odoo import http
 from odoo.http import request
 from ..utils import APIResponse, validate_and_convert_data, get_request_data
-# from ..utils import get_default_product, validate_account, validate_company
-
-from ..swagger.common import swagger_doc
-from ..swagger.bills import bills_docs
 from ..schemas.bills import BILL_SCHEMA
 from ..repository.partner import PartnerService
 from ..repository.account import AccountService
@@ -90,7 +86,7 @@ class BillController(http.Controller):
 
 
     @http.route('/api/bills', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    @swagger_doc(bills_docs['create_bill'])
+    # @swagger_doc(bills_docs['create_bill'])
     def create_bill(self, **kwargs):
         """
         Creates a vendor bill (supplier invoice) in Odoo.
@@ -141,7 +137,7 @@ class BillController(http.Controller):
             return APIResponse.error_response(message='An error occurred while creating the vendor bill', errors=str(e), status=500)
         
     @http.route('/api/bills', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(bills_docs['list_bills'])
+    # @swagger_doc(bills_docs['list_bills'])
     def get_bills(self, company_id, partner_id=None, state=None, 
                   limit=20, offset=0, date_from=None, date_to=None, **kwargs):
         try:
@@ -221,7 +217,7 @@ class BillController(http.Controller):
             return APIResponse.error_response(message='An error occurred while retrieving bills', errors=str(e), status=500)
         
     @http.route('/api/bills/<int:bill_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(bills_docs['get_bill'])
+    # @swagger_doc(bills_docs['get_bill'])
     def get_bill(self, bill_id, **kwargs):
         try:
             bill = request.env['account.move'].sudo().browse(bill_id)
@@ -262,7 +258,7 @@ class BillController(http.Controller):
         
 
     @http.route('/api/bills/<int:bill_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    @swagger_doc(bills_docs['delete_bill'])
+    # @swagger_doc(bills_docs['delete_bill'])
     def delete_bill(self, bill_id, **kwargs):
         cursor = request.env.cr
         try:

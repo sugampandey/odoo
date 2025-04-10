@@ -4,18 +4,24 @@ from http import HTTPStatus
 from odoo.http import request
 from pydantic import ValidationError
 from ..utils import APIResponse, get_company_from_headers, validate_request_data
-
-# from ..swagger.common import swagger_doc
-# from ..swagger.analytic_account import analytic_accounts_docs
-from ..schemas.analytic_account import AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassCreateRequestModel
 from ..logger.logger import logger
+from ..swagger.swagger_generator import swagger_gen
+from ..schemas.analytic_account import AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassCreateRequestModel
+from ..schemas.common import HEADERS
 from ..repository.analytic_account import AnalyticAccountService, AnalyticPlanService
 from ..repository.company import CompanyService
 
 class AnalyticAccountAPI(http.Controller):
 
     @http.route('/api/analytic-class', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    # @swagger_doc(analytic_accounts_docs['create_analytic_account'])
+    @swagger_gen.swagger_doc(
+        operation='create',
+        resource_name='analytic-account',
+        request_model=AnalyticClassCreateRequestModel,
+        response_model=AnalyticClassResponseModel,
+        tags=['Analytic Accounts'],
+        additional_headers=HEADERS
+    )
     def create_analytic_account(self, **kwargs):
         logger.info("Processing create Analytic Account request")
         try:
@@ -29,7 +35,12 @@ class AnalyticAccountAPI(http.Controller):
             return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
     @http.route('/api/analytic-class', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(analytic_accounts_docs['list_analytic_accounts'])
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='analytic-account',
+        response_model=AnalyticClassListResponseModel,
+        tags=['Analytic Accounts']
+    )
     def list_analytic_accounts(self, company_id: int, active: Optional[str] = None, maxresults: int = 100, startposition: int = 0, **kwargs):
         """
         Retrieves analytic accounts from Odoo's accounting module.
@@ -59,7 +70,12 @@ class AnalyticAccountAPI(http.Controller):
             )
     
     @http.route('/api/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    # @swagger_doc(analytic_accounts_docs['get_analytic_account'])
+    @swagger_gen.swagger_doc(
+        operation='get',
+        resource_name='analytic-account',
+        response_model=AnalyticClassResponseModel,
+        tags=['Analytic Accounts']
+    )
     def get_analytic_account(self, analytic_class_id: int, company_id: int, **kwargs):
         """
         Retrieves an analytic account by ID within Odoo's accounting module.
@@ -93,7 +109,11 @@ class AnalyticAccountAPI(http.Controller):
             )
     
     @http.route('/api/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    # @swagger_doc(analytic_accounts_docs['delete_analytic_account'])
+    @swagger_gen.swagger_doc(
+        operation='delete',
+        resource_name='analytic-account',
+        tags=['Analytic Accounts']
+    )
     def delete_analytic_account(self, analytic_class_id, **kwargs):
         try:
             company_service = CompanyService(request.env)
@@ -181,9 +201,9 @@ class AnalyticAccountAPI(http.Controller):
 
         # Add active status filter
         if active is not None:
-            deprecated = not (active.lower() == 'true')
-            domain.append(('deprecated', '=', deprecated))
-            logger.debug(f"Added deprecated filter: {deprecated}")
+            active = active.lower() == 'true'
+            domain.append(('active', '=', active))
+            logger.debug(f"Added active filter: {active}")
 
 
         logger.debug(f"Final search domain: {domain}")

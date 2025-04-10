@@ -1,8 +1,8 @@
 from odoo import http, fields
 from odoo.http import request
 from ..utils import APIResponse, get_general_ledger_report_order
-from ..swagger.common import swagger_doc
-from ..swagger.reports import reports_docs
+from ..swagger.swagger_generator import swagger_gen
+from ..schemas.reports import ReportResponseModel
 from ..schemas.helpers.general_ledger import prepare_general_ledger_response
 from ..schemas.helpers.balance_sheet import prepare_account_balance_response
 
@@ -76,7 +76,13 @@ class ReportsAPI(http.Controller):
 
     
     @http.route('/api/general_ledger', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(reports_docs['general_ledger'])
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='general-ledger',
+        response_model=ReportResponseModel,
+        tags=['Reports'],
+        description='Get general ledger report with optional filters for date range, partner, account, and analytic class'
+    )
     def get_general_ledger(self, company_id, columns, start_date=None, end_date=None, partner_id=None, 
                            account_id=None, analytic_class_id=None, sort_by=None, sort_order=None, **kwargs):
         try:
@@ -117,8 +123,13 @@ class ReportsAPI(http.Controller):
 
 
     @http.route('/api/account_balance', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(reports_docs['account_balance'])
-    # @http.route('/api/balance_sheet', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='account-balance',
+        response_model=ReportResponseModel,
+        tags=['Reports'],
+        description='Get account balance report with optional filters for date range, partner, account, and analytic class'
+    )
     def get_account_balance(self, company_id, start_date=None, end_date=None, partner_id=None, 
                            account_id=None, analytic_class_id=None, **kwargs):
         try:

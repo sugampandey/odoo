@@ -2,9 +2,6 @@ from datetime import datetime
 from odoo import http
 from odoo.http import request
 from ..utils import APIResponse, validate_and_convert_data, get_request_data
-# from ..utils import validate_account, validate_company,get_default_product
-from ..swagger.common import swagger_doc
-from ..swagger.invoice import invoice_docs
 from ..schemas.invoice import INVOICE_SCHEMA
 from ..repository.partner import PartnerService
 from ..repository.account import AccountService
@@ -89,7 +86,7 @@ class InvoiceController(http.Controller):
     
 
     @http.route('/api/invoices', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
-    @swagger_doc(invoice_docs['create_invoice'])
+    # @swagger_doc(invoice_docs['create_invoice'])
     def create_ar_invoice(self, **kwargs):
         """
         Create an AR invoice and corresponding analytic lines based on the provided data.
@@ -142,7 +139,7 @@ class InvoiceController(http.Controller):
             return APIResponse.error_response('Failed to process request', str(e), status=500)
         
     @http.route('/api/invoices', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(invoice_docs['list_invoices'])
+    # @swagger_doc(invoice_docs['list_invoices'])
     def list_invoices(self, company_id, partner_id=None, state=None, 
                       limit=20, offset=0, date_from=None, date_to=None, **kwargs):
         try:
@@ -212,7 +209,7 @@ class InvoiceController(http.Controller):
             return APIResponse.error_response('An error occurred while retrieving invoices', str(e))
         
     @http.route('/api/invoices/<int:invoice_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
-    @swagger_doc(invoice_docs['get_invoice'])
+    # @swagger_doc(invoice_docs['get_invoice'])
     def get_invoice(self, invoice_id, **kwargs):
         try:
             invoice = request.env['account.move'].sudo().browse(invoice_id)
@@ -250,7 +247,7 @@ class InvoiceController(http.Controller):
         
 
     @http.route('/api/invoices/<int:invoice_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
-    @swagger_doc(invoice_docs['delete_invoice'])
+    # @swagger_doc(invoice_docs['delete_invoice'])
     def delete_invoice(self, invoice_id, **kwargs):
         cursor = request.env.cr
         try:
