@@ -1,3 +1,33 @@
+from pydantic import BaseModel, HttpUrl
+from typing import Optional
+
+
+class WebhookConfigResponse(BaseModel):
+    webhook_url: str
+
+class WebhookDeleteResponse(BaseModel):
+    message: str
+
+class WebhookErrorResponse(BaseModel):
+    errors: str
+    message: str
+
+# Input Models
+class WebhookConfigInput(BaseModel):
+    webhook_url: HttpUrl
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "webhook_url": "https://example.com/webhook"
+            },
+            "description": {
+                "webhook_url": "Must start with http:// or https://"
+            }
+        }
+
+
+
 # Webhook Response Schemas
 WEBHOOK_CONFIG_RESPONSE = WEBHOOK_CONFIG_UPDATE_RESPONSE = {
     'type': 'object',

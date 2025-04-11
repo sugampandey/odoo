@@ -1,6 +1,6 @@
 from typing import Optional, List
 from enum import Enum
-from .common import (CurrencyRefModel, MetaDataModel, TaxCodeRefModel, ItemRefModel, 
+from ..common import (CurrencyRefModel, MetaDataModel, TaxCodeRefModel, ItemRefModel, 
                      ClassRefModel, ItemAccountRefModel,CustomerRefModel, ProjectRefModel, 
                      AccountRefModel, HEADERS)
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator

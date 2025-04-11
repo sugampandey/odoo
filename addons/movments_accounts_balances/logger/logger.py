@@ -21,19 +21,6 @@ class CustomLogger:
         self._setup_console_handler()
         
     def _setup_file_handler(self):
-        # # Create filename with date
-        # log_file = os.path.join(
-        #     self.log_dir, 
-        #     f'odoo_{datetime.now().strftime("%Y%m%d")}.log'
-        # )
-        
-        # # Rotating file handler (10MB per file, max 5 backup files)
-        # file_handler = RotatingFileHandler(
-        #     log_file,
-        #     maxBytes=10*1024*1024,  # 10MB
-        #     backupCount=5,
-        #     encoding='utf-8'
-        # )
         log_file = os.path.join(self.log_dir, 'odoo.log')
         # Timed rotating file handler (daily rotation, keep 30 days of logs)
         file_handler = TimedRotatingFileHandler(

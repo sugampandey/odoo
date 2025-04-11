@@ -13,7 +13,7 @@ class SwaggerController(http.Controller):
         """Serve Swagger UI"""
         try:
             controllers = [
-                company.CreateCompany,
+                company.CompanyAPI,
                 accounts.AccountAPI,
                 analytic_account.AnalyticAccountAPI,
                 reports.ReportsAPI,
@@ -52,7 +52,7 @@ class SwaggerController(http.Controller):
     def get_api_docs(self):
         """Get OpenAPI documentation"""
         controllers = [
-            company.CreateCompany,
+            company.CompanyAPI,
             accounts.AccountAPI,
             analytic_account.AnalyticAccountAPI,
             reports.ReportsAPI,

@@ -23,8 +23,8 @@ class APIResponse:
         fault_model = FaultModel(error=[error_detail], type=error_type)
         response_header = ResponseHeaderModel(status=status, message=message)
         response_model = ResponseModel(fault=fault_model)
-        error_response = ErrorResponseModel(responseHeader=response_header, response=response_model).to_dict()
-        return json_response(error_response, status)
+        error_response = ErrorResponseModel(responseHeader=response_header, response=response_model)
+        return json_response(error_response.model_dump(mode='json'), status)
 
     
     @staticmethod

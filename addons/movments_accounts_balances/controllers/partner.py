@@ -14,8 +14,6 @@ from ..swagger.swagger_generator import swagger_gen
 
 
 class PartnerAPI(http.Controller):
-        
-
     
     @http.route('/api/customers', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     @swagger_gen.swagger_doc(

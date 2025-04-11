@@ -9,7 +9,7 @@ from ..schemas.company import CompanyModel, CompanyListResponseModel, CompanyCre
 from ..repository.company import CompanyService
 from ..repository.product import ProductTemplateService
 
-class CreateCompany(http.Controller):
+class CompanyAPI(http.Controller):
     
     @http.route('/api/companies', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     @swagger_gen.swagger_doc(

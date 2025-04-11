@@ -1,13 +1,21 @@
-from typing import Type, Optional, Dict, Any, List, Union, Callable, get_type_hints
+from typing import Type, Optional, Dict, Any, List, Callable, get_type_hints
 from pydantic import BaseModel
 from functools import wraps
 import inspect
 import re
+from ..schemas.error import ErrorResponseModel, ResponseHeaderModel, ResponseModel, ErrorDetail, FaultModel
 
 class SwaggerGenerator:
     def __init__(self):
         self.schemas = {}
         self._registered_models = set()
+        # Register error models during initialization
+        self.register_model(ErrorResponseModel)
+        self.register_model(ResponseHeaderModel)
+        self.register_model(ResponseModel)
+        # Register base error models during initialization
+        self.register_model(ErrorDetail)
+        self.register_model(FaultModel)
 
     def _process_schema(self, schema: dict) -> dict:
         """Process a schema and its nested schemas, transforming all references"""
@@ -307,6 +315,16 @@ class SwaggerGenerator:
                 
         return parameters
 
+    def create_error_model(self, model_name: str) -> Type[ErrorResponseModel]:
+        """Create a dynamic error response model for a specific resource"""
+        class DynamicErrorResponseModel(ErrorResponseModel):
+            class Config:
+                title = f"{model_name}ErrorResponse"
+        
+        DynamicErrorResponseModel.__name__ = f"{model_name}ErrorResponse"
+        self.register_model(DynamicErrorResponseModel)
+        return DynamicErrorResponseModel
+
     def swagger_doc(
         self,
         operation: str,
@@ -330,6 +348,10 @@ class SwaggerGenerator:
                 self.register_model(request_model)
             if response_model:
                 self.register_model(response_model)
+
+            # Create dynamic error model for this resource
+            model_name = resource_name.replace('-', '_').title().replace('_', '')
+            error_model = self.create_error_model(model_name)
 
             # Add additional headers if provided
             if additional_headers:
@@ -376,21 +398,28 @@ class SwaggerGenerator:
                         }
                     },
                     '400': {
-                        'description': 'Bad Request',
+                        'description': f'Bad Request - Invalid {resource_name}',
                         'content': {
                             'application/json': {
-                                'schema': {
-                                    'type': 'object',
-                                    'properties': {
-                                        'error': {'type': 'string'},
-                                        'message': {'type': 'string'}
-                                    }
-                                }
+                                'schema': {'$ref': f'#/components/schemas/{error_model.__name__}'}
+                            }
+                        }
+                    },
+                    '404': {
+                        'description': f'{resource_name.title()} not found',
+                        'content': {
+                            'application/json': {
+                                'schema': {'$ref': f'#/components/schemas/{error_model.__name__}'}
                             }
                         }
                     },
                     '500': {
-                        'description': 'Internal Server Error'
+                        'description': 'Internal Server Error',
+                        'content': {
+                            'application/json': {
+                                'schema': {'$ref': f'#/components/schemas/{error_model.__name__}'}
+                            }
+                        }
                     }
                 }
             }

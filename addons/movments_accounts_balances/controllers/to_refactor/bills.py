@@ -1,12 +1,12 @@
 from datetime import datetime
 from odoo import http
 from odoo.http import request
-from ..utils import APIResponse, validate_and_convert_data, get_request_data
-from ..schemas.bills import BILL_SCHEMA
-from ..repository.partner import PartnerService
-from ..repository.account import AccountService
-from ..repository.company import CompanyService
-from ..repository.product import ProductService
+from ...utils import APIResponse, validate_and_convert_data, get_request_data
+from ...schemas.to_refactor.bills import BILL_SCHEMA
+from ...repository.partner import PartnerService
+from ...repository.account import AccountService
+from ...repository.company import CompanyService
+from ...repository.product import ProductService
 
 
 class BillController(http.Controller):

@@ -67,9 +67,6 @@ SectionRowModel.model_rebuild()
 
 
 
-
-
-
 # General Ledger Report Schema
 GENERAL_LEDGER_RESPONSE = {
     'type': 'object',

@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 from odoo import fields, models
-from .schema_generator import ResponseSchemaGenerator, RequestSchemaGenerator
+from .to_refactor.schema_generator import ResponseSchemaGenerator, RequestSchemaGenerator
 
 
 HEADERS = [
