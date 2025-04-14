@@ -1,41 +1,9 @@
 from typing import Any, Dict, Optional, List
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 from .common import (MetaDataModel, RefModel, BillAddrModel,
-                     PhoneNumberModel, EmailAddressModel, WebAddrModel, HEADERS, PaginationResponseModel)
+                     PhoneNumberModel, EmailAddressModel, WebAddrModel, PaginationResponseModel)
 
-
-# Base Models
-# TODO: Move these to common module
-class MetaDataModel(BaseModel):
-    CreateTime: datetime
-    LastUpdatedTime: datetime
-
-class BillAddrModel(BaseModel):
-    City: Optional[str] = Field(None, description="City name")
-    Country: Optional[str] = Field(None, description="Country name")
-    Line1: Optional[str] = Field(None, description="Address line 1")
-    Line2: Optional[str] = Field(None, description="Address line 2")
-    Line3: Optional[str] = Field(None, description="Address line 3")
-    PostalCode: Optional[str] = Field(None, description="Postal/ZIP code")
-    CountrySubDivisionCode: Optional[str] = Field(None, description="State/Province/Region code")
-
-    class Config:
-        from_attributes = True
-
-class PhoneNumberModel(BaseModel):
-    FreeFormNumber: Optional[str] = Field(None, description="Phone number in free form format")
-    class Config:
-        from_attributes = True
-
-
-class EmailAddressModel(BaseModel):
-    Address: Optional[EmailStr] = Field(None, description="Email address")
-    class Config:
-        from_attributes = True
-
-class WebAddrModel(BaseModel):
-    URI: Optional[str] = Field(None, description="Web address URI")
 
 
 class BasePartnerCreateRequestModel(BaseModel):
@@ -284,91 +252,3 @@ class CustomerListResponseModel(BaseModel):
             time=datetime.now()
         )
     
-
-VENDOR_GET_PARAMS = {
-    'path': [
-        {
-            'name': 'vendor_id',
-            'type': 'integer',
-            'description': 'ID of the vendor to retrieve',
-            'required': True
-        }
-    ]
-}
-
-CUSTOMER_GET_PARAMS = {
-    'path': [
-        {
-            'name': 'customer_id',
-            'type': 'integer',
-            'description': 'ID of the customer to retrieve',
-            'required': True
-        }
-    ]
-}
-
-VENDOR_DELETE_PARAMS = {
-    'path': [
-        {
-            'name': 'vendor_id',
-            'type': 'integer',
-            'description': 'ID of the vendor to delete',
-            'required': True
-        }
-    ]
-}
-
-CUSTOMER_DELETE_PARAMS = {
-    'path': [
-        {
-            'name': 'customer_id',
-            'type': 'integer',
-            'description': 'ID of the customer to delete',
-            'required': True
-        }
-    ]
-}
-
-VENDOR_CREATE_RESPONSE = VENDOR_GET_RESPONSE = VendorResponseModel
-VENDOR_LIST_RESPONSE = VendorListResponseModel
-VENDOR_SCHEMA = VendorCreateRequestModel
-VENDOR_CREATE_PARAMS = {
-    'headers': HEADERS,
-    'body': {
-        'schema': VENDOR_SCHEMA,
-        'required': True
-    }
-}
-
-CUSTOMER_CREATE_RESPONSE = CUSTOMER_GET_RESPONSE = CustomerResponseModel
-CUSTOMER_LIST_RESPONSE = CustomerListResponseModel
-CUSTOMER_SCHEMA = CustomerCreateRequestModel
-CUSTOMER_CREATE_PARAMS = {
-    'headers': HEADERS,
-    'body': {
-        'schema': CUSTOMER_SCHEMA,
-        'required': True
-    }
-}
-
-PARTNER_CATEGORY_LIST_RESPONSE = {
-    'type': 'object',
-    'properties': {
-        'success': {'type': 'boolean'},
-        'message': {'type': 'string'},
-        'data': {
-            'type': 'array',
-            'items': {
-                'type': 'object',
-                'properties': {
-                    'id': {'type': 'integer'},
-                    'name': {'type': 'string'},
-                    'active': {'type': 'boolean'}
-                }
-            }
-        }
-    }
-}
-
-
-

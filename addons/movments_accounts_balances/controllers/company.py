@@ -2,22 +2,27 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 from odoo import http
 from odoo.http import request
+from .auth_middleware import validate_token_middleware
 from ..utils import APIResponse, validate_request_data
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.company import CompanyModel, CompanyListResponseModel, CompanyCreateRequestModel, CompanyResponseModel
 from ..repository.company import CompanyService
 from ..repository.product import ProductTemplateService
+from ..schemas.common import ACCESS_TOKEN_HEADER
+
 
 class CompanyAPI(http.Controller):
     
-    @http.route('/api/companies', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @http.route('/api/v1/companies', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='create',
         resource_name='company',
         request_model=CompanyCreateRequestModel,
         response_model=CompanyResponseModel,
         tags=['Companies'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def create_company(self, **kwargs):
         cursor = request.env.cr
@@ -34,12 +39,14 @@ class CompanyAPI(http.Controller):
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
         
     
-    @http.route('/api/companies/<int:company_id>', type='http', auth='public', methods=['GET'], csrf=False)
+    @http.route('/api/v1/companies/<int:company_id>', type='http', auth='public', methods=['GET'], csrf=False)
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='get',
         resource_name='company',
         response_model=CompanyResponseModel,
-        tags=['Companies']
+        tags=['Companies'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_company(self, company_id: int, **kwargs):
         """Get company details by ID
@@ -62,12 +69,14 @@ class CompanyAPI(http.Controller):
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
 
     
-    @http.route('/api/companies', type='http', auth='public', methods=['GET'], csrf=False)
+    @http.route('/api/v1/companies', type='http', auth='public', methods=['GET'], csrf=False)
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='list',
         resource_name='company',
         response_model=CompanyListResponseModel,
         tags=['Companies'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_companies(self, name: Optional[str] = None, active: Optional[str] = None, 
                        maxresults: int = 100, startposition: int = 0, **kwargs):
@@ -86,11 +95,13 @@ class CompanyAPI(http.Controller):
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )        
 
-    @http.route('/api/companies/<int:company_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @http.route('/api/v1/companies/<int:company_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='delete',
         resource_name='company',
-        tags=['Companies']
+        tags=['Companies'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def delete_company(self, company_id: int, **kwargs):
         """Delete (deactivate) a company by ID

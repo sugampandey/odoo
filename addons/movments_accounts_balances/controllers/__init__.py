@@ -1,4 +1,3 @@
-
 from . import company
 from .to_refactor import journal
 from .to_refactor import payment_methods
@@ -15,3 +14,4 @@ from .to_refactor import bill_payment
 from . import reports
 from .to_refactor import product
 from . import webhook
+from . import auth_middleware

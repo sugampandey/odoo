@@ -2,16 +2,9 @@ import uuid
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
-from .common import HEADERS, MetaDataModel, PaginationResponseModel, RefModel
+from .common import COMPANY_HEADERS, ACCESS_TOKEN_HEADER, MetaDataModel, PaginationResponseModel, RefModel
 from ..mapping.accounts import ACCOUNT_CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
 from ..repository.currency import CurrencyService
-
-# TODO: Move these to common module
-
-class MetaDataModel(BaseModel):
-    CreateTime: datetime
-    LastUpdatedTime: datetime
-
 
 
 class AccountCreateRequestModel(BaseModel):
@@ -167,6 +160,6 @@ ACCOUNT_HEADERS = [
         'required': False,
         'enum': ['none', 'cash', 'bank', 'credit_card']
     }
-] + HEADERS
+] + COMPANY_HEADERS + ACCESS_TOKEN_HEADER
 
 

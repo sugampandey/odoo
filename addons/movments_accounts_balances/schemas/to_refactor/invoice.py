@@ -1,8 +1,5 @@
 from typing import Optional, List
-from enum import Enum
-from ..common import (CurrencyRefModel, MetaDataModel, TaxCodeRefModel, ItemRefModel, 
-                     ClassRefModel, ItemAccountRefModel,CustomerRefModel, ProjectRefModel, 
-                     AccountRefModel, HEADERS)
+from ..common import MetaDataModel, RefModel
 from .schema_generator import RequestSchemaGenerator, ResponseSchemaGenerator
 
 
@@ -11,10 +8,10 @@ class SalesItemLineDetailModel(RequestSchemaGenerator, ResponseSchemaGenerator):
         self,
         TaxInclusiveAmt: Optional[float] = None,
         DiscountAmt: Optional[float] = None,
-        ItemRef: Optional[ItemRefModel] = None,
-        ClassRef : Optional[ClassRefModel] = None,
-        TaxCodeRef : Optional[TaxCodeRefModel] = None,
-        ItemAccountRef: Optional[ItemAccountRefModel] = None,
+        ItemRef: Optional[RefModel] = None,
+        ClassRef : Optional[RefModel] = None,
+        TaxCodeRef : Optional[RefModel] = None,
+        ItemAccountRef: Optional[RefModel] = None,
         ServiceDate: Optional[str] = None,
         DiscountRate: Optional[float] = None,
         Qty: Optional[float] = None,
@@ -50,10 +47,10 @@ class SalesItemLineDetailModel(RequestSchemaGenerator, ResponseSchemaGenerator):
         return cls(
             TaxInclusiveAmt=data.get('TaxInclusiveAmt', 0.0),
             DiscountAmt=data.get('DiscountAmt', 0.0),
-            ItemRef=ItemRefModel.from_dict(data.get('ItemRef', {})) if data.get('ItemRef') else None,
-            ClassRef=ClassRefModel.from_dict(data.get('ClassRef', {})) if data.get('ClassRef') else None,
-            TaxCodeRef=TaxCodeRefModel.from_dict(data.get('TaxCodeRef', {})) if data.get('TaxCodeRef') else None,
-            ItemAccountRef=ItemAccountRefModel.from_dict(data.get('ItemAccountRef', {})) if data.get('ItemAccountRef') else None,
+            ItemRef=RefModel.from_dict(data.get('ItemRef', {})) if data.get('ItemRef') else None,
+            ClassRef=RefModel.from_dict(data.get('ClassRef', {})) if data.get('ClassRef') else None,
+            TaxCodeRef=RefModel.from_dict(data.get('TaxCodeRef', {})) if data.get('TaxCodeRef') else None,
+            ItemAccountRef=RefModel.from_dict(data.get('ItemAccountRef', {})) if data.get('ItemAccountRef') else None,
             ServiceDate=data.get('ServiceDate', ''),
             DiscountRate=data.get('DiscountRate', 0.0),
             Qty=data.get('Qty', 0.0),
@@ -100,9 +97,9 @@ class InvoiceRequestModel(RequestSchemaGenerator):
     def __init__(
         self,
         Line: List[InvoiceLineRequestModel],
-        CurrencyRef: Optional[CurrencyRefModel] = None,
-        CustomerRef: Optional[CustomerRefModel] = None,
-        ProjectRef: Optional[ProjectRefModel] = None,
+        CurrencyRef: Optional[RefModel] = None,
+        CustomerRef: Optional[RefModel] = None,
+        ProjectRef: Optional[RefModel] = None,
     ):
         self.Line = Line
         self.CurrencyRef = CurrencyRef
@@ -121,9 +118,9 @@ class InvoiceRequestModel(RequestSchemaGenerator):
     def from_dict(cls, data: dict):
         return cls(
             Line=[InvoiceLineRequestModel.from_dict(line_data) for line_data in data.get('Line', [])],
-            CurrencyRef=CurrencyRefModel.from_dict(data.get('CurrencyRef', {})),
-            CustomerRef=CustomerRefModel.from_dict(data.get('CustomerRef', {})),
-            ProjectRef=ProjectRefModel.from_dict(data.get('ProjectRef', {}))
+            CurrencyRef=RefModel.from_dict(data.get('CurrencyRef', {})),
+            CustomerRef=RefModel.from_dict(data.get('CustomerRef', {})),
+            ProjectRef=RefModel.from_dict(data.get('ProjectRef', {}))
         )
 
 class InvoiceLineResponseModel(ResponseSchemaGenerator):
@@ -185,19 +182,19 @@ class InvoiceModel(ResponseSchemaGenerator):
         Id: Optional[str] = None,
         
 
-        CustomerRef: Optional[CustomerRefModel] = None,
+        CustomerRef: Optional[RefModel] = None,
         SyncToken: Optional[str] = None,
         # ShipFromAddr : Optional[ShipFromAddr] = None,
-        CurrencyRef: Optional[CurrencyRefModel] = None,
-        ProjectRef: Optional[ProjectRefModel] = None,
+        CurrencyRef: Optional[RefModel] = None,
+        ProjectRef: Optional[RefModel] = None,
         BillEmail: Optional[str] = None,
         TxnDate: Optional[str] = None,
         ShipDate: Optional[str] = None,
         TrackingNum: Optional[str] = None,
-        ClassRef: Optional[ClassRefModel] = None,
+        ClassRef: Optional[RefModel] = None,
         TxnSource: Optional[str] = None,
         # LinkedTxn: Optional[str] = None, will be List no use 
-        DepositToAccountRef: Optional[AccountRefModel] = None,
+        DepositToAccountRef: Optional[RefModel] = None,
         AllowOnlineACHPayment: Optional[bool] = False,
         DueDate: Optional[str] = None,
         MetaData: Optional[MetaDataModel] = None,

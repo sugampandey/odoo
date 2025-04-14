@@ -6,14 +6,17 @@ from ..utils import APIResponse, get_company_from_headers, get_payment_method_fr
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.accounts import AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountListResponseModel, ACCOUNT_HEADERS
+from ..schemas.common import ACCESS_TOKEN_HEADER
 from ..mapping.accounts import ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING, ACCOUNT_TYPE_MAPPING
 from ..repository.journal import JournalService
 from ..repository.account import AccountService
 from ..repository.company import CompanyService
+from .auth_middleware import validate_token_middleware
 
 class AccountAPI(http.Controller):
 
-    @http.route('/api/accounts', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @http.route('/api/v1/accounts', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='create',
         resource_name='account',
@@ -38,12 +41,14 @@ class AccountAPI(http.Controller):
             return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     
-    @http.route('/api/accounts', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @http.route('/api/v1/accounts', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='list',
         resource_name='account',
         response_model=AccountListResponseModel,
-        tags=['Accounts']
+        tags=['Accounts'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_accounts(self, company_id: int, name: Optional[str] = None, account_type: Optional[str] = None,
         active: Optional[str] = None, maxresults: int = 100, startposition: int = 0, **kwargs
@@ -74,12 +79,14 @@ class AccountAPI(http.Controller):
             )
     
     
-    @http.route('/api/accounts/<int:account_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @http.route('/api/v1/accounts/<int:account_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='get',
         resource_name='account',
         response_model=AccountResponseModel,
-        tags=['Accounts']
+        tags=['Accounts'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_account(self, account_id: int, company_id: int) -> Dict[str, Any]:
         try:
@@ -103,11 +110,13 @@ class AccountAPI(http.Controller):
             )
 
 
-    @http.route('/api/accounts/<int:account_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @http.route('/api/v1/accounts/<int:account_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='delete',
         resource_name='account',
-        tags=['Accounts']
+        tags=['Accounts'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def delete_account(self, account_id, **kwargs):
         try:
@@ -137,11 +146,13 @@ class AccountAPI(http.Controller):
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=500)
         
       
-    @http.route('/api/account-types', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @http.route('/api/v1/account-types', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='list',
         resource_name='account-type',
-        tags=['Accounts']
+        tags=['Accounts'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_account_types(self, **kwargs):
         account_types = [{"code": ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING[key], "name": key} for key in ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING.keys()]

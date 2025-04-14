@@ -2,9 +2,10 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple, Union
 from odoo import http
 from odoo.http import request
+from .auth_middleware import validate_token_middleware
 from ..logger.logger import logger
 from ..utils import APIResponse, get_company_from_headers, validate_request_data
-from ..schemas.common import HEADERS
+from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
 from ..schemas.partner import (CustomerModel, CustomerCreateRequestModel, CustomerResponseModel, CustomerListResponseModel,
                                 VendorModel, VendorCreateRequestModel, VendorResponseModel, VendorListResponseModel)
 from ..repository.partner import PartnerService
@@ -15,14 +16,15 @@ from ..swagger.swagger_generator import swagger_gen
 
 class PartnerAPI(http.Controller):
     
-    @http.route('/api/customers', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @http.route('/api/v1/customers', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='create',
         resource_name='customer',
         request_model=CustomerCreateRequestModel,
         response_model=CustomerResponseModel,
         tags=['Customers'],
-        additional_headers=HEADERS
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
     def create_customer(self, **kwargs):
         # """
@@ -39,14 +41,15 @@ class PartnerAPI(http.Controller):
             logger.error(f"Failed to create customer: {str(e)}")
             return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
-    @http.route('/api/vendors', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @http.route('/api/v1/vendors', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='create',
         resource_name='vendor',
         request_model=VendorCreateRequestModel,
         response_model=VendorResponseModel,
         tags=['Vendors'],
-        additional_headers=HEADERS
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
     def create_vendor(self, **kwargs):
         # """
@@ -65,12 +68,14 @@ class PartnerAPI(http.Controller):
         
 
     
-    @http.route('/api/customers/<int:customer_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @http.route('/api/v1/customers/<int:customer_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='get',
         resource_name='customer',
         response_model=CustomerResponseModel,
-        tags=['Customers']
+        tags=['Customers'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_customer(self, customer_id: int, company_id: int):
         try:
@@ -97,12 +102,14 @@ class PartnerAPI(http.Controller):
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )
         
-    @http.route('/api/vendors/<int:vendor_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @http.route('/api/v1/vendors/<int:vendor_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='get',
         resource_name='vendor',
         response_model=VendorResponseModel,
-        tags=['Vendors']
+        tags=['Vendors'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_vendor(self, vendor_id: int, company_id: int):
         try:
@@ -129,12 +136,14 @@ class PartnerAPI(http.Controller):
             )
         
     
-    @http.route('/api/vendors/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @http.route('/api/v1/vendors/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='list',
         resource_name='vendor',
         response_model=VendorListResponseModel,
-        tags=['Vendors']
+        tags=['Vendors'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_vendors(self, company_id: int, DisplayName: Optional[str] = None, active: Optional[str] = None, 
                      maxresults: int = 100, startposition: int = 0, **kwargs
@@ -155,12 +164,14 @@ class PartnerAPI(http.Controller):
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )
         
-    @http.route('/api/customers/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @http.route('/api/v1/customers/', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='list',
         resource_name='customer',
         response_model=CustomerListResponseModel,
-        tags=['Customers']
+        tags=['Customers'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_customers(self, company_id: int, DisplayName: Optional[str] = None, active: Optional[str] = None, 
                        maxresults: int = 100, startposition: int = 0, **kwargs
@@ -182,11 +193,13 @@ class PartnerAPI(http.Controller):
             )
         
 
-    @http.route('/api/vendors/<int:vendor_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @http.route('/api/v1/vendors/<int:vendor_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='delete',
         resource_name='vendor',
-        tags=['Vendors']
+        tags=['Vendors'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def delete_vendor(self, vendor_id, **kwargs):
         cursor = request.env.cr
@@ -198,11 +211,13 @@ class PartnerAPI(http.Controller):
             cursor.rollback()  
             return APIResponse.error_response(message='An error occurred while deleting the vendor', errors=str(e), status=500)
         
-    @http.route('/api/customers/<int:customer_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @http.route('/api/v1/customers/<int:customer_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='delete',
         resource_name='customer',
-        tags=['Customers']
+        tags=['Customers'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def delete_customer(self, customer_id, **kwargs):
         cursor = request.env.cr

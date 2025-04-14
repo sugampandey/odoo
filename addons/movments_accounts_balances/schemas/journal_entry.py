@@ -2,7 +2,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import datetime
 from typing import Optional, List
-from .common import (MetaDataModel, PaginationResponseModel, RefModel, HEADERS)
+from .common import MetaDataModel, PaginationResponseModel, RefModel
 from ..enums import PostingType, DetailType
 
 # description = ref
@@ -14,10 +14,6 @@ from ..enums import PostingType, DetailType
 # Detailtype= JournalEntryLineDetail
 # Id = id
 
-
-class MetaDataModel(BaseModel):
-    CreateTime: datetime
-    LastUpdatedTime: datetime
 
 class EntityModel(BaseModel):
     Type: Optional[str] = Field(None, description="Entity type")
@@ -298,86 +294,3 @@ class JournalEntryListResponseModel(BaseModel):
             time=datetime.now()
         )
 
-
-JOURNAL_ENTRY_CREATE_RESPONSE = JOURNAL_ENTRY_GET_RESPONSE = JournalEntryResponseModel
-JOURNAL_ENTRY_LIST_RESPONSE = JournalEntryListResponseModel
-
-JOURNAL_ENTRY_SCHEMA = JournalEntryRequestModel
-
-
-# Parameters for different endpoints
-JOURNAL_ENTRY_LIST_PARAMS = {
-    'query': [
-        {
-            'name': 'company_id',
-            'type': 'integer',
-            'description': 'Filter by company ID',
-            'required': True
-        },
-        {
-            'name': 'journal_id',
-            'type': 'integer',
-            'description': 'Filter by journal ID',
-            'required': False
-        },
-        {
-            'name': 'maxresults',
-            'type': 'integer',
-            'description': 'Number of records to return (default: 100)',
-            'required': False,
-            'default': 100
-        },
-        {
-            'name': 'startposition',
-            'type': 'integer',
-            'description': 'Number of records to skip (default: 0)',
-            'required': False,
-            'default': 0
-        },
-        {
-            'name': 'date_from',
-            'type': 'string',
-            'format': 'date',
-            'description': 'Start date for filtering journal entries (YYYY-MM-DD). Must be used together with date_to',
-            'required': False
-        },
-        {
-            'name': 'date_to',
-            'type': 'string',
-            'format': 'date',
-            'description': 'End date for filtering journal entries (YYYY-MM-DD). Must be used together with date_from',
-            'required': False
-        }
-    ]
-}
-
-
-JOURNAL_ENTRY_GET_PARAMS = {
-    'path': [
-        {
-            'name': 'journal_entry_id',
-            'type': 'integer',
-            'description': 'ID of the journal entry to retrieve',
-            'required': True
-        }
-    ]
-}
-
-JOURNAL_ENTRY_DELETE_PARAMS = {
-    'path': [
-        {
-            'name': 'journal_entry_id',
-            'type': 'integer',
-            'description': 'ID of the journal entry to delete',
-            'required': True
-        }
-    ]
-}
-
-JOURNAL_ENTRY_CREATE_PARAMS = {
-    'headers': HEADERS,
-    'body': {
-        'schema': JOURNAL_ENTRY_SCHEMA,
-        'required': True
-    }
-}

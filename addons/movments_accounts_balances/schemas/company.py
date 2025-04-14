@@ -1,40 +1,9 @@
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator, EmailStr
+from pydantic import BaseModel, Field, field_validator
 from .common import (RefModel, MetaDataModel, BillAddrModel,
                      PhoneNumberModel, EmailAddressModel, PaginationResponseModel)
 from ..repository.currency import CurrencyService
-
-# TODO: Move these to common module
-
-class MetaDataModel(BaseModel):
-    CreateTime: datetime
-    LastUpdatedTime: datetime
-
-class BillAddrModel(BaseModel):
-    City: Optional[str] = Field(None, description="City name")
-    Country: Optional[str] = Field(None, description="Country name")
-    Line1: Optional[str] = Field(None, description="Address line 1")
-    Line2: Optional[str] = Field(None, description="Address line 2")
-    Line3: Optional[str] = Field(None, description="Address line 3")
-    PostalCode: Optional[str] = Field(None, description="Postal/ZIP code")
-    CountrySubDivisionCode: Optional[str] = Field(None, description="State/Province/Region code")
-
-    class Config:
-        from_attributes = True
-
-class PhoneNumberModel(BaseModel):
-    FreeFormNumber: str = Field(..., description="Phone number in free form format")
-
-    class Config:
-        from_attributes = True
-
-
-class EmailAddressModel(BaseModel):
-    Address: EmailStr = Field(..., description="Email address")
-
-    class Config:
-        from_attributes = True
 
 
 class CompanyCreateRequestModel(BaseModel):
@@ -145,70 +114,3 @@ class CompanyListResponseModel(BaseModel):
             time=datetime.now()
         )
            
-
-# COMPANY_CREATE_RESPONSE = COMPANY_GET_RESPONSE = CompanyResponseModel
-# COMPANY_LIST_RESPONSE = CompanyListResponseModel
-
-# COMPANY_SCHEMA = CompanyCreateRequestModel
-
-
-# # Parameters for different endpoints
-# COMPANY_LIST_PARAMS = {
-#     'query': [
-#         {
-#             'name': 'name',
-#             'type': 'string',
-#             'description': 'Filter by name',
-#             'required': False
-#         },
-#         {
-#             'name': 'active',
-#             'type': 'boolean',
-#             'description': 'Filter by active status',
-#             'required': False
-#         },
-#         {
-#             'name': 'maxresults',
-#             'type': 'integer',
-#             'description': 'Number of records to return (default: 100)',
-#             'required': False,
-#             'default': 100
-#         },
-#         {
-#             'name': 'startposition',
-#             'type': 'integer',
-#             'description': 'Number of records to skip (default: 0)',
-#             'required': False,
-#             'default': 0
-#         },
-#     ]
-# }
-
-# COMPANY_GET_PARAMS = {
-#     'path': [
-#         {
-#             'name': 'company_id',
-#             'type': 'integer',
-#             'description': 'ID of the company to retrieve',
-#             'required': True
-#         }
-#     ]
-# }
-
-# COMPANY_DELETE_PARAMS = {
-#     'path': [
-#         {
-#             'name': 'company_id',
-#             'type': 'integer',
-#             'description': 'ID of the company to delete',
-#             'required': True
-#         }
-#     ]
-# }
-
-# COMPANY_CREATE_PARAMS = {
-#     'body': {
-#         'schema': COMPANY_SCHEMA,
-#         'required': True
-#     }
-# }

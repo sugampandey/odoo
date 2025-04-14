@@ -3,24 +3,26 @@ from odoo import http
 from http import HTTPStatus
 from odoo.http import request
 from pydantic import ValidationError
+from .auth_middleware import validate_token_middleware
 from ..utils import APIResponse, get_company_from_headers, validate_request_data
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.analytic_account import AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassCreateRequestModel
-from ..schemas.common import HEADERS
+from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
 from ..repository.analytic_account import AnalyticAccountService, AnalyticPlanService
 from ..repository.company import CompanyService
 
 class AnalyticAccountAPI(http.Controller):
 
-    @http.route('/api/analytic-class', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @http.route('/api/v1/analytic-class', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='create',
         resource_name='analytic-account',
         request_model=AnalyticClassCreateRequestModel,
         response_model=AnalyticClassResponseModel,
         tags=['Analytic Accounts'],
-        additional_headers=HEADERS
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
     def create_analytic_account(self, **kwargs):
         logger.info("Processing create Analytic Account request")
@@ -34,12 +36,14 @@ class AnalyticAccountAPI(http.Controller):
             logger.error(f"Failed to create Analytic Class: {str(e)}")
             return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
-    @http.route('/api/analytic-class', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @http.route('/api/v1/analytic-class', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='list',
         resource_name='analytic-account',
         response_model=AnalyticClassListResponseModel,
-        tags=['Analytic Accounts']
+        tags=['Analytic Accounts'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_analytic_accounts(self, company_id: int, active: Optional[str] = None, maxresults: int = 100, startposition: int = 0, **kwargs):
         """
@@ -69,12 +73,14 @@ class AnalyticAccountAPI(http.Controller):
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )
     
-    @http.route('/api/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @http.route('/api/v1/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='get',
         resource_name='analytic-account',
         response_model=AnalyticClassResponseModel,
-        tags=['Analytic Accounts']
+        tags=['Analytic Accounts'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_analytic_account(self, analytic_class_id: int, company_id: int, **kwargs):
         """
@@ -108,11 +114,13 @@ class AnalyticAccountAPI(http.Controller):
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )
     
-    @http.route('/api/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @http.route('/api/v1/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='delete',
         resource_name='analytic-account',
-        tags=['Analytic Accounts']
+        tags=['Analytic Accounts'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def delete_analytic_account(self, analytic_class_id, **kwargs):
         try:

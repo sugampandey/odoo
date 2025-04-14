@@ -3,14 +3,20 @@ from odoo.http import request
 from ..utils import get_request_data, APIResponse
 from ..swagger.swagger_generator import swagger_gen
 from ..repository.config_parameter import ConfigParamService
+from .auth_middleware import validate_token_middleware
+from ..schemas.common import ACCESS_TOKEN_HEADER
+
+
 
 class WebhookAPI(http.Controller):
     
     @http.route('/api/webhook/config', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
     @swagger_gen.swagger_doc(
         operation='get',
         resource_name='webhook',
-        tags=['Webhook'],
+        tags=['Webhooks'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_webhook_url(self):
         try:
@@ -24,7 +30,8 @@ class WebhookAPI(http.Controller):
     @swagger_gen.swagger_doc(
         operation='update',
         resource_name='webhook',
-        tags=['Webhook'],
+        tags=['Webhooks'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def update_webhook_url(self):
         config_param_service = ConfigParamService(request.env)
@@ -52,7 +59,8 @@ class WebhookAPI(http.Controller):
     @swagger_gen.swagger_doc(
         operation='delete',
         resource_name='webhook',
-        tags=['Webhook'],
+        tags=['Webhooks'],
+        additional_headers=ACCESS_TOKEN_HEADER
     )
     def delete_webhook_url(self):
         config_param_service = ConfigParamService(request.env)

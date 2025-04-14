@@ -1,13 +1,8 @@
-from typing import List, Optional, Literal, get_type_hints, Type, Union, Any
+from typing import List, Optional
 import uuid
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from .common import PaginationResponseModel, RefModel
-
-
-class MetaDataModel(BaseModel):
-    CreateTime: datetime
-    LastUpdatedTime: datetime
+from .common import PaginationResponseModel, RefModel, MetaDataModel
 
 
 class AnalyticClassCreateRequestModel(BaseModel):
@@ -90,86 +85,4 @@ class AnalyticClassListResponseModel(BaseModel):
             QueryResponse=query_response,
             time=datetime.now()
         )
-    
-# ANALYTIC_ACCOUNT_CREATE_RESPONSE = ANALYTIC_ACCOUNT_GET_RESPONSE = AnalyticClassResponseModel.get_response_schema()
-# ANALYTIC_ACCOUNT_LIST_RESPONSE = AnalyticClassListResponseModel
-
-# ANALYTIC_ACCOUNT_SCHEMA = AnalyticClassCreateRequestModel
-
-# ANALYTIC_ACCOUNT_CREATE_PARAMS = {
-#     'headers': HEADERS,
-#     'body': {
-#         'schema': ANALYTIC_ACCOUNT_SCHEMA,
-#         'required': True
-#     }
-# }
-
-# # Parameters for different endpoints
-# ANALYTIC_ACCOUNT_LIST_PARAMS = {
-#     'query': [
-#         {
-#             'name': 'company_id',
-#             'type': 'integer',
-#             'description': 'Filter by company ID',
-#             'required': False
-#         },
-#         {
-#             'name': 'active',
-#             'type': 'boolean',
-#             'description': 'Filter by active status',
-#             'required': False
-#         },
-#         {
-#             'name': 'maxresults',
-#             'type': 'integer',
-#             'description': 'Number of records to return (default: 100)',
-#             'required': False,
-#             'default': 100
-#         },
-#         {
-#             'name': 'startposition',
-#             'type': 'integer',
-#             'description': 'Number of records to skip (default: 0)',
-#             'required': False,
-#             'default': 0
-#         },
-#     ]
-# }
-
-# ANALYTIC_ACCOUNT_GET_PARAMS = {
-#     'path': [
-#         {
-#             'name': 'analytic_class_id',
-#             'type': 'integer',
-#             'description': 'ID of the analytic class to retrieve',
-#             'required': True
-#         }
-#     ],
-#     'query': [
-#         {
-#             'name': 'company_id',
-#             'type': 'integer',
-#             'description': 'Filter by company ID',
-#             'required': True
-#         },
-#     ]
-# }
-
-# ANALYTIC_ACCOUNT_DELETE_PARAMS = {
-#     'path': [
-#         {
-#             'name': 'analytic_class_id',
-#             'type': 'integer',
-#             'description': 'ID of the analytic class to delete',
-#             'required': True
-#         }
-#     ],
-#     'query': [
-#         {
-#             'name': 'company_id',
-#             'type': 'integer',
-#             'description': 'Company ID for validation',
-#             'required': True
-#         }
-#     ]
-# }
+ 
