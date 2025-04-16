@@ -12,6 +12,12 @@ class AnalyticClassCreateRequestModel(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_validator('Name')
+    def validate_non_empty_string(cls, v, info):
+        if not v.strip():
+            raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
+        return v
+
     def create_analytic_class_vals(self, company_id: int) -> dict:
         return {
             "name": self.Name,

@@ -2,8 +2,8 @@ from odoo import http
 from odoo.http import request
 from ..utils import get_request_data, APIResponse
 from ..swagger.swagger_generator import swagger_gen
-from ..repository.config_parameter import ConfigParamService
-from .auth_middleware import validate_token_middleware
+from ..repositories.config_parameter import ConfigParamService
+from ..middleware.auth_middleware import validate_token_middleware
 from ..schemas.common import ACCESS_TOKEN_HEADER
 
 

@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 from .common import (RefModel, MetaDataModel, BillAddrModel,
                      PhoneNumberModel, EmailAddressModel, PaginationResponseModel)
-from ..repository.currency import CurrencyService
+from ..repositories.currency import CurrencyService
 
 
 class CompanyCreateRequestModel(BaseModel):
@@ -15,6 +15,12 @@ class CompanyCreateRequestModel(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator('Name')
+    def validate_non_empty_string(cls, v, info):
+        if not v.strip():
+            raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
+        return v
 
     def create_company_vals(self, request) -> dict:
         currency_service = CurrencyService(request.env)

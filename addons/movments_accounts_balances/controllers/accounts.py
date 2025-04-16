@@ -8,10 +8,10 @@ from ..swagger.swagger_generator import swagger_gen
 from ..schemas.accounts import AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountListResponseModel, ACCOUNT_HEADERS
 from ..schemas.common import ACCESS_TOKEN_HEADER
 from ..mapping.accounts import ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING, ACCOUNT_TYPE_MAPPING
-from ..repository.journal import JournalService
-from ..repository.account import AccountService
-from ..repository.company import CompanyService
-from .auth_middleware import validate_token_middleware
+from ..repositories.journal import JournalService
+from ..repositories.account import AccountService
+from ..repositories.company import CompanyService
+from ..middleware.auth_middleware import validate_token_middleware
 
 class AccountAPI(http.Controller):
 

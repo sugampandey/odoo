@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 from .common import COMPANY_HEADERS, ACCESS_TOKEN_HEADER, MetaDataModel, PaginationResponseModel, RefModel
 from ..mapping.accounts import ACCOUNT_CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
-from ..repository.currency import CurrencyService
+from ..repositories.currency import CurrencyService
 
 
 class AccountCreateRequestModel(BaseModel):
@@ -20,6 +20,12 @@ class AccountCreateRequestModel(BaseModel):
         if not mapped_type:
             raise ValueError(f"Invalid account type: {value}")
         return mapped_type
+    
+    @field_validator('Name', 'AcctNum', 'AccountType')
+    def validate_non_empty_string(cls, v, info):
+        if not v.strip():
+            raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
+        return v
 
     def get_unique_account_code(self, account_type: str) -> str:
         type_prefix = TYPE_PREFIX_MAPPING.get(account_type, 'GN')  # GN as default prefix

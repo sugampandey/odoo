@@ -7,16 +7,6 @@ class PartnerService(BaseOdooService):
     def _get_model(self) -> models.Model:
         return self.env['res.partner'].sudo()
     
-    def get_default_vendor_category(self):
-        return self._get_model().search([
-            ('name', '=', CONSTANTS['VENDOR_CATEGORY_NAME'])
-        ], limit=1).id
-    
-    def get_default_customer_category(self):
-        return self._get_model().search([
-            ('name', '=', CONSTANTS['CUSTOMER_CATEGORY_NAME'])
-        ], limit=1).id
-    
     def validate_partner(self, partner_id, company_id):
         """
         Validate partner based on company association
@@ -45,5 +35,15 @@ class PartnerService(BaseOdooService):
 class PartnerCategoryService(BaseOdooService):
     def _get_model(self) -> models.Model:
         return self.env['res.partner.category'].sudo()
+    
+    def get_default_vendor_category(self):
+        return self._get_model().search([
+            ('name', '=', CONSTANTS['VENDOR_CATEGORY_NAME'])
+        ], limit=1).id
+    
+    def get_default_customer_category(self):
+        return self._get_model().search([
+            ('name', '=', CONSTANTS['CUSTOMER_CATEGORY_NAME'])
+        ], limit=1).id
     
     

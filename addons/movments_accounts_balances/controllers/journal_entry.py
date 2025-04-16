@@ -3,15 +3,15 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 from odoo import http
 from odoo.http import request
-from .auth_middleware import validate_token_middleware
+from ..middleware.auth_middleware import validate_token_middleware
 from ..utils import APIResponse, get_company_from_headers, validate_request_data
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.journal_entry import (JournalEntryRequestModel, JournalEntryModel, JournalEntryResponseModel, JournalEntryListResponseModel)
 from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
-from ..repository.account_move import AccountMoveService
-from ..repository.company import CompanyService
-from ..repository.journal import JournalService
+from ..repositories.account_move import AccountMoveService
+from ..repositories.company import CompanyService
+from ..repositories.journal import JournalService
 
 class JournalEntryAPI(http.Controller):
 
@@ -26,7 +26,7 @@ class JournalEntryAPI(http.Controller):
         tags=['Journal Entries'],
         additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
-    def create_journal_entry(self, *args, **post):
+    def create_journal_entry(self, **kwargs):
         """
         Creates a new journal entry in Odoo.
         """

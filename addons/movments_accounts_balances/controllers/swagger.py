@@ -1,8 +1,7 @@
 from odoo import http
-from odoo.http import Response, Controller, request
+from odoo.http import request
 import json
 from ..controllers import company, accounts, analytic_account, reports, partner, journal_entry, webhook
-import traceback
 from ..swagger.swagger_generator import swagger_gen
 
 
@@ -45,8 +44,9 @@ class SwaggerController(http.Controller):
                 'spec': json.dumps(spec)
             })
         except Exception as e:
-            traceback.print_exc()
-            return request.not_found()
+            return request.render('movments_accounts_balances.error_template', {
+                'error': str(e)
+            })
     
     @http.route('/api/docs.json', type='http', auth='public', methods=['GET'])
     def get_api_docs(self):

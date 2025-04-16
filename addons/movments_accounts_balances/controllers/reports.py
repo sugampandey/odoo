@@ -1,16 +1,16 @@
 from odoo import http, fields
 from odoo.http import request
-from .auth_middleware import validate_token_middleware
+from ..middleware.auth_middleware import validate_token_middleware
 from ..utils import APIResponse, get_general_ledger_report_order
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.reports import ReportResponseModel
 from ..schemas.helpers.general_ledger import prepare_general_ledger_response
 from ..schemas.helpers.balance_sheet import prepare_account_balance_response
 from ..schemas.common import ACCESS_TOKEN_HEADER
-from ..repository.analytic_account import AnalyticAccountService
-from ..repository.partner import PartnerService
-from ..repository.account import AccountService
-from ..repository.company import CompanyService
+from ..repositories.analytic_account import AnalyticAccountService
+from ..repositories.partner import PartnerService
+from ..repositories.account import AccountService
+from ..repositories.company import CompanyService
 
 
 class ReportsAPI(http.Controller):

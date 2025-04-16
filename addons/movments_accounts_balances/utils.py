@@ -1,5 +1,5 @@
 from requests import Response
-from .repository.company import CompanyService
+from .repositories.company import CompanyService
 from odoo.http import request
 import json
 from typing import Any, Dict, Optional, Union
@@ -431,7 +431,7 @@ def validate_request_data(request, model_class: type[BaseModel]) -> Union[BaseMo
     except ValidationError as e:
         return APIResponse.error_response(
             message='Invalid request data',
-            errors=e.errors(), 
+            errors=str(e), 
             status=HTTPStatus.UNPROCESSABLE_ENTITY
         )
 

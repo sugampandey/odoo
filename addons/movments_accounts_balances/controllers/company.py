@@ -2,13 +2,13 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 from odoo import http
 from odoo.http import request
-from .auth_middleware import validate_token_middleware
+from ..middleware.auth_middleware import validate_token_middleware
 from ..utils import APIResponse, validate_request_data
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.company import CompanyModel, CompanyListResponseModel, CompanyCreateRequestModel, CompanyResponseModel
-from ..repository.company import CompanyService
-from ..repository.product import ProductTemplateService
+from ..repositories.company import CompanyService
+from ..repositories.product import ProductTemplateService
 from ..schemas.common import ACCESS_TOKEN_HEADER
 
 

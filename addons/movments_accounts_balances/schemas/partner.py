@@ -9,9 +9,10 @@ from .common import (MetaDataModel, RefModel, BillAddrModel,
 class BasePartnerCreateRequestModel(BaseModel):
     """Base model for shared contact fields between vendors and customers"""
     DisplayName: str = Field(..., description="Display name")
-    GivenName: str = Field(..., description="Given name")
+    GivenName: Optional[str] = Field(None, description="Given name")
     FamilyName: Optional[str] = Field(None, description="Family name")
     CompanyName: Optional[str] = Field(None, description="Company name")
+    MiddleName: Optional[str] = Field(None, description="Middle name")
     PrimaryEmailAddr: Optional[EmailAddressModel] = Field(None, description="Primary email address")
     PrimaryPhone: Optional[PhoneNumberModel] = Field(None, description="Primary phone number")
     BillAddr: Optional[BillAddrModel] = Field(None, description="Billing address")
@@ -20,6 +21,12 @@ class BasePartnerCreateRequestModel(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator('DisplayName')
+    def validate_non_empty_string(cls, v, info):
+        if not v.strip():
+            raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
+        return v
 
     def _get_address_fields(self) -> Dict[str, Optional[str]]:
         """Extract address fields from BillAddr"""
@@ -34,11 +41,11 @@ class BasePartnerCreateRequestModel(BaseModel):
         """Extract common contact fields"""
         return {
             'display_name': self.DisplayName,
-            'company_name': self.CompanyName,
+            'company_name': self.CompanyName if self.CompanyName else self.DisplayName,
             'phone': self.PrimaryPhone.FreeFormNumber if self.PrimaryPhone else None,
             'email': self.PrimaryEmailAddr.Address if self.PrimaryEmailAddr else None,
             'title': self.Title,
-            'name': self.GivenName,
+            'name': self.GivenName if self.GivenName else self.DisplayName,
         }
 
     def _create_base_vals(self, company_id: int) -> Dict[str, Any]:
@@ -70,7 +77,6 @@ class VendorCreateRequestModel(BasePartnerCreateRequestModel):
 class CustomerCreateRequestModel(BasePartnerCreateRequestModel):
     """Customer-specific model with additional fields"""
     FullyQualifiedName: Optional[str] = Field(None, description="Full name including hierarchy")
-    MiddleName: Optional[str] = Field(None, description="Middle name")
     Notes: Optional[str] = Field(None, description="Additional notes")
 
     def create_customer_vals(self, company_id: int) -> Dict[str, Any]:
@@ -86,6 +92,7 @@ class BasePartnerModel(BaseModel):
     GivenName: Optional[str] = Field(None, description="Given name")
     FamilyName: Optional[str] = Field(None, description="Family name")
     CompanyName: Optional[str] = Field(None, description="Company name")
+    MiddleName: Optional[str] = None
     PrimaryEmailAddr: Optional[EmailAddressModel] = None
     PrimaryPhone: Optional[PhoneNumberModel] = None
     BillAddr: Optional[BillAddrModel] = None
@@ -126,8 +133,8 @@ class BasePartnerModel(BaseModel):
     def _create_contact_info(cls, partner) -> Dict[str, Any]:
         """Create contact information from partner data"""
         return {
-            "PrimaryPhone": PhoneNumberModel(FreeFormNumber=partner.phone if partner.phone else None),
-            "PrimaryEmailAddr": EmailAddressModel(Address=partner.email if partner.email else None)
+            "PrimaryPhone": PhoneNumberModel(FreeFormNumber=partner.phone) if partner.phone else None,
+            "PrimaryEmailAddr": EmailAddressModel(Address=partner.email) if partner.email else None
         }
 
     @classmethod
@@ -149,7 +156,6 @@ class CustomerModel(BasePartnerModel):
     FullyQualifiedName: Optional[str] = None
     PreferredDeliveryMethod: Optional[str] = None
     BillWithParent: Optional[bool] = Field(False, description="Bill with parent flag")
-    MiddleName: Optional[str] = None
     Job: Optional[bool] = Field(False, description="Job flag")
     BalanceWithJobs: Optional[float] = Field(0.0, description="Balance including jobs")
     Taxable: Optional[bool] = Field(True, description="Taxable status")

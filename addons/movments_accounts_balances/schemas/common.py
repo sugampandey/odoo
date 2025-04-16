@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from datetime import datetime
 
 ACCESS_TOKEN_HEADER = [
@@ -42,7 +42,13 @@ class PaginationResponseModel(PaginationModel):
 
 class RefModel(BaseModel):
     name: Optional[str] = None
-    value: Optional[str] = None
+    value: str 
+
+    @field_validator('value')
+    def validate_non_empty_string(cls, v, info):
+        if not v.strip():
+            raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
+        return v
 
 
 class MetaDataModel(BaseModel):

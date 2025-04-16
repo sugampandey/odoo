@@ -5,8 +5,8 @@ from ...utils import format_date
 from ...schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
                                RowsModel, MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
                                SectionHeaderModel, NestedRowsModel, SectionRowModel, ReportResponseModel)
-from ...repository.account import AccountService
-from ...repository.account_move import AccountMoveLineService
+from ...repositories.account import AccountService
+from ...repositories.account_move import AccountMoveLineService
 
 
 def create_header(start_date, end_date, currency: str = "USD") -> HeaderModel:

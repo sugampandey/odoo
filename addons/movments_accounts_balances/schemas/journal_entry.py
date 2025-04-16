@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional, List
 from .common import MetaDataModel, PaginationResponseModel, RefModel
 from ..enums import PostingType, DetailType
+from ..repositories.journal import JournalService
 
 # description = ref
 # account_ref ={name-name, value-id}
@@ -16,19 +17,25 @@ from ..enums import PostingType, DetailType
 
 
 class EntityModel(BaseModel):
-    Type: Optional[str] = Field(None, description="Entity type")
-    EntityRef: Optional[RefModel] = Field(None, description="Entity reference")
+    Type: str = Field(..., description="Entity type")
+    EntityRef: RefModel = Field(..., description="Entity reference")
 
     class Config:
         from_attributes = True
     
+    @field_validator('Type')
+    def validate_non_empty_string(cls, v, info):
+        if not v.strip():
+            raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
+        return v
+    
 class JournalEntryLineDetailModel(BaseModel):
-    PostingType: Optional[str] = Field(None, description="Type of posting (Debit/Credit)")
-    AccountRef: Optional[RefModel] = Field(None, description="Account reference")
+    PostingType: str = Field(..., description="Type of posting (Debit/Credit)")
+    AccountRef: RefModel = Field(..., description="Account reference")
     TaxApplicableOn: Optional[str] = Field(None, description="Tax applicable on")
     ClassRef: Optional[RefModel] = Field(None, description="Class reference")
     TaxCodeRef: Optional[RefModel] = Field(None, description="Tax code reference")
-    Entity: Optional[EntityModel] = Field(None, description="Entity details")
+    Entity: EntityModel = Field(..., description="Entity details")
 
     class Config:
         from_attributes = True
@@ -79,13 +86,19 @@ class JournalEntryLineDetailModel(BaseModel):
 
 class LineRequestModel(BaseModel):
     JournalEntryLineDetail: JournalEntryLineDetailModel
-    DetailType: Optional[str] = Field(None, description="Type of detail")
-    Amount: Optional[float] = Field(None, description="Transaction amount")
+    DetailType: str = Field(..., description="Type of detail")
+    Amount: float = Field(..., description="Transaction amount")
     Description: Optional[str] = Field(None, description="Line item description")
     Id: Optional[int] = Field(None, description="Line item ID")
 
     class Config:
         from_attributes = True
+    
+    @field_validator('DetailType')
+    def validate_non_empty_string(cls, v, info):
+        if not v.strip():
+            raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
+        return v
 
     def create_line_vals(self, company_id: int) -> dict:
         account_id = int(self.JournalEntryLineDetail.AccountRef.value) if self.JournalEntryLineDetail.AccountRef else None

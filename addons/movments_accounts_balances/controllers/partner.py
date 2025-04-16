@@ -2,14 +2,14 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple, Union
 from odoo import http
 from odoo.http import request
-from .auth_middleware import validate_token_middleware
+from ..middleware.auth_middleware import validate_token_middleware
 from ..logger.logger import logger
 from ..utils import APIResponse, get_company_from_headers, validate_request_data
 from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
 from ..schemas.partner import (CustomerModel, CustomerCreateRequestModel, CustomerResponseModel, CustomerListResponseModel,
                                 VendorModel, VendorCreateRequestModel, VendorResponseModel, VendorListResponseModel)
-from ..repository.partner import PartnerService
-from ..repository.company import CompanyService
+from ..repositories.partner import PartnerService, PartnerCategoryService
+from ..repositories.company import CompanyService
 from ..swagger.swagger_generator import swagger_gen
 
 
@@ -80,9 +80,9 @@ class PartnerAPI(http.Controller):
     def get_customer(self, customer_id: int, company_id: int):
         try:
             company_service = CompanyService(request.env)
-            partner_service = PartnerService(request.env)
+            partner_category_service = PartnerCategoryService(request.env)
             domain = [('id', '=', customer_id)]
-            category_id = partner_service.get_default_customer_category()
+            category_id = partner_category_service.get_default_customer_category()
             domain.append(('category_id', 'child_of', int(category_id)))
             
             
@@ -113,10 +113,10 @@ class PartnerAPI(http.Controller):
     )
     def get_vendor(self, vendor_id: int, company_id: int):
         try:
-            partner_service = PartnerService(request.env)
             company_service = CompanyService(request.env)
+            partner_category_service = PartnerCategoryService(request.env)
             domain = [('id', '=', vendor_id)]
-            category_id = partner_service.get_default_vendor_category()
+            category_id = partner_category_service.get_default_vendor_category()
             domain.append(('category_id', 'child_of', int(category_id)))
             
             # Validate and add company filter
@@ -232,14 +232,19 @@ class PartnerAPI(http.Controller):
         
 
     def _create_partner_record(self, request, partner_model: Union[CustomerCreateRequestModel, VendorCreateRequestModel], is_vendor: bool) -> Dict[str, Any]:
+        partner_category_service = PartnerCategoryService(request.env)
         company_id = get_company_from_headers(request)
         if not isinstance(company_id, int):  # If error response
                 return company_id
         
         if is_vendor:
+            category_id = partner_category_service.get_default_vendor_category()
             partner_vals = partner_model.create_vendor_vals(company_id)
+            partner_vals['category_id'] = [(6, 0, [category_id])]
         else:
+            category_id = partner_category_service.get_default_customer_category()
             partner_vals = partner_model.create_customer_vals(company_id)
+            partner_vals['category_id'] = [(6, 0, [category_id])]
         cursor = request.env.cr
         try:
             with cursor.savepoint():
@@ -270,7 +275,7 @@ class PartnerAPI(http.Controller):
                              ) -> Tuple[List[Tuple], Optional[Dict[str, Any]]]:
         domain = []
         company_service = CompanyService(request.env)
-        partner_service = PartnerService(request.env)
+        partner_category_service = PartnerCategoryService(request.env)
 
         # Validate and add company filter
         if company_id:
@@ -293,7 +298,7 @@ class PartnerAPI(http.Controller):
             domain.append(('name', 'ilike', DisplayName))
             logger.debug(f"Added name filter: {DisplayName}")
         
-        category_id = partner_service.get_default_vendor_category() if is_vendor else partner_service.get_default_customer_category()
+        category_id = partner_category_service.get_default_vendor_category() if is_vendor else partner_category_service.get_default_customer_category()
         domain.append(('category_id', 'child_of', int(category_id)))
 
         logger.debug(f"Final search domain: {domain}")

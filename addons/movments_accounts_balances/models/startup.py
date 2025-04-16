@@ -1,6 +1,6 @@
 from odoo import models, api
 from ..constants import CONSTANTS
-from ..repository.partner import PartnerCategoryService
+from ..repositories.partner import PartnerCategoryService
 
 class Initializer(models.Model):
     _name = 'initializer.initializer'

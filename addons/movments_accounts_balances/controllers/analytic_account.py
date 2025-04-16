@@ -3,14 +3,14 @@ from odoo import http
 from http import HTTPStatus
 from odoo.http import request
 from pydantic import ValidationError
-from .auth_middleware import validate_token_middleware
+from ..middleware.auth_middleware import validate_token_middleware
 from ..utils import APIResponse, get_company_from_headers, validate_request_data
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.analytic_account import AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassCreateRequestModel
 from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
-from ..repository.analytic_account import AnalyticAccountService, AnalyticPlanService
-from ..repository.company import CompanyService
+from ..repositories.analytic_account import AnalyticAccountService, AnalyticPlanService
+from ..repositories.company import CompanyService
 
 class AnalyticAccountAPI(http.Controller):
 
@@ -25,6 +25,15 @@ class AnalyticAccountAPI(http.Controller):
         additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
     def create_analytic_account(self, **kwargs):
+        """
+        Creates a new analytic account record.
+
+        Returns:
+        dict: A dictionary containing the response data.
+
+        Raises:
+        ValidationError: If the request data is invalid.
+        """
         logger.info("Processing create Analytic Account request")
         try:
             data = validate_request_data(request, AnalyticClassCreateRequestModel)

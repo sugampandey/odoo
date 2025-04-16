@@ -6,10 +6,10 @@ from odoo.exceptions import UserError
 from odoo.fields import float_compare
 from ...utils import APIResponse, validate_and_convert_data, get_request_data
 from ...schemas.to_refactor.invoice_payment import INVOICE_PAYMENT_SCHEMA
-from ...repository.partner import PartnerService
-from ...repository.account import AccountService
-from ...repository.company import CompanyService
-from ...repository.payment_method import PaymentMethodLineService
+from ...repositories.partner import PartnerService
+from ...repositories.account import AccountService
+from ...repositories.company import CompanyService
+from ...repositories.payment_method import PaymentMethodLineService
 
 class InvocePaymentController(http.Controller):
     ASSET_ACCOUNT_TYPES = ['asset_cash', 'asset_current', 'asset_receivable']
