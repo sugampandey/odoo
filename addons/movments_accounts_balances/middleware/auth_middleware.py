@@ -18,7 +18,7 @@ def validate_token_middleware(func):
         token = auth_header.split(' ')[1]
         
         # Get the expected token from environment variable
-        stored_token = os.environ.get('API_AUTH_TOKEN')
+        stored_token = os.getenv('API_AUTH_TOKEN')
 
         if not stored_token:
             return APIResponse.error_response(message='API token not configured in environment variables', status=500)
