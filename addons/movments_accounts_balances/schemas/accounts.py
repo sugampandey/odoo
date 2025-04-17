@@ -1,7 +1,7 @@
 import uuid
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from .common import COMPANY_HEADERS, ACCESS_TOKEN_HEADER, MetaDataModel, PaginationResponseModel, RefModel
 from ..mapping.accounts import ACCOUNT_CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
 from ..repositories.currency import CurrencyService
@@ -86,8 +86,8 @@ class AccountModel(BaseModel):
     def account_object(cls, account) -> "AccountModel":
         try:
             meta_data = MetaDataModel(
-                CreateTime=account.create_date,
-                LastUpdatedTime=account.write_date
+                CreateTime=account.create_date.replace(tzinfo=timezone.utc) if account.create_date else None,
+                LastUpdatedTime=account.write_date.replace(tzinfo=timezone.utc) if account.write_date else None
             )
 
             currency_ref = None
@@ -130,11 +130,16 @@ class AccountResponseModel(BaseModel):
     Account: AccountModel = Field(..., description="Account details")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat()
+        }
+
     @classmethod
     def create_account_response(cls, account: AccountModel) -> "AccountResponseModel":
         return cls(
             Account=AccountModel.account_object(account),
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
         
 
@@ -142,6 +147,10 @@ class AccountListResponseModel(BaseModel):
     QueryResponse: AccountQueryResponseModel = Field(..., description="Query response containing account list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat()
+        }
     
     @classmethod
     def list_account_response(cls, accounts: List[AccountModel], total_count : int, start_position: int = 0, max_results: int = 20) -> "AccountListResponseModel":
@@ -153,7 +162,7 @@ class AccountListResponseModel(BaseModel):
         )
         return cls(
             QueryResponse=query_response,
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
 
 

@@ -1,6 +1,6 @@
 from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator, model_validator
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from .common import MetaDataModel, PaginationResponseModel, RefModel
 from ..enums import PostingType, DetailType
@@ -234,6 +234,9 @@ class JournalEntryModel(BaseModel):
     MetaData: Optional[MetaDataModel] = Field(None, description="Metadata")
 
     class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
         from_attributes = True
 
     @classmethod
@@ -266,13 +269,16 @@ class JournalEntryResponseModel(BaseModel):
     JournalEntry: JournalEntryModel = Field(..., description="Journal entry details")
 
     class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
         from_attributes = True
 
     @classmethod
     def create_journal_entry_response(cls, journal_entry: JournalEntryModel) -> "JournalEntryResponseModel":
         return cls(
             JournalEntry=JournalEntryModel.journal_entry_object(journal_entry),
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
     
 class JournalEntryQueryResponseModel(PaginationResponseModel):
@@ -292,6 +298,9 @@ class JournalEntryListResponseModel(BaseModel):
     time: datetime = Field(..., description="Response timestamp")
 
     class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
         from_attributes = True
 
     @classmethod
@@ -304,6 +313,6 @@ class JournalEntryListResponseModel(BaseModel):
         )
         return cls(
             QueryResponse=query_response,
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
 

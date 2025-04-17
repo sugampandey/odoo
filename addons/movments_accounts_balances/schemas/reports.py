@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Union, Any
+from datetime import datetime, date
+
 
 class OptionModel(BaseModel):
     Name: Optional[str] = None
@@ -7,15 +9,20 @@ class OptionModel(BaseModel):
 
 
 class HeaderModel(BaseModel):
-    Time: str
+    Time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
     ReportName: str 
     ReportBasis: str 
-    StartPeriod: Optional[str] = None
-    EndPeriod: Optional[str] = None
+    StartPeriod: Optional[date] = None
+    EndPeriod: Optional[date] = None
     Currency: str 
     Option: Optional[List[OptionModel]] = None
     DateMacro: Optional[str] = None
     SummarizeColumnsBy: Optional[str] = None
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat()
+        }
 
 
 class MetaDataModel(BaseModel):
@@ -32,7 +39,7 @@ class ColumnsModel(BaseModel):
 
 class ColDataModel(BaseModel):
     value: Any
-    id: Optional[int] = None
+    id: Optional[str] = None
 
 class DataRowModel(BaseModel):
     ColData: List[ColDataModel]

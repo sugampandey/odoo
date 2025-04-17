@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field, field_validator
 from .common import (MetaDataModel, RefModel, BillAddrModel,
                      PhoneNumberModel, EmailAddressModel, WebAddrModel, PaginationResponseModel)
@@ -188,22 +188,34 @@ class VendorResponseModel(BaseModel):
     Vendor: VendorModel = Field(..., description="Vendor details")
     time: datetime = Field(..., description="Response timestamp")
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
+
     @classmethod
     def create_vendor_response(cls, vendor: VendorModel) -> "VendorResponseModel":
         return cls(
             Vendor=VendorModel.vendor_object(vendor),
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
 
 class CustomerResponseModel(BaseModel):
     Customer: CustomerModel = Field(..., description="Customer details")
     time: datetime = Field(..., description="Response timestamp")
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
+
     @classmethod
     def create_customer_response(cls, customer: CustomerModel) -> "CustomerResponseModel":
         return cls(
             Customer=CustomerModel.customer_object(customer),
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
 
 class VendorQueryResponseModel(PaginationResponseModel):
@@ -228,6 +240,12 @@ class VendorListResponseModel(BaseModel):
     QueryResponse: VendorQueryResponseModel = Field(..., description="Query response containing vendor list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
+
     @classmethod
     def list_vendor_response(cls, vendors: List[VendorModel], total_count : int, start_position: int = 0, max_results: int = 20) -> "VendorListResponseModel":
         query_response = VendorQueryResponseModel(
@@ -238,12 +256,18 @@ class VendorListResponseModel(BaseModel):
         )
         return cls(
             QueryResponse=query_response,
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
 
 class CustomerListResponseModel(BaseModel):
     QueryResponse: CustomerQueryResponseModel = Field(..., description="Query response containing customer list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
 
     @classmethod
     def list_customer_response(cls, customers: List[CustomerModel], total_count : int, start_position: int = 0, max_results: int = 20) -> "CustomerListResponseModel":
@@ -255,6 +279,6 @@ class CustomerListResponseModel(BaseModel):
         )
         return cls(
             QueryResponse=query_response,
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
     

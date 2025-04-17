@@ -1,6 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, Field, EmailStr, field_validator
-from datetime import datetime
+from datetime import datetime, timezone
 
 ACCESS_TOKEN_HEADER = [
     {
@@ -54,6 +54,12 @@ class RefModel(BaseModel):
 class MetaDataModel(BaseModel):
     CreateTime: datetime
     LastUpdatedTime: datetime
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
 
 
 class BillAddrModel(BaseModel):

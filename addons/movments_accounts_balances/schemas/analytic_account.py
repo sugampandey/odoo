@@ -1,7 +1,7 @@
 from typing import List, Optional
 import uuid
 from pydantic import BaseModel, Field, field_validator
-from datetime import datetime
+from datetime import datetime, timezone
 from .common import PaginationResponseModel, RefModel, MetaDataModel
 
 
@@ -67,17 +67,29 @@ class AnalyticClassResponseModel(BaseModel):
     Class: AnalyticClassModel
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
+
     @classmethod
     def create_analytic_class_response(cls, analytic_class: AnalyticClassModel) -> "AnalyticClassResponseModel":
         return cls(
             Class=AnalyticClassModel.analytic_class_object(analytic_class),
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
     
 
 class AnalyticClassListResponseModel(BaseModel):
     QueryResponse: AnalyticClassQueryResponseModel = Field(..., description="Query response containing analytic class list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
 
     @classmethod
     def list_analytic_class_response(cls, analytic_classes: List[AnalyticClassModel], total_count : int, start_position: int = 0, max_results: int = 100) -> "AnalyticClassListResponseModel":
@@ -89,6 +101,6 @@ class AnalyticClassListResponseModel(BaseModel):
         )
         return cls(
             QueryResponse=query_response,
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
  

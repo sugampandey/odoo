@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 class ErrorDetail(BaseModel):
     message: str
@@ -28,9 +28,15 @@ class ResponseModel(BaseModel):
     attachableResponse: Optional[List[dict]] = None
     syncErrorResponse: Optional[dict] = None
     requestId: Optional[str] = None
-    time: datetime = Field(default_factory=datetime.now, description="Response timestamp") 
+    time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Response timestamp") 
     status: Optional[str] = None
     cdcresponse: Optional[List[dict]] = None
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
 
 class ErrorResponseModel(BaseModel):
     responseHeader: ResponseHeaderModel

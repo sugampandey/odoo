@@ -3,6 +3,6 @@ CONSTANTS = {
     'PRODUCT_DEFAULT_CODE': 'DEFAULT_PRODUCT',
     'VENDOR_CATEGORY_NAME': 'Vendor',
     'CUSTOMER_CATEGORY_NAME': 'Customer',
-    'DATE_FORMAT': '%Y-%m-%d, %H:%M:%S'
+    'DATE_FORMAT': '%Y-%m-%dT%H:%M:%S.%f%z'
 }
 

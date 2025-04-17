@@ -1,5 +1,5 @@
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field, field_validator
 from .common import (RefModel, MetaDataModel, BillAddrModel,
                      PhoneNumberModel, EmailAddressModel, PaginationResponseModel)
@@ -80,11 +80,17 @@ class CompanyResponseModel(BaseModel):
     Company: CompanyModel = Field(..., description="Company details")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
+
     @classmethod
     def create_company_response(cls, company: CompanyModel) -> "CompanyResponseModel":
         return cls(
             Company=CompanyModel.company_object(company),
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
     
 class CompanyQueryResponseModel(PaginationResponseModel):
@@ -107,6 +113,12 @@ class CompanyListResponseModel(BaseModel):
     QueryResponse: CompanyQueryResponseModel = Field(..., description="Query response containing company list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        }
+        from_attributes = True
+
     @classmethod
     def list_company_response(cls, companies: List[CompanyModel], total_count: int, start_position: int = 0, max_results: int = 100) -> "CompanyListResponseModel":
         query_response = CompanyQueryResponseModel(
@@ -117,6 +129,6 @@ class CompanyListResponseModel(BaseModel):
         )
         return cls(
             QueryResponse=query_response,
-            time=datetime.now()
+            time=datetime.now(timezone.utc)
         )
            

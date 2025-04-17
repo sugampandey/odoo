@@ -448,7 +448,12 @@ def format_date(date, format_pattern=None):
     try:
         if format_pattern is None:
             format_pattern = CONSTANTS['DATE_FORMAT']
-        return date.strftime(format_pattern)
+        # First format with the basic format string
+        formatted = date.strftime(format_pattern)
+        # Trim microseconds to 3 digits (milliseconds)
+        formatted = formatted[:-9] + formatted[-6:]
+        # Insert colon in timezone offset
+        return formatted[:-2] + ':' + formatted[-2:]
     except AttributeError:
         raise ValueError("Input must be a valid datetime object")
 

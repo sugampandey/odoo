@@ -1,9 +1,7 @@
-import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Iterator
 from decimal import Decimal
 from ...mapping.reports import MOVE_TYPE_MAPPING
-from ...constants import CONSTANTS
-from ...utils import format_date
 from ...enums import GLReportColumns
 from ...schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
                                RowsModel, MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
@@ -98,7 +96,7 @@ def get_split_acc(entry: Any, opposite_accounts: Dict):
     Returns:
         tuple: (account_name, account_id) of the split account
     """
-    return opposite_accounts.get(entry.id, ("-Split-", ""))
+    return opposite_accounts.get(entry.id, ("-Split-", None))
 
 def get_klass_name(entry):
     analytic_class = entry.analytic_line_ids.account_id
@@ -110,11 +108,11 @@ def get_klass_name(entry):
 def create_header(start_date, end_date, currency: str = "USD") -> HeaderModel:
     """Create the header section of the response."""
     return HeaderModel(
-        Time=format_date(datetime.datetime.now()),
+        Time=datetime.now(timezone.utc),
         ReportName="GeneralLedger",
         ReportBasis="Accrual",
-        StartPeriod=format_date(start_date) if start_date else None,
-        EndPeriod=format_date(end_date) if end_date else None,
+        StartPeriod=start_date if start_date else None,
+        EndPeriod=end_date if end_date else None,
         Currency=currency or "USD",
         Option=[OptionModel(Name="NoReportData", Value="false")]
     )
@@ -138,27 +136,27 @@ def get_column_value(entry: Any, col: str, split_acc: str, split_id: str,
                     klass_name: str, klass_id: str) -> Dict[str, Any]:
     """Get the value for a specific column."""
     match col:
-        case GLReportColumns.TX_DATE:
-            return ColDataModel(value=format_date(entry.date))
-        case GLReportColumns.TXN_TYPE:
+        case GLReportColumns.TX_DATE.column_name:
+            return ColDataModel(value=entry.date)
+        case GLReportColumns.TXN_TYPE.column_name:
             return ColDataModel(value=MOVE_TYPE_MAPPING.get(entry.move_type))
-        case GLReportColumns.DOC_NUM:
+        case GLReportColumns.DOC_NUM.column_name:
             return ColDataModel(value=entry.move_name)
-        case GLReportColumns.NAME:
-            return ColDataModel(value=entry.partner_id.name, id= entry.partner_id.id)
-        case GLReportColumns.MEMO:
+        case GLReportColumns.NAME.column_name:
+            return ColDataModel(value=entry.partner_id.name, id= str(entry.partner_id.id))
+        case GLReportColumns.MEMO.column_name:
             return ColDataModel(value=entry.ref)
-        case GLReportColumns.SPLIT_ACC:
+        case GLReportColumns.SPLIT_ACC.column_name:
             return ColDataModel(value=split_acc, id= split_id)
-        case GLReportColumns.SUBT_NAT_AMOUNT:
+        case GLReportColumns.SUBT_NAT_AMOUNT.column_name:
             return ColDataModel(value=float(entry.debit if entry.debit != 0 else entry.credit))
-        case GLReportColumns.RBAL_NAT_AMOUNT:
+        case GLReportColumns.RBAL_NAT_AMOUNT.column_name:
             return ColDataModel(value=float(entry.balance))
-        case GLReportColumns.ACCOUNT_NAME:
-            return ColDataModel(value=entry.account_id.name, id= entry.account_id.id)
-        case GLReportColumns.VEND_NAME:
-            return ColDataModel(value=entry.partner_id.name, id= entry.partner_id.id)
-        case GLReportColumns.KLASS_NAME:
+        case GLReportColumns.ACCOUNT_NAME.column_name:
+            return ColDataModel(value=entry.account_id.name, id= str(entry.account_id.id))
+        case GLReportColumns.VEND_NAME.column_name:
+            return ColDataModel(value=entry.partner_id.name, id= str(entry.partner_id.id))
+        case GLReportColumns.KLASS_NAME.column_name:
             return ColDataModel(value=klass_name, id= klass_id)
         case _:
             return ColDataModel(value="")

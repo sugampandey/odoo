@@ -138,8 +138,8 @@ class ReportsAPI(http.Controller):
                 start_date = fields.Date.from_string(start_date)
                 end_date = fields.Date.from_string(end_date)
                 return True, (start_date, end_date)
-            except ValueError:
-                return False, 'Invalid date format. Use YYYY-MM-DD'
+            except ValueError as e:
+                return False, str(e)
         
         return True, None
     

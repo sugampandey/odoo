@@ -1,7 +1,6 @@
-import datetime
+from datetime import datetime, timezone
 from typing import Any, List, Optional, Union
 from ...enums import ClassificationType
-from ...utils import format_date
 from ...schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
                                RowsModel, MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
                                SectionHeaderModel, NestedRowsModel, SectionRowModel, ReportResponseModel)
@@ -12,11 +11,11 @@ from ...repositories.account_move import AccountMoveLineService
 def create_header(start_date, end_date, currency: str = "USD") -> HeaderModel:
     """Create the header section of the response."""
     return HeaderModel(
-        Time=format_date(datetime.datetime.now()),
+        Time=datetime.now(timezone.utc),
         ReportName="GeneralLedger",
         ReportBasis="Accrual",
-        StartPeriod=format_date(start_date) if start_date else None,
-        EndPeriod=format_date(end_date) if end_date else None,
+        StartPeriod=start_date if start_date else None,
+        EndPeriod=end_date if end_date else None,
         Currency=currency or "USD",
         Option=[
             OptionModel(Name="AccountingStandard", Value="GAAP"),
