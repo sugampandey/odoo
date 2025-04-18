@@ -5,6 +5,7 @@ from ..swagger.swagger_generator import swagger_gen
 from ..repositories.config_parameter import ConfigParamService
 from ..middleware.auth_middleware import validate_token_middleware
 from ..schemas.common import ACCESS_TOKEN_HEADER
+from ..schemas.webhook import WebhookConfigRequestModel, WebhookConfigResponseModel, WebhookDeleteResponseModel
 
 
 
@@ -15,6 +16,7 @@ class WebhookAPI(http.Controller):
     @swagger_gen.swagger_doc(
         operation='get',
         resource_name='webhook',
+        response_model=WebhookConfigResponseModel,
         tags=['Webhooks'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
@@ -30,6 +32,8 @@ class WebhookAPI(http.Controller):
     @swagger_gen.swagger_doc(
         operation='update',
         resource_name='webhook',
+        request_model=WebhookConfigRequestModel,
+        response_model=WebhookConfigResponseModel,
         tags=['Webhooks'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
@@ -59,6 +63,7 @@ class WebhookAPI(http.Controller):
     @swagger_gen.swagger_doc(
         operation='delete',
         resource_name='webhook',
+        response_model=WebhookDeleteResponseModel,
         tags=['Webhooks'],
         additional_headers=ACCESS_TOKEN_HEADER
     )

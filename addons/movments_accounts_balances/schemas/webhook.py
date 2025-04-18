@@ -1,18 +1,18 @@
 from pydantic import BaseModel, HttpUrl
 
 
-class WebhookConfigResponse(BaseModel):
+class WebhookConfigResponseModel(BaseModel):
     webhook_url: str
 
-class WebhookDeleteResponse(BaseModel):
+class WebhookDeleteResponseModel(BaseModel):
     message: str
 
-class WebhookErrorResponse(BaseModel):
+class WebhookErrorResponseModel(BaseModel):
     errors: str
     message: str
 
 # Input Models
-class WebhookConfigInput(BaseModel):
+class WebhookConfigRequestModel(BaseModel):
     webhook_url: HttpUrl
     
     class Config:
