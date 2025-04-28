@@ -1,6 +1,7 @@
 import json
 import requests
 from odoo import models, api
+from ...repositories.config_parameter import ConfigParamService
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
@@ -37,22 +38,34 @@ class AccountMove(models.Model):
         """
         Send a webhook payload to an external endpoint
         """
-        webhook_url = self.env['ir.config_parameter'].sudo().get_param('account_move.webhook_url')
+        config_param_service = ConfigParamService(self.env)
+        webhook_url = config_param_service.get_param('account_move.webhook_url')
         if not webhook_url:
             return
 
+        if record.move_type == 'out_invoice':
+            move_type = 'Invoice'
+        elif record.move_type == 'out_refund':
+            move_type = 'Credit Note'
+        elif record.move_type == 'in_invoice':
+            move_type = 'Bill'
+        elif record.move_type == 'in_refund':
+            move_type = 'Vendor Credit'
+        elif record.move_type == 'out_receipt':
+            move_type = 'Sales Receipt'
+        elif record.move_type == 'in_receipt':
+            move_type = 'Purchase Receipt'
+        elif record.move_type == 'entry':
+            move_type = 'Journal Entry'
         payload = {
             'action': action,
-            'model': 'account.move',
+            'db_table': 'account.move',
             'id': record.id,
             'data': {
-                'name': record.name,
-                'move_type': record.move_type,  # Invoice, Bill, etc.
-                'state': record.state,
+                'Name': record.name,
+                'move_type': move_type,  # Invoice, Bill, etc.
                 'date': record.date.strftime('%Y-%m-%d') if record.date else False,
-                'partner_id': record.partner_id.id,
-                'partner_name': record.partner_id.name,
-                'amount_total': record.amount_total,
+                'Amount': record.amount_total,
             }
         }
 
