@@ -30,7 +30,7 @@ class PaginationModel(BaseModel):
     )
     maxResults: int = Field(
         20, 
-        ge=1, 
+        ge=0, 
         le=100,
         description="Maximum number of results to return"
     )
