@@ -17,17 +17,17 @@ from ..repositories.journal import JournalService
 
 
 class EntityModel(BaseModel):
-    Type: str = Field(..., description="Entity type")
+    Type: Optional[str] = Field(None, description="Entity type")
     EntityRef: RefModel = Field(..., description="Entity reference")
 
     class Config:
         from_attributes = True
     
-    @field_validator('Type')
-    def validate_non_empty_string(cls, v, info):
-        if not v.strip():
-            raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
-        return v
+    # @field_validator('Type')
+    # def validate_non_empty_string(cls, v, info):
+    #     if not v.strip():
+    #         raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
+    #     return v
     
 class JournalEntryLineDetailModel(BaseModel):
     PostingType: str = Field(..., description="Type of posting (Debit/Credit)")
