@@ -145,7 +145,7 @@ def get_column_value(entry: Any, col: str, split_acc: str, split_id: str,
         case GLReportColumns.NAME.column_name:
             return ColDataModel(value=entry.partner_id.name, id= str(entry.partner_id.id))
         case GLReportColumns.MEMO.column_name:
-            return ColDataModel(value=entry.ref)
+            return ColDataModel(value=entry.ref or "")
         case GLReportColumns.SPLIT_ACC.column_name:
             return ColDataModel(value=split_acc, id= split_id)
         case GLReportColumns.SUBT_NAT_AMOUNT.column_name:
