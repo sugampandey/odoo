@@ -129,7 +129,7 @@ class ReportsAPI(http.Controller):
                 (analytic_class_id, analytic_account_service.validate_analytic_account)
             ]:
                 if param_id:
-                    is_valid, error_message = validator(request, int(param_id), company_id)
+                    is_valid, error_message = validator(int(param_id), company_id)
                     if not is_valid:
                         return False, error_message
 
