@@ -224,7 +224,7 @@ class VendorQueryResponseModel(PaginationResponseModel):
     @field_validator('Vendor')
     def validate_vendors(cls, vendors: List[VendorModel]) -> List[VendorModel]:
         if not vendors:
-            raise ValueError("Vendor list cannot be empty")
+            raise ValueError("No Vendor found")
         return vendors
 
 class CustomerQueryResponseModel(PaginationResponseModel):
@@ -233,7 +233,7 @@ class CustomerQueryResponseModel(PaginationResponseModel):
     @field_validator('Customer')
     def validate_customers(cls, customers: List[CustomerModel]) -> List[CustomerModel]:
         if not customers:
-            raise ValueError("Customer list cannot be empty")
+            raise ValueError("No Customer found")
         return customers
 
 class VendorListResponseModel(BaseModel):

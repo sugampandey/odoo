@@ -102,7 +102,7 @@ class CompanyQueryResponseModel(PaginationResponseModel):
     @field_validator('Company')
     def validate_companies(cls, companies: List[CompanyModel]) -> List[CompanyModel]:
         if not companies:
-            raise ValueError("Company list cannot be empty")
+            raise ValueError("No Company found")
         return companies
     
 

@@ -182,6 +182,10 @@ class CompanyAPI(http.Controller):
             order='id DESC'
         )
         logger.info(f"Retrieved {len(companies)} companies")
+        if len(companies) == 0:
+            return APIResponse.error_response(message='No companies found',
+                errors='No companies found', status=HTTPStatus.NOT_FOUND
+            )
 
         return self._prepare_list_response(
             companies, total_count, start_position

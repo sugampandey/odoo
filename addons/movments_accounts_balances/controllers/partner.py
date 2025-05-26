@@ -318,6 +318,10 @@ class PartnerAPI(http.Controller):
             order='id DESC'
         )
         logger.info(f"Retrieved {len(partners)} partners")
+        if len(partners) == 0:
+            return APIResponse.error_response(message='No Partners found',
+                errors='No Partners found', status=HTTPStatus.NOT_FOUND
+            )
 
         return self._prepare_list_response(
             partners, total_count, start_position, is_vendor

@@ -122,7 +122,7 @@ class AccountQueryResponseModel(PaginationResponseModel):
     @field_validator('Account')
     def validate_accounts(cls, accounts: List[AccountModel]) -> List[AccountModel]:
         if not accounts:
-            raise ValueError("Account list cannot be empty")
+            raise ValueError("No Account found")
         return accounts
 
 

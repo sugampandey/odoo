@@ -290,7 +290,7 @@ class JournalEntryQueryResponseModel(PaginationResponseModel):
     @field_validator('JournalEntry')
     def validate_journal_entries(cls, v):
         if not v:
-            raise ValueError("Journal entry list cannot be empty")
+            raise ValueError("No Journal Entry found")
         return v
            
 class JournalEntryListResponseModel(BaseModel):

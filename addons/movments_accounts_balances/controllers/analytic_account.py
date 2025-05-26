@@ -240,6 +240,10 @@ class AnalyticAccountAPI(http.Controller):
             order='id DESC'
         )
         logger.info(f"Retrieved {len(analytic_accounts)} analytic accounts")
+        if len(analytic_accounts) == 0:
+            return APIResponse.error_response(message='No analytic accounts found',
+                errors='No analytic accounts found', status=HTTPStatus.NOT_FOUND
+            )
 
         return self._prepare_list_response(
             analytic_accounts, total_count, start_position
