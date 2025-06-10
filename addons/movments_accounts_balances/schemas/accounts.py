@@ -35,8 +35,8 @@ class AccountCreateRequestModel(BaseModel):
 
     
     def create_account_vals(self, request, company_id: int) -> dict:
-        currency_value = self.CurrencyRef.value if self.CurrencyRef else 'USD'
         currency_service = CurrencyService(request.env)
+        currency_value = self.CurrencyRef.value if self.CurrencyRef else currency_service.get_default_currency_id()
         return {
             'name': self.Name,
             'code': self.get_unique_account_code(self.AccountType),

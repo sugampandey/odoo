@@ -28,7 +28,7 @@ class CompanyCreateRequestModel(BaseModel):
             'name': self.Name,
             'email': self.PrimaryEmailAddr.Address if self.PrimaryEmailAddr else None,
             'phone': self.PrimaryPhone.FreeFormNumber if self.PrimaryPhone else None,
-            'currency_id': currency_service.get_currency_id(request, self.CurrencyRef.value) if self.CurrencyRef else currency_service.get_default_currency_id(),
+            'currency_id': currency_service.get_currency_id(self.CurrencyRef.value) if self.CurrencyRef else currency_service.get_default_currency_id(),
         }
     
 
