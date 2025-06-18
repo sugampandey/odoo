@@ -55,8 +55,8 @@ class NestedRowsModel(BaseModel):
     Row: List[Union['SectionRowModel', DataRowModel]]
 
 class SectionRowModel(BaseModel):
-    Header: SectionHeaderModel
-    Rows: NestedRowsModel
+    Header: Optional[SectionHeaderModel] = None
+    Rows: Optional[NestedRowsModel] = None
     type: str 
     Summary: SummaryModel
     group: Optional[str] = None

@@ -6,7 +6,7 @@ from ...enums import GLReportColumns
 from ...schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
                                RowsModel, MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
                                SectionHeaderModel, NestedRowsModel, SectionRowModel, ReportResponseModel)
-
+from .common import create_header
 
 def get_opposite_accounts(request, move_lines):
     """
@@ -104,18 +104,6 @@ def get_klass_name(entry):
         return "", ""
     return analytic_class.name, analytic_class.id
 
-
-def create_header(start_date, end_date, currency: str = "USD") -> HeaderModel:
-    """Create the header section of the response."""
-    return HeaderModel(
-        Time=datetime.now(timezone.utc),
-        ReportName="GeneralLedger",
-        ReportBasis="Accrual",
-        StartPeriod=start_date if start_date else None,
-        EndPeriod=end_date if end_date else None,
-        Currency=currency or "USD",
-        Option=[OptionModel(Name="NoReportData", Value="false")]
-    )
 
 def create_column_definition(columns_list: List[str]) -> ColumnsModel:
     """Create the column definitions section."""
@@ -253,7 +241,7 @@ def prepare_general_ledger_response(
     """Prepare the response with account movements and balances."""
     # Initialize response structure
     response = ReportResponseModel(
-        Header=create_header(start_date, end_date, currency),
+        Header=create_header(start_date, end_date, "GeneralLedger", currency),
         Columns=create_column_definition(columns_list),
         Rows=RowsModel(Row=[])
     )

@@ -6,11 +6,13 @@ from ..swagger.swagger_generator import swagger_gen
 from ..schemas.reports import ReportResponseModel
 from ..schemas.helpers.general_ledger import prepare_general_ledger_response
 from ..schemas.helpers.balance_sheet import prepare_account_balance_response
+from ..schemas.helpers.profit_loss import prepare_profit_loss_response
 from ..schemas.common import ACCESS_TOKEN_HEADER
 from ..repositories.analytic_account import AnalyticAccountService
 from ..repositories.partner import PartnerService
 from ..repositories.account import AccountService
 from ..repositories.company import CompanyService
+from ..repositories.account_move import AccountMoveLineService
 
 
 class ReportsAPI(http.Controller):
@@ -28,6 +30,7 @@ class ReportsAPI(http.Controller):
     def get_general_ledger(self, company_id, columns, start_date=None, end_date=None, partner_id=None, 
                            account_id=None, analytic_class_id=None, sort_by=None, sort_order=None, **kwargs):
         try:
+            account_move_line_service = AccountMoveLineService(request.env)
             # Validate parameters
             is_valid, result = self.validate_report_request_params(company_id, start_date, end_date, partner_id, account_id, analytic_class_id)
             if not is_valid:
@@ -48,7 +51,7 @@ class ReportsAPI(http.Controller):
                 return APIResponse.error_response(message=str(e))
             
             # Fetch and process move lines
-            move_lines = request.env['account.move.line'].sudo().search(
+            move_lines = account_move_line_service.search(
                 domain,
                 order=get_general_ledger_report_order(sort_by, sort_order)
             )
@@ -108,6 +111,43 @@ class ReportsAPI(http.Controller):
                 errors=str(e),
                 status=500
             )
+
+    @http.route('/api/v1/profit_loss', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
+    @validate_token_middleware
+    @swagger_gen.swagger_doc(
+        operation='list',
+        resource_name='profit-loss',
+        response_model=ReportResponseModel,
+        tags=['Reports'],
+        description='Get profit and loss report with optional filters for date range, partner, account, and analytic class',
+        additional_headers=ACCESS_TOKEN_HEADER
+    )
+    def get_profit_loss(self, company_id, start_date=None, end_date=None, **kwargs):
+        try:
+            # Validate parameters
+            is_valid, result = self.validate_report_request_params(company_id, start_date, end_date)
+            if not is_valid:
+                return APIResponse.error_response(message=result)
+            
+            if result:  # If dates were provided and validated
+                start_date, end_date = result
+            
+            # Build search domain
+            domain = self.build_report_domain(company_id, start_date, end_date)
+
+            profit_loss = prepare_profit_loss_response(
+                request, start_date, end_date, int(company_id), domain
+            )
+
+            return APIResponse.success_response(profit_loss.model_dump(mode='json'))
+
+        except Exception as e:
+            return APIResponse.error_response(
+                message='Error generating profit and loss statement',
+                errors=str(e),
+                status=500
+            )
+
         
     def validate_report_request_params(self, company_id, start_date=None, end_date=None, 
                                         partner_id=None, account_id=None, analytic_class_id=None):
