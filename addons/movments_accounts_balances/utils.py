@@ -480,3 +480,42 @@ def get_general_ledger_report_order(sort_by, sort_order):
     if sort_order:
         order = "asc" if sort_order == "ascend" else "desc"
     return sort_column + " " + order
+
+
+def validate_pagination_params(startposition, maxresults):
+    """
+    Validates pagination parameters to ensure they are positive integers starting from 1.
+    
+    Args:
+        startposition: The starting position parameter
+        maxresults: The maximum results parameter
+        
+    Returns:
+        tuple: (is_valid, error_response or (startposition, maxresults))
+    """
+    try:
+        startposition = int(startposition)
+        maxresults = int(maxresults)
+        
+        if startposition < 1:
+            return False, APIResponse.error_response(
+                message='Invalid startposition parameter',
+                errors='startposition must be greater than or equal to 1',
+                status=HTTPStatus.UNPROCESSABLE_ENTITY
+            )
+            
+        if maxresults < 1:
+            return False, APIResponse.error_response(
+                message='Invalid maxresults parameter',
+                errors='maxresults must be greater than or equal to 1',
+                status=HTTPStatus.UNPROCESSABLE_ENTITY
+            )
+        
+        return True, (startposition, maxresults)
+    except ValueError:
+        return False, APIResponse.error_response(
+            message='Invalid pagination parameters',
+            errors='startposition and maxresults must be valid integers',
+            status=HTTPStatus.UNPROCESSABLE_ENTITY
+        )
+

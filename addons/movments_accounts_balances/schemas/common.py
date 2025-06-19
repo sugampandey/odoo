@@ -24,8 +24,8 @@ COMPANY_HEADERS = [
 class PaginationModel(BaseModel):
     """Base class for pagination parameters"""
     startPosition: int = Field(
-        0, 
-        ge=0,
+        1, 
+        ge=1,
         description="Starting position of the result set"
     )
     maxResults: int = Field(

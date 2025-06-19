@@ -4,7 +4,7 @@ from http import HTTPStatus
 from odoo.http import request
 from pydantic import ValidationError
 from ..middleware.auth_middleware import validate_token_middleware
-from ..utils import APIResponse, get_company_from_headers, validate_request_data
+from ..utils import APIResponse, get_company_from_headers, validate_request_data, validate_pagination_params
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.analytic_account import AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassCreateRequestModel
@@ -54,7 +54,7 @@ class AnalyticAccountAPI(http.Controller):
         tags=['Analytic Accounts'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
-    def list_analytic_accounts(self, company_id: int, active: Optional[str] = None, maxresults: int = 100, startposition: int = 0, **kwargs):
+    def list_analytic_accounts(self, company_id: int, active: Optional[str] = None, maxresults: int = 100, startposition: int = 1, **kwargs):
         """
         Retrieves analytic accounts from Odoo's accounting module.
 
@@ -65,6 +65,11 @@ class AnalyticAccountAPI(http.Controller):
         ValidationError: If no analytic accounts are found.
         """
         try:
+            # Validate pagination parameters
+            is_valid, result = validate_pagination_params(startposition, maxresults)
+            if not is_valid:
+                return result
+            startposition, maxresults = result
             # Build search domain and validate company
             domain, error_response = self._build_search_domain(
                 company_id, active
@@ -236,7 +241,7 @@ class AnalyticAccountAPI(http.Controller):
         analytic_accounts = analytic_account_service.search(
             domain,
             limit=max_results,
-            offset=start_position,
+            offset=(start_position-1),
             order='id DESC'
         )
         logger.info(f"Retrieved {len(analytic_accounts)} analytic accounts")

@@ -4,7 +4,7 @@ from odoo import http
 from odoo.http import request
 from ..middleware.auth_middleware import validate_token_middleware
 from ..logger.logger import logger
-from ..utils import APIResponse, get_company_from_headers, validate_request_data
+from ..utils import APIResponse, get_company_from_headers, validate_request_data, validate_pagination_params
 from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
 from ..schemas.partner import (CustomerModel, CustomerCreateRequestModel, CustomerResponseModel, CustomerListResponseModel,
                                 VendorModel, VendorCreateRequestModel, VendorResponseModel, VendorListResponseModel)
@@ -149,6 +149,12 @@ class PartnerAPI(http.Controller):
                      maxresults: int = 100, startposition: int = 0, **kwargs
                      ) -> Dict[str, Any]:
         try:
+            # Validate pagination parameters
+            is_valid, result = validate_pagination_params(startposition, maxresults)
+            if not is_valid:
+                return result
+            startposition, maxresults = result
+
             domain, error_response = self._build_search_domain(
                 DisplayName, company_id, active, True
             )
@@ -174,9 +180,15 @@ class PartnerAPI(http.Controller):
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_customers(self, company_id: int, DisplayName: Optional[str] = None, active: Optional[str] = None, 
-                       maxresults: int = 100, startposition: int = 0, **kwargs
+                       maxresults: int = 100, startposition: int = 1, **kwargs
                      ) -> Dict[str, Any]:
         try:
+            # Validate pagination parameters
+            is_valid, result = validate_pagination_params(startposition, maxresults)
+            if not is_valid:
+                return result
+            startposition, maxresults = result
+
             domain, error_response = self._build_search_domain(
                 DisplayName, company_id, active, False
             )
@@ -314,7 +326,7 @@ class PartnerAPI(http.Controller):
         partners = partner_service.search(
             domain,
             limit=max_results,
-            offset=start_position,
+            offset=(start_position-1),
             order='id DESC'
         )
         logger.info(f"Retrieved {len(partners)} partners")

@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from http import HTTPStatus
 from odoo import http
 from odoo.http import request
-from ..utils import APIResponse, get_company_from_headers, get_payment_method_from_headers, validate_request_data
+from ..utils import APIResponse, get_company_from_headers, get_payment_method_from_headers, validate_request_data, validate_pagination_params
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.accounts import AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountListResponseModel, ACCOUNT_HEADERS
@@ -51,7 +51,7 @@ class AccountAPI(http.Controller):
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_accounts(self, company_id: int, name: Optional[str] = None, account_type: Optional[str] = None,
-        active: Optional[str] = None, maxresults: int = 100, startposition: int = 0, **kwargs
+        active: Optional[str] = None, maxresults: int = 100, startposition: int = 1, **kwargs
     ) -> Dict[str, Any]:
         try:
             logger.info(
@@ -60,6 +60,11 @@ class AccountAPI(http.Controller):
                 f"company_id={company_id}, "
                 f"active={active}"
             )
+            # Validate pagination parameters
+            is_valid, result = validate_pagination_params(startposition, maxresults)
+            if not is_valid:
+                return result
+            startposition, maxresults = result
             
             # Build search domain and validate company
             domain, error_response = self._build_search_domain(
@@ -247,7 +252,7 @@ class AccountAPI(http.Controller):
         accounts = account_service.search(
             domain,
             limit=max_results,
-            offset=start_position,
+            offset=(start_position-1),
             order='id DESC'
         )
         logger.info(f"Retrieved {len(accounts)} accounts")

@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from odoo import http
 from odoo.http import request
 from ..middleware.auth_middleware import validate_token_middleware
-from ..utils import APIResponse, validate_request_data
+from ..utils import APIResponse, validate_request_data, validate_pagination_params
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.company import CompanyModel, CompanyListResponseModel, CompanyCreateRequestModel, CompanyResponseModel
@@ -79,8 +79,14 @@ class CompanyAPI(http.Controller):
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_companies(self, name: Optional[str] = None, active: Optional[str] = None, 
-                       maxresults: int = 100, startposition: int = 0, **kwargs):
+                       maxresults: int = 100, startposition: int = 1, **kwargs):
         try:
+            # Validate pagination parameters
+            is_valid, result = validate_pagination_params(startposition, maxresults)
+            if not is_valid:
+                return result
+            startposition, maxresults = result
+
             # Build search domain and validate company
             domain, error_response = self._build_search_domain(name, active)
             if error_response:
@@ -178,7 +184,7 @@ class CompanyAPI(http.Controller):
         companies = company_service.search(
             domain,
             limit=max_results,
-            offset=start_position,
+            offset=(start_position-1),
             order='id DESC'
         )
         logger.info(f"Retrieved {len(companies)} companies")

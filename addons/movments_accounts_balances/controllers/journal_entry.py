@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from odoo import http
 from odoo.http import request
 from ..middleware.auth_middleware import validate_token_middleware
-from ..utils import APIResponse, get_company_from_headers, validate_request_data
+from ..utils import APIResponse, get_company_from_headers, validate_request_data, validate_pagination_params
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
 from ..schemas.journal_entry import (JournalEntryRequestModel, JournalEntryModel, JournalEntryResponseModel, JournalEntryListResponseModel)
@@ -88,7 +88,7 @@ class JournalEntryAPI(http.Controller):
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_journal_entry(self, company_id: int, journal_id: Optional[int]=None, 
-                           maxresults: int = 100, startposition: int = 0, 
+                           maxresults: int = 100, startposition: int = 1, 
                            date_from=None, date_to=None, **kwargs) -> Dict[str, Any]:
         """
         Retrieves a list of all journal entries based on the provided filters.
@@ -97,6 +97,12 @@ class JournalEntryAPI(http.Controller):
         :return: A dictionary containing the journal entry list or an error message.
         """
         try:
+            # Validate pagination parameters
+            is_valid, result = validate_pagination_params(startposition, maxresults)
+            if not is_valid:
+                return result
+            startposition, maxresults = result
+
             # Build search domain and validate company
             domain, error_response = self._build_search_domain(
                 company_id, journal_id, date_from, date_to
@@ -265,7 +271,7 @@ class JournalEntryAPI(http.Controller):
         journal_entries = account_move_service.search(
             domain,
             limit=max_results,
-            offset=start_position,
+            offset=(start_position-1),
             order='date desc, id desc'
         )
         logger.info(f"Retrieved {len(journal_entries)} journal entries")
