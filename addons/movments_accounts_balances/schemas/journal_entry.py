@@ -119,6 +119,7 @@ class LineRequestModel(BaseModel):
 class JournalEntryRequestModel(BaseModel):
     Line: List[LineRequestModel] = Field(..., description="Journal entry lines")
     CurrencyRef: Optional[RefModel] = Field(None, description="Currency reference")
+    TxnDate: Optional[datetime] = Field(None, description="Transaction date")
 
     class Config:
         from_attributes = True
@@ -168,7 +169,7 @@ class JournalEntryRequestModel(BaseModel):
         return {
             'move_type': 'entry',
             # 'partner_id': partner_id,
-            'date': datetime.now().date(),
+            'date': self.TxnDate if self.TxnDate else datetime.now().date(),
             'company_id': company_id,
             'invoice_line_ids': [(0,0, line.create_line_vals(company_id)) for line in self.Line]
         }
