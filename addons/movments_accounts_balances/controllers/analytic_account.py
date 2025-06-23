@@ -245,10 +245,6 @@ class AnalyticAccountAPI(http.Controller):
             order='id DESC'
         )
         logger.info(f"Retrieved {len(analytic_accounts)} analytic accounts")
-        if len(analytic_accounts) == 0:
-            return APIResponse.error_response(message='No analytic accounts found',
-                errors='No analytic accounts found', status=HTTPStatus.NOT_FOUND
-            )
 
         return self._prepare_list_response(
             analytic_accounts, total_count, start_position
@@ -269,7 +265,7 @@ class AnalyticAccountAPI(http.Controller):
         
         if not analytic_account.exists():
             return APIResponse.error_response(message='Analytic Class not found',
-                errors='Invalid analytic_class_id', status=HTTPStatus.NOT_FOUND
+                errors='Invalid analytic_class_id', status=HTTPStatus.BAD_REQUEST
             )
 
         response_data = AnalyticClassResponseModel.create_analytic_class_response(analytic_account)

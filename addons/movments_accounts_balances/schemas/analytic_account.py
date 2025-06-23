@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 import uuid
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, timezone
@@ -55,16 +55,11 @@ class AnalyticClassModel(BaseModel):
         )
 
 class AnalyticClassQueryResponseModel(PaginationResponseModel):
-    Class: List[AnalyticClassModel]
-
-    @field_validator('Class')
-    def validate_class(cls, analytic_class: list[AnalyticClassModel]) -> list[AnalyticClassModel]:
-        if not analytic_class:
-            raise ValueError("No analytic class found")
-        return analytic_class
+    Class: List[AnalyticClassModel] = Field([], description="List of Classes")
+    
     
 class AnalyticClassResponseModel(BaseModel):
-    Class: AnalyticClassModel
+    Class: AnalyticClassModel = Field(..., description="Class details")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
     class Config:
@@ -82,7 +77,7 @@ class AnalyticClassResponseModel(BaseModel):
     
 
 class AnalyticClassListResponseModel(BaseModel):
-    QueryResponse: AnalyticClassQueryResponseModel = Field(..., description="Query response containing analytic class list")
+    QueryResponse: Union[dict, AnalyticClassQueryResponseModel] = Field({}, description="Query response containing analytic class list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
     class Config:
@@ -93,12 +88,14 @@ class AnalyticClassListResponseModel(BaseModel):
 
     @classmethod
     def list_analytic_class_response(cls, analytic_classes: List[AnalyticClassModel], total_count : int, start_position: int = 0, max_results: int = 100) -> "AnalyticClassListResponseModel":
-        query_response = AnalyticClassQueryResponseModel(
-            startPosition=start_position,
-            maxResults=max_results,
-            totalCount=total_count,
-            Class=analytic_classes
-        )
+        query_response = {}
+        if analytic_classes and len(analytic_classes) > 0:
+            query_response = AnalyticClassQueryResponseModel(
+                startPosition=start_position,
+                maxResults=max_results,
+                totalCount=total_count,
+                Class=analytic_classes
+            )
         return cls(
             QueryResponse=query_response,
             time=datetime.now(timezone.utc)

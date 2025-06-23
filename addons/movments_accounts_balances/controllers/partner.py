@@ -146,7 +146,7 @@ class PartnerAPI(http.Controller):
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_vendors(self, company_id: int, DisplayName: Optional[str] = None, active: Optional[str] = None, 
-                     maxresults: int = 100, startposition: int = 0, **kwargs
+                     maxresults: int = 100, startposition: int = 1, **kwargs
                      ) -> Dict[str, Any]:
         try:
             # Validate pagination parameters
@@ -330,10 +330,6 @@ class PartnerAPI(http.Controller):
             order='id DESC'
         )
         logger.info(f"Retrieved {len(partners)} partners")
-        if len(partners) == 0:
-            return APIResponse.error_response(message='No Partners found',
-                errors='No Partners found', status=HTTPStatus.NOT_FOUND
-            )
 
         return self._prepare_list_response(
             partners, total_count, start_position, is_vendor
@@ -361,13 +357,13 @@ class PartnerAPI(http.Controller):
         if is_vendor:
             if not partner.exists():
                 return APIResponse.error_response(message='Vendor not found',
-                    errors='Invalid vendor_id', status=HTTPStatus.NOT_FOUND
+                    errors='Invalid vendor_id', status=HTTPStatus.BAD_REQUEST
                 )
             response_data = VendorResponseModel.create_vendor_response(partner)
         else:
             if not partner.exists():
                 return APIResponse.error_response(message='Customer not found',
-                    errors='Invalid customer_id', status=HTTPStatus.NOT_FOUND
+                    errors='Invalid customer_id', status=HTTPStatus.BAD_REQUEST
                 )
             response_data = CustomerResponseModel.create_customer_response(partner)
         return APIResponse.success_response(response_data.model_dump(mode='json'))

@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field, field_validator
 from .common import (RefModel, MetaDataModel, BillAddrModel,
@@ -97,20 +97,14 @@ class CompanyQueryResponseModel(PaginationResponseModel):
     """
     Response model for company queries with pagination
     """
-    Company: List[CompanyModel] = Field(..., description="List of companies")
-
-    @field_validator('Company')
-    def validate_companies(cls, companies: List[CompanyModel]) -> List[CompanyModel]:
-        if not companies:
-            raise ValueError("No Company found")
-        return companies
+    Company: List[CompanyModel] = Field([], description="List of companies")
     
 
 class CompanyListResponseModel(BaseModel):
     """
     Response model for company list operations
     """
-    QueryResponse: CompanyQueryResponseModel = Field(..., description="Query response containing company list")
+    QueryResponse: Union[dict, CompanyQueryResponseModel] = Field({}, description="Query response containing company list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
     class Config:
@@ -121,12 +115,14 @@ class CompanyListResponseModel(BaseModel):
 
     @classmethod
     def list_company_response(cls, companies: List[CompanyModel], total_count: int, start_position: int = 0, max_results: int = 100) -> "CompanyListResponseModel":
-        query_response = CompanyQueryResponseModel(
-            startPosition=start_position,
-            maxResults=max_results,
-            totalCount=total_count,
-            Company=companies
-        )
+        query_response = {}
+        if companies and len(companies) > 0:
+            query_response = CompanyQueryResponseModel(
+                startPosition=start_position,
+                maxResults=max_results,
+                totalCount=total_count,
+                Company=companies
+            )
         return cls(
             QueryResponse=query_response,
             time=datetime.now(timezone.utc)

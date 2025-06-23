@@ -37,7 +37,7 @@ class PaginationModel(BaseModel):
 
 
 class PaginationResponseModel(PaginationModel):
-    totalCount: int = Field(..., ge=0, description="Total count of records")
+    totalCount: Optional[int] = Field(0, ge=0, description="Total count of records")
 
 
 class RefModel(BaseModel):

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Union
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field, field_validator
 from .common import (MetaDataModel, RefModel, BillAddrModel,
@@ -219,25 +219,15 @@ class CustomerResponseModel(BaseModel):
         )
 
 class VendorQueryResponseModel(PaginationResponseModel):
-    Vendor: List[VendorModel] = Field(..., description="List of vendors")
+    Vendor: List[VendorModel] = Field([], description="List of vendors")
 
-    @field_validator('Vendor')
-    def validate_vendors(cls, vendors: List[VendorModel]) -> List[VendorModel]:
-        if not vendors:
-            raise ValueError("No Vendor found")
-        return vendors
 
 class CustomerQueryResponseModel(PaginationResponseModel):
-    Customer: List[CustomerModel] = Field(..., description="List of customers")
+    Customer: List[CustomerModel] = Field([], description="List of customers")
 
-    @field_validator('Customer')
-    def validate_customers(cls, customers: List[CustomerModel]) -> List[CustomerModel]:
-        if not customers:
-            raise ValueError("No Customer found")
-        return customers
 
 class VendorListResponseModel(BaseModel):
-    QueryResponse: VendorQueryResponseModel = Field(..., description="Query response containing vendor list")
+    QueryResponse: Union[dict, VendorQueryResponseModel] = Field({}, description="Query response containing vendor list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
     class Config:
@@ -248,19 +238,21 @@ class VendorListResponseModel(BaseModel):
 
     @classmethod
     def list_vendor_response(cls, vendors: List[VendorModel], total_count : int, start_position: int = 0, max_results: int = 20) -> "VendorListResponseModel":
-        query_response = VendorQueryResponseModel(
-            startPosition=start_position,
-            maxResults=max_results,
-            totalCount=total_count,
-            Vendor=vendors
-        )
+        query_response = {}
+        if vendors and len(vendors) > 0:
+            query_response = VendorQueryResponseModel(
+                startPosition=start_position,
+                maxResults=max_results,
+                totalCount=total_count,
+                Vendor=vendors
+            )
         return cls(
             QueryResponse=query_response,
             time=datetime.now(timezone.utc)
         )
 
 class CustomerListResponseModel(BaseModel):
-    QueryResponse: CustomerQueryResponseModel = Field(..., description="Query response containing customer list")
+    QueryResponse: Union[dict, CustomerQueryResponseModel] = Field({}, description="Query response containing customer list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
     class Config:
@@ -271,12 +263,14 @@ class CustomerListResponseModel(BaseModel):
 
     @classmethod
     def list_customer_response(cls, customers: List[CustomerModel], total_count : int, start_position: int = 0, max_results: int = 20) -> "CustomerListResponseModel":
-        query_response = CustomerQueryResponseModel(
-            startPosition=start_position,
-            maxResults=max_results,
-            totalCount=total_count,
-            Customer=customers
-        )
+        query_response = {}
+        if customers and len(customers) > 0:
+            query_response = CustomerQueryResponseModel(
+                startPosition=start_position,
+                maxResults=max_results,
+                totalCount=total_count,
+                Customer=customers
+            )
         return cls(
             QueryResponse=query_response,
             time=datetime.now(timezone.utc)

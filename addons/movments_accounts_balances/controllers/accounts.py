@@ -256,10 +256,6 @@ class AccountAPI(http.Controller):
             order='id DESC'
         )
         logger.info(f"Retrieved {len(accounts)} accounts")
-        if len(accounts) == 0:
-            return APIResponse.error_response(message='No accounts found', errors='No accounts found',
-                status=HTTPStatus.NOT_FOUND
-            )
 
         return self._prepare_list_response(
             accounts, total_count, start_position
@@ -280,7 +276,7 @@ class AccountAPI(http.Controller):
         
         if not account.exists():
             return APIResponse.error_response(message='Account not found',
-                errors='Invalid account_id', status=HTTPStatus.NOT_FOUND
+                errors='Invalid account_id', status=HTTPStatus.BAD_REQUEST
             )
 
         response_data = AccountResponseModel.create_account_response(account)

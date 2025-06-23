@@ -1,7 +1,7 @@
 from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Union
 from .common import MetaDataModel, PaginationResponseModel, RefModel
 from ..enums import PostingType, DetailType
 from ..repositories.journal import JournalService
@@ -283,19 +283,14 @@ class JournalEntryResponseModel(BaseModel):
         )
     
 class JournalEntryQueryResponseModel(PaginationResponseModel):
-    JournalEntry: List[JournalEntryModel] = Field(..., description="List of journal entries")
+    JournalEntry: List[JournalEntryModel] = Field([], description="List of journal entries")
 
     class Config:
         from_attributes = True
 
-    @field_validator('JournalEntry')
-    def validate_journal_entries(cls, v):
-        if not v:
-            raise ValueError("No Journal Entry found")
-        return v
            
 class JournalEntryListResponseModel(BaseModel):
-    QueryResponse: JournalEntryQueryResponseModel = Field(..., description="Query response")
+    QueryResponse: Union[dict, JournalEntryQueryResponseModel] = Field({}, description="Query response")
     time: datetime = Field(..., description="Response timestamp")
 
     class Config:
@@ -306,12 +301,14 @@ class JournalEntryListResponseModel(BaseModel):
 
     @classmethod
     def list_journal_entry_response(cls, journal_entries: List[JournalEntryModel], total_count : int, start_position: int = 0, max_results: int = 20) -> "JournalEntryListResponseModel":
-        query_response = JournalEntryQueryResponseModel(
-            startPosition=start_position,
-            maxResults=max_results,
-            totalCount=total_count,
-            JournalEntry=journal_entries
-        )
+        query_response = {}
+        if journal_entries and len(journal_entries) > 0:
+            query_response = JournalEntryQueryResponseModel(
+                startPosition=start_position,
+                maxResults=max_results,
+                totalCount=total_count,
+                JournalEntry=journal_entries
+            )
         return cls(
             QueryResponse=query_response,
             time=datetime.now(timezone.utc)

@@ -275,10 +275,6 @@ class JournalEntryAPI(http.Controller):
             order='date desc, id desc'
         )
         logger.info(f"Retrieved {len(journal_entries)} journal entries")
-        if len(journal_entries) == 0:
-            return APIResponse.error_response(message='No jurnal entries found',
-                errors='No jurnal entries found', status=HTTPStatus.NOT_FOUND
-            )
 
         return self._prepare_list_response(
             journal_entries, total_count, start_position
@@ -299,7 +295,7 @@ class JournalEntryAPI(http.Controller):
         
         if not journal_entry.exists():
             return APIResponse.error_response(message='Journal Entry not found',
-                errors='Invalid journal_entry_id', status=HTTPStatus.NOT_FOUND
+                errors='Invalid journal_entry_id', status=HTTPStatus.BAD_REQUEST
             )
 
         response_data = JournalEntryResponseModel.create_journal_entry_response(journal_entry)

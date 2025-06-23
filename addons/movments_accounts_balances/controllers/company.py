@@ -59,7 +59,7 @@ class CompanyAPI(http.Controller):
             company = company_service.browse(company_id)
             if not company.exists():
                 return APIResponse.error_response(message='Company not found',
-                errors='Invalid company_id', status=HTTPStatus.NOT_FOUND
+                errors='Invalid company_id', status=HTTPStatus.BAD_REQUEST
                 )
             
             # Prepare response data
@@ -188,10 +188,6 @@ class CompanyAPI(http.Controller):
             order='id DESC'
         )
         logger.info(f"Retrieved {len(companies)} companies")
-        if len(companies) == 0:
-            return APIResponse.error_response(message='No companies found',
-                errors='No companies found', status=HTTPStatus.NOT_FOUND
-            )
 
         return self._prepare_list_response(
             companies, total_count, start_position

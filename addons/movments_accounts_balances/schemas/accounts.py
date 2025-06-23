@@ -1,6 +1,6 @@
 import uuid
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
+from typing import Dict, Optional, List, Union
 from datetime import datetime, timezone
 from .common import COMPANY_HEADERS, ACCESS_TOKEN_HEADER, MetaDataModel, PaginationResponseModel, RefModel
 from ..mapping.accounts import ACCOUNT_CLASSIFICATION_MAPPING, ACCOUNT_TYPE_MAPPING, TYPE_PREFIX_MAPPING
@@ -117,13 +117,7 @@ class AccountQueryResponseModel(PaginationResponseModel):
     """
     Response model for account queries with pagination
     """
-    Account: List[AccountModel] = Field(..., description="List of accounts")
-
-    @field_validator('Account')
-    def validate_accounts(cls, accounts: List[AccountModel]) -> List[AccountModel]:
-        if not accounts:
-            raise ValueError("No Account found")
-        return accounts
+    Account: List[AccountModel] = Field([], description="List of accounts")
 
 
 class AccountResponseModel(BaseModel):
@@ -144,7 +138,7 @@ class AccountResponseModel(BaseModel):
         
 
 class AccountListResponseModel(BaseModel):
-    QueryResponse: AccountQueryResponseModel = Field(..., description="Query response containing account list")
+    QueryResponse: Union[dict, AccountQueryResponseModel] = Field({}, description="Query response containing account list")
     time: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
     class Config:
@@ -154,12 +148,14 @@ class AccountListResponseModel(BaseModel):
     
     @classmethod
     def list_account_response(cls, accounts: List[AccountModel], total_count : int, start_position: int = 0, max_results: int = 20) -> "AccountListResponseModel":
-        query_response = AccountQueryResponseModel(
-            startPosition=start_position,
-            maxResults=max_results,
-            totalCount=total_count,
-            Account=accounts
-        )
+        query_response = {}
+        if accounts and len(accounts) > 0:
+            query_response = AccountQueryResponseModel(
+                startPosition=start_position,
+                maxResults=max_results,
+                totalCount=total_count,
+                Account=accounts
+            )
         return cls(
             QueryResponse=query_response,
             time=datetime.now(timezone.utc)
