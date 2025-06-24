@@ -40,7 +40,7 @@ class JournalEntryAPI(http.Controller):
             # Create account move
             return self._create_account_move_record(request, data)
         except Exception as e:
-            logger.error(f"Failed to create account: {str(e)}")
+            logger.error(f"Failed to create account move record: {str(e)}")
             return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
     

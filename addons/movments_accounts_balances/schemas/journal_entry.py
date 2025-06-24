@@ -18,7 +18,7 @@ from ..repositories.journal import JournalService
 
 class EntityModel(BaseModel):
     Type: Optional[str] = Field(None, description="Entity type")
-    EntityRef: RefModel = Field(..., description="Entity reference")
+    EntityRef: Optional[RefModel] = Field(None, description="Entity reference")
 
     class Config:
         from_attributes = True
@@ -35,7 +35,7 @@ class JournalEntryLineDetailModel(BaseModel):
     TaxApplicableOn: Optional[str] = Field(None, description="Tax applicable on")
     ClassRef: Optional[RefModel] = Field(None, description="Class reference")
     TaxCodeRef: Optional[RefModel] = Field(None, description="Tax code reference")
-    Entity: EntityModel = Field(..., description="Entity details")
+    Entity: Optional[EntityModel] = Field(None, description="Entity details")
 
     class Config:
         from_attributes = True
@@ -74,13 +74,15 @@ class JournalEntryLineDetailModel(BaseModel):
         )
 
     @staticmethod
-    def _create_entity(move_line) -> EntityModel:
+    def _create_entity(move_line) -> Optional[EntityModel]:
+        if not move_line.partner_id:
+            return None
         entity_ref = RefModel(
             name=move_line.partner_id.name,
             value=str(move_line.partner_id.id),
         )
         return EntityModel(
-            Type=move_line.partner_id.category_id.name,
+            Type=move_line.partner_id.category_id.name if move_line.partner_id else None,
             EntityRef=entity_ref
         )
 
