@@ -9,7 +9,7 @@ from ..repositories.currency import CurrencyService
 
 class AccountCreateRequestModel(BaseModel):
     Name: str = Field(..., min_length=1, max_length=256)
-    AcctNum: str = Field(..., description="Account Number")
+    AcctNum: Optional[str] = Field(None, description="Account Number")
     AccountType: str = Field(..., description="Account Type")
     AccountSubType: Optional[str] = Field(None, description="Sub-type of account")
     CurrencyRef: Optional[RefModel] = Field(None, description="Currency reference")
