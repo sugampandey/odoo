@@ -21,7 +21,7 @@ class AccountCreateRequestModel(BaseModel):
             raise ValueError(f"Invalid account type: {value}")
         return mapped_type
     
-    @field_validator('Name', 'AcctNum', 'AccountType')
+    @field_validator('Name', 'AccountType')
     def validate_non_empty_string(cls, v, info):
         if not v.strip():
             raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
