@@ -116,6 +116,12 @@ class SwaggerController(http.Controller):
                 description='API documentation for General Ledger',
                 tags=tags
             )
+            # Remove security and securitySchemes for demo view
+            if 'security' in spec:
+                del spec['security']
+            if 'components' in spec and 'securitySchemes' in spec['components']:
+                del spec['components']['securitySchemes']
+            
             docyt_config = {
                 'spec': json.dumps(spec),
                 'demo_mode': True
