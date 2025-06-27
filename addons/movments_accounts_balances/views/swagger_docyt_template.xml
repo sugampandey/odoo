@@ -49,7 +49,7 @@
                             supportedSubmitMethods: [], // Disable all HTTP methods
                             docExpansion: 'list',
                             deepLinking: true,
-                            filter: true,
+                            filter: false,
                             presets: [
                                 SwaggerUIBundle.presets.apis
                             ],
