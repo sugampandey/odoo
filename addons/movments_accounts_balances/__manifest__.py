@@ -17,6 +17,7 @@
     ],
     'data': [
         'views/swagger_template.xml',
+        'views/swagger_docyt_template.xml',
     ],
     'images': ['static/description/icon.png'],
     'installable': True,

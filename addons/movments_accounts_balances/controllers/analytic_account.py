@@ -21,7 +21,7 @@ class AnalyticAccountAPI(http.Controller):
         resource_name='analytic-account',
         request_model=AnalyticClassCreateRequestModel,
         response_model=AnalyticClassResponseModel,
-        tags=['Analytic Accounts'],
+        tags=['Analytic Classes'],
         additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
     def create_analytic_account(self, **kwargs):
@@ -51,7 +51,7 @@ class AnalyticAccountAPI(http.Controller):
         operation='list',
         resource_name='analytic-account',
         response_model=AnalyticClassListResponseModel,
-        tags=['Analytic Accounts'],
+        tags=['Analytic Classes'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_analytic_accounts(self, company_id: int, active: Optional[str] = None, maxresults: int = 100, startposition: int = 1, **kwargs):
@@ -93,7 +93,7 @@ class AnalyticAccountAPI(http.Controller):
         operation='get',
         resource_name='analytic-account',
         response_model=AnalyticClassResponseModel,
-        tags=['Analytic Accounts'],
+        tags=['Analytic Classes'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_analytic_account(self, analytic_class_id: int, company_id: int, **kwargs):
@@ -133,7 +133,7 @@ class AnalyticAccountAPI(http.Controller):
     @swagger_gen.swagger_doc(
         operation='delete',
         resource_name='analytic-account',
-        tags=['Analytic Accounts'],
+        tags=['Analytic Classes'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def delete_analytic_account(self, analytic_class_id, **kwargs):

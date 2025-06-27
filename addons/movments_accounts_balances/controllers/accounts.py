@@ -22,7 +22,7 @@ class AccountAPI(http.Controller):
         resource_name='account',
         request_model=AccountCreateRequestModel,
         response_model=AccountResponseModel,
-        tags=['Accounts'],
+        tags=['Chart of Accounts'],
         additional_headers=ACCOUNT_HEADERS
     )
     def create_account(self, **kwargs) -> Dict[str, Any]:
@@ -47,7 +47,7 @@ class AccountAPI(http.Controller):
         operation='list',
         resource_name='account',
         response_model=AccountListResponseModel,
-        tags=['Accounts'],
+        tags=['Chart of Accounts'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def list_accounts(self, company_id: int, name: Optional[str] = None, account_type: Optional[str] = None,
@@ -90,7 +90,7 @@ class AccountAPI(http.Controller):
         operation='get',
         resource_name='account',
         response_model=AccountResponseModel,
-        tags=['Accounts'],
+        tags=['Chart of Accounts'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_account(self, account_id: int, company_id: int) -> Dict[str, Any]:
@@ -120,7 +120,7 @@ class AccountAPI(http.Controller):
     @swagger_gen.swagger_doc(
         operation='delete',
         resource_name='account',
-        tags=['Accounts'],
+        tags=['Chart of Accounts'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def delete_account(self, account_id, **kwargs):
@@ -156,7 +156,7 @@ class AccountAPI(http.Controller):
     @swagger_gen.swagger_doc(
         operation='list',
         resource_name='account-type',
-        tags=['Accounts'],
+        tags=['Chart of Accounts'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_account_types(self, **kwargs):

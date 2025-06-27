@@ -43,6 +43,10 @@ ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING = {
     'Expense': 'expense',
     'Cost of Goods Sold': 'expense_direct_cost',
     'Other Expense': 'expense_depreciation',
+    # odoo internal types
+    # 'Off-Balance Sheet': 'off_balance',
+    # 'Current Year Earnings': 'equity_unaffected',
+    # 'Prepayments': 'asset_prepayments',
 }
 
 ACCOUNT_CLASSIFICATION_MAPPING = BidirectionalMapper(CLASSIFICATION_DOCYT_TO_ODOO_MAPPING) 

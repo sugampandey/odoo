@@ -23,8 +23,8 @@ class SwaggerController(http.Controller):
             
             tags = [
                 {'name': 'Companies', 'description': 'Company management endpoints'},
-                {'name': 'Accounts', 'description': 'Account management endpoints'},
-                {'name': 'Analytic Accounts', 'description': 'Analytic account management endpoints'},
+                {'name': 'Chart of Accounts', 'description': 'Chart of Accounts management endpoints'},
+                {'name': 'Analytic Classes', 'description': 'Analytic Classes management endpoints'},
                 {'name': 'Reports', 'description': 'Report generation endpoints'},
                 {'name': 'Customers', 'description': 'Customers management endpoints'},
                 {'name': 'Vendors', 'description': 'Vendors management endpoints'},
@@ -63,8 +63,8 @@ class SwaggerController(http.Controller):
         
         tags = [
             {'name': 'Companies', 'description': 'Company management endpoints'},
-            {'name': 'Accounts', 'description': 'Account management endpoints'},
-            {'name': 'Analytic Accounts', 'description': 'Analytic account management endpoints'},
+            {'name': 'Chart of Accounts', 'description': 'Chart of Accounts management endpoints'},
+            {'name': 'Analytic Classes', 'description': 'Analytic Classes management endpoints'},
             {'name': 'Reports', 'description': 'Report generation endpoints'},
             {'name': 'Customers', 'description': 'Customers management endpoints'},
             {'name': 'Vendors', 'description': 'Vendors management endpoints'},
@@ -84,4 +84,46 @@ class SwaggerController(http.Controller):
             json.dumps(spec),
             headers=[('Content-Type', 'application/json')]
         )
+    
+    @http.route('/api/general_ledger_docs', type='http', auth='public', website=True)
+    def swagger_docyt_ui(self, **kwargs):
+        """Serve Swagger UI"""
+        try:
+            controllers = [
+                company.CompanyAPI,
+                accounts.AccountAPI,
+                analytic_account.AnalyticAccountAPI,
+                reports.ReportsAPI,
+                partner.PartnerAPI,
+                journal_entry.JournalEntryAPI,
+                # webhook.WebhookAPI
+            ]
+            
+            tags = [
+                {'name': 'Companies', 'description': 'Company management endpoints'},
+                {'name': 'Chart of Accounts', 'description': 'Chart of Accounts management endpoints'},
+                {'name': 'Analytic Classes', 'description': 'Analytic Classes management endpoints'},
+                {'name': 'Reports', 'description': 'Report generation endpoints'},
+                {'name': 'Customers', 'description': 'Customers management endpoints'},
+                {'name': 'Vendors', 'description': 'Vendors management endpoints'},
+                {'name': 'Journal Entries', 'description': 'Journal entry management endpoints'},
+                # {'name': 'Webhooks', 'description': 'Webhook management endpoints'}
+            ]
+            
+            spec = swagger_gen.generate_api_docs(
+                controllers=controllers,
+                title='General Ledger API Documentation',
+                description='API documentation for General Ledger',
+                tags=tags
+            )
+            docyt_config = {
+                'spec': json.dumps(spec),
+                'demo_mode': True
+            }
+            
+            return request.render('movments_accounts_balances.swagger_docyt_template', docyt_config)
+        except Exception as e:
+            return request.render('movments_accounts_balances.error_template', {
+                'error': str(e)
+            })
 

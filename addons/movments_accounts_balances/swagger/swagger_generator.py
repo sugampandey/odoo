@@ -389,9 +389,9 @@ class SwaggerGenerator:
         spec = {
             'openapi': '3.0.0',
             'info': {
-                'title': 'Odoo API Documentation',
-                'version': '1.0.0',
-                'description': 'API documentation for Odoo controllers'
+                'title': 'General Ledger API Documentation',
+                # 'version': '1.0.0',
+                'description': 'API documentation for General Ledger'
             },
             'paths': paths,
             'components': {
@@ -413,7 +413,7 @@ class SwaggerGenerator:
         self,
         controllers: List[Any],
         title: str = 'API Documentation',
-        version: str = '1.0.0',
+        version: Optional[str] = None,
         description: Optional[str] = None,
         tags: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
@@ -423,7 +423,7 @@ class SwaggerGenerator:
         # Update info section with provided values
         spec['info'].update({
             'title': title,
-            'version': version,
+            # 'version': version,
         })
         if description:
             spec['info']['description'] = description
