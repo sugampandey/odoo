@@ -19,11 +19,11 @@ TYPE_PREFIX_MAPPING = {
 }
 
 CLASSIFICATION_DOCYT_TO_ODOO_MAPPING = {
-    'asset': 'asset',
-    'liability': 'liability',
-    'equity': 'equity',
-    'revenue': 'income',
-    'expense': 'expense',
+    'Asset': 'asset',
+    'Liability': 'liability',
+    'Equity': 'equity',
+    'Revenue': 'income',
+    'Expense': 'expense',
 }
   
 
