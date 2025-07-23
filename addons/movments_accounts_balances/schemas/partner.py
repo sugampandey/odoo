@@ -96,7 +96,6 @@ class BasePartnerUpdateRequestModel(BaseModel):
     PrimaryPhone: Optional[PhoneNumberModel] = Field(None, description="Primary phone number")
     BillAddr: Optional[BillAddrModel] = Field(None, description="Billing address")
     Suffix: Optional[str] = Field(None, description="Name suffix")
-    Title: Optional[str] = Field(None, description="Title")
 
     class Config:
         from_attributes = True
@@ -133,9 +132,6 @@ class BasePartnerUpdateRequestModel(BaseModel):
             
         if self.PrimaryEmailAddr is not None and hasattr(self.PrimaryEmailAddr, 'Address'):
             contact_vals['email'] = False if self.PrimaryEmailAddr.Address == "" else self.PrimaryEmailAddr.Address
-            
-        if self.Title is not None:
-            contact_vals['title'] = self.Title
             
         if self.GivenName is not None:
             contact_vals['name'] = self.GivenName
@@ -183,8 +179,7 @@ class CustomerUpdateRequestModel(BasePartnerUpdateRequestModel):
             customer_vals['comment'] = self.Notes
             
         return customer_vals
-
-
+    
 
 class BasePartnerModel(BaseModel):
     """Base model for shared partner fields between customers and vendors"""
