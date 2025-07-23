@@ -129,10 +129,10 @@ class BasePartnerUpdateRequestModel(BaseModel):
             contact_vals['company_name'] = self.CompanyName
             
         if self.PrimaryPhone is not None and hasattr(self.PrimaryPhone, 'FreeFormNumber'):
-            contact_vals['phone'] = self.PrimaryPhone.FreeFormNumber
+            contact_vals['phone'] = False if self.PrimaryPhone.FreeFormNumber == "" else self.PrimaryPhone.FreeFormNumber
             
         if self.PrimaryEmailAddr is not None and hasattr(self.PrimaryEmailAddr, 'Address'):
-            contact_vals['email'] = self.PrimaryEmailAddr.Address
+            contact_vals['email'] = False if self.PrimaryEmailAddr.Address == "" else self.PrimaryEmailAddr.Address
             
         if self.Title is not None:
             contact_vals['title'] = self.Title
@@ -163,7 +163,7 @@ class VendorUpdateRequestModel(BasePartnerUpdateRequestModel):
         vendor_vals = self._update_base_vals()
         
         if self.Mobile is not None and hasattr(self.Mobile, 'FreeFormNumber'):
-            vendor_vals['mobile'] = self.Mobile.FreeFormNumber
+            vendor_vals['mobile'] = False if self.Mobile.FreeFormNumber == "" else self.Mobile.FreeFormNumber
             
         if self.Vendor1099 is not None:
             vendor_vals['vendor_1099'] = self.Vendor1099
