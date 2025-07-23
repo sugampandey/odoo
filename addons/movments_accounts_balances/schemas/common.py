@@ -82,7 +82,7 @@ class PhoneNumberModel(BaseModel):
 
 
 class EmailAddressModel(BaseModel):
-    Address: Optional[EmailStr] = Field(None, description="Email address")
+    Address: Optional[EmailStr] = Field("", description="Email address")
 
     class Config:
         from_attributes = True
