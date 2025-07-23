@@ -85,6 +85,107 @@ class CustomerCreateRequestModel(BasePartnerCreateRequestModel):
         return customer_vals
 
 
+class BasePartnerUpdateRequestModel(BaseModel):
+    """Base model for shared contact fields for updating vendors and customers"""
+    DisplayName: Optional[str] = Field(None, description="Display name")
+    GivenName: Optional[str] = Field(None, description="Given name")
+    FamilyName: Optional[str] = Field(None, description="Family name")
+    CompanyName: Optional[str] = Field(None, description="Company name")
+    MiddleName: Optional[str] = Field(None, description="Middle name")
+    PrimaryEmailAddr: Optional[EmailAddressModel] = Field(None, description="Primary email address")
+    PrimaryPhone: Optional[PhoneNumberModel] = Field(None, description="Primary phone number")
+    BillAddr: Optional[BillAddrModel] = Field(None, description="Billing address")
+    Suffix: Optional[str] = Field(None, description="Name suffix")
+    Title: Optional[str] = Field(None, description="Title")
+
+    class Config:
+        from_attributes = True
+
+    def _get_address_fields(self) -> Dict[str, Optional[str]]:
+        """Extract address fields from BillAddr if present"""
+        if not self.BillAddr:
+            return {}
+        
+        address_vals = {}
+        if hasattr(self.BillAddr, 'Line1') and self.BillAddr.Line1 is not None:
+            address_vals['street'] = self.BillAddr.Line1
+        if hasattr(self.BillAddr, 'Line2') and self.BillAddr.Line2 is not None:
+            address_vals['street2'] = self.BillAddr.Line2
+        if hasattr(self.BillAddr, 'PostalCode') and self.BillAddr.PostalCode is not None:
+            address_vals['zip'] = self.BillAddr.PostalCode
+        if hasattr(self.BillAddr, 'City') and self.BillAddr.City is not None:
+            address_vals['city'] = self.BillAddr.City
+            
+        return address_vals
+
+    def _get_contact_fields(self) -> Dict[str, Optional[str]]:
+        """Extract common contact fields if present"""
+        contact_vals = {}
+        
+        if self.DisplayName is not None:
+            contact_vals['display_name'] = self.DisplayName
+            
+        if self.CompanyName is not None:
+            contact_vals['company_name'] = self.CompanyName
+            
+        if self.PrimaryPhone is not None and hasattr(self.PrimaryPhone, 'FreeFormNumber'):
+            contact_vals['phone'] = self.PrimaryPhone.FreeFormNumber
+            
+        if self.PrimaryEmailAddr is not None and hasattr(self.PrimaryEmailAddr, 'Address'):
+            contact_vals['email'] = self.PrimaryEmailAddr.Address
+            
+        if self.Title is not None:
+            contact_vals['title'] = self.Title
+            
+        if self.GivenName is not None:
+            contact_vals['name'] = self.GivenName
+            
+        return contact_vals
+
+    def _update_base_vals(self) -> Dict[str, Any]:
+        """Create base dictionary with common fields for update"""
+        return {
+            **self._get_contact_fields(),
+            **self._get_address_fields()
+        }
+
+class VendorUpdateRequestModel(BasePartnerUpdateRequestModel):
+    """Vendor-specific update model with additional fields"""
+    WebAddr: Optional[WebAddrModel] = Field(None, description="Web address")
+    Mobile: Optional[PhoneNumberModel] = Field(None, description="Mobile number")
+    TaxIdentifier: Optional[str] = Field(None, description="Tax identifier")
+    AcctNum: Optional[str] = Field(None, description="Account number")
+    PrintOnCheckName: Optional[str] = Field(None, description="Name to print on checks")
+    Vendor1099: Optional[bool] = Field(None, description="1099 reporting flag")
+
+    def update_vendor_vals(self) -> Dict[str, Any]:
+        """Create vendor values dictionary for update"""
+        vendor_vals = self._update_base_vals()
+        
+        if self.Mobile is not None and hasattr(self.Mobile, 'FreeFormNumber'):
+            vendor_vals['mobile'] = self.Mobile.FreeFormNumber
+            
+        if self.Vendor1099 is not None:
+            vendor_vals['vendor_1099'] = self.Vendor1099
+            
+        return vendor_vals
+
+class CustomerUpdateRequestModel(BasePartnerUpdateRequestModel):
+    """Customer-specific update model with additional fields"""
+    FullyQualifiedName: Optional[str] = Field(None, description="Full name including hierarchy")
+    Notes: Optional[str] = Field(None, description="Additional notes")
+
+    def update_customer_vals(self) -> Dict[str, Any]:
+        """Create customer values dictionary for update"""
+        customer_vals = self._update_base_vals()
+        
+        if self.Notes is not None:
+            customer_vals['comment'] = self.Notes
+            
+        return customer_vals
+
+
+
 class BasePartnerModel(BaseModel):
     """Base model for shared partner fields between customers and vendors"""
     Id: Optional[int] = Field(None, description="Unique identifier")

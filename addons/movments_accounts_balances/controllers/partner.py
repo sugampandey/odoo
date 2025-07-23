@@ -6,8 +6,8 @@ from ..middleware.auth_middleware import validate_token_middleware
 from ..logger.logger import logger
 from ..utils import APIResponse, get_company_from_headers, validate_request_data, validate_pagination_params
 from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
-from ..schemas.partner import (CustomerModel, CustomerCreateRequestModel, CustomerResponseModel, CustomerListResponseModel,
-                                VendorModel, VendorCreateRequestModel, VendorResponseModel, VendorListResponseModel)
+from ..schemas.partner import (CustomerModel, CustomerCreateRequestModel, CustomerResponseModel, CustomerListResponseModel, CustomerUpdateRequestModel,
+                                VendorModel, VendorCreateRequestModel, VendorResponseModel, VendorListResponseModel, VendorUpdateRequestModel)
 from ..repositories.partner import PartnerService, PartnerCategoryService
 from ..repositories.company import CompanyService
 from ..swagger.swagger_generator import swagger_gen
@@ -223,6 +223,55 @@ class PartnerAPI(http.Controller):
             cursor.rollback()  
             return APIResponse.error_response(message='An error occurred while deleting the vendor', errors=str(e), status=500)
         
+    @http.route('/api/v1/vendors/<int:vendor_id>', type='http', auth='public', methods=['PUT'], csrf=False, cors="*")
+    @validate_token_middleware
+    @swagger_gen.swagger_doc(
+        operation='put',
+        resource_name='vendor',
+        request_model=VendorUpdateRequestModel,
+        response_model=VendorResponseModel,
+        tags=['Vendors'],
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
+    )
+    def update_vendor(self, vendor_id: int, **kwargs) -> Dict[str, Any]:
+        logger.info(f"Processing update vendor request for vendor_id: {vendor_id}")
+        
+        try:
+            # Get and validate request data
+            data = validate_request_data(request, VendorUpdateRequestModel)
+            if not isinstance(data, VendorUpdateRequestModel):
+                return data
+                
+            return self._update_vendor_record(request, vendor_id, data)
+        except Exception as e:
+            logger.error(f"Failed to update vendor: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    @http.route('/api/v1/customers/<int:customer_id>', type='http', auth='public', methods=['PUT'], csrf=False, cors="*")
+    @validate_token_middleware
+    @swagger_gen.swagger_doc(
+        operation='put',
+        resource_name='customer',
+        request_model=CustomerUpdateRequestModel,
+        response_model=CustomerResponseModel,
+        tags=['Customers'],
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
+    )
+    def update_customer(self, customer_id: int, **kwargs) -> Dict[str, Any]:
+        logger.info(f"Processing update customer request for customer_id: {customer_id}")
+        
+        try:
+            # Get and validate request data
+            data = validate_request_data(request, CustomerUpdateRequestModel)
+            if not isinstance(data, CustomerUpdateRequestModel):
+                return data
+                
+            return self._update_customer_record(request, customer_id, data)
+        except Exception as e:
+            logger.error(f"Failed to update customer: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    
     @http.route('/api/v1/customers/<int:customer_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
     @validate_token_middleware
     @swagger_gen.swagger_doc(
@@ -265,6 +314,56 @@ class PartnerAPI(http.Controller):
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create partner: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request',
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
+            )
+        
+    def _update_vendor_record(self, request, vendor_id: int, vendor_model: VendorUpdateRequestModel) -> Dict[str, Any]:
+        company_id = get_company_from_headers(request)
+        if not isinstance(company_id, int):
+            return company_id
+        
+        partner_service = PartnerService(request.env)
+        is_valid, error_message = partner_service.validate_partner(vendor_id, company_id)
+        if not is_valid:
+            return APIResponse.error_response(message=f'Invalid vendor: {error_message}', errors=f'Invalid vendor_id: {vendor_id}')
+
+        vendor_vals = vendor_model.update_vendor_vals()
+
+        cursor = request.env.cr
+        try:
+            with cursor.savepoint():
+                vendor = partner_service.browse(vendor_id)
+                vendor.write(vendor_vals)
+                return self._prepare_success_response(vendor, True)
+        except Exception as e:
+            cursor.rollback()
+            logger.error(f"Failed to update vendor: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request',
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
+            )
+
+    def _update_customer_record(self, request, customer_id: int, customer_model: CustomerUpdateRequestModel) -> Dict[str, Any]:
+        company_id = get_company_from_headers(request)
+        if not isinstance(company_id, int):
+            return company_id
+        
+        partner_service = PartnerService(request.env)
+        is_valid, error_message = partner_service.validate_partner(customer_id, company_id)
+        if not is_valid:
+            return APIResponse.error_response(message=f'Invalid customer: {error_message}', errors=f'Invalid customer_id: {customer_id}')
+
+        customer_vals = customer_model.update_customer_vals()
+
+        cursor = request.env.cr
+        try:
+            with cursor.savepoint():
+                customer = partner_service.browse(customer_id)
+                customer.write(customer_vals)
+                return self._prepare_success_response(customer, False)
+        except Exception as e:
+            cursor.rollback()
+            logger.error(f"Failed to update customer: {str(e)}")
             return APIResponse.error_response(message='Failed to process request',
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )

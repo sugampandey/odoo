@@ -5,8 +5,8 @@ from odoo.http import request
 from ..utils import APIResponse, get_company_from_headers, get_payment_method_from_headers, validate_request_data, validate_pagination_params
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
-from ..schemas.accounts import AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountListResponseModel, ACCOUNT_HEADERS
-from ..schemas.common import ACCESS_TOKEN_HEADER
+from ..schemas.accounts import AccountCreateRequestModel , AccountResponseModel, AccountModel, AccountListResponseModel, AccountUpdateRequestModel, ACCOUNT_HEADERS
+from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
 from ..mapping.accounts import ACCOUNT_TYPE_DOCYT_TO_ODOO_MAPPING, ACCOUNT_TYPE_MAPPING
 from ..repositories.journal import JournalService
 from ..repositories.account import AccountService
@@ -113,6 +113,31 @@ class AccountAPI(http.Controller):
             return APIResponse.error_response(message='Failed to process request',
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )
+        
+    @http.route('/api/v1/accounts/<int:account_id>', type='http', auth='public', methods=['PUT'], csrf=False, cors="*")
+    @validate_token_middleware
+    @swagger_gen.swagger_doc(
+        operation='put',
+        resource_name='account',
+        request_model=AccountUpdateRequestModel,
+        response_model=AccountResponseModel,
+        tags=['Chart of Accounts'],
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
+    )
+    def update_account(self, account_id: int, **kwargs) -> Dict[str, Any]:
+        logger.info(f"Processing update account request for account_id: {account_id}")
+        
+        try:
+            # Get and validate request data
+            data = validate_request_data(request, AccountUpdateRequestModel)
+            if not isinstance(data, AccountUpdateRequestModel):
+                return data
+                
+            return self._update_account_record(request, account_id, data)
+        except Exception as e:
+            logger.error(f"Failed to update account: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
 
 
     @http.route('/api/v1/accounts/<int:account_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
@@ -179,6 +204,31 @@ class AccountAPI(http.Controller):
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create account: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request',
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
+            )
+        
+    def _update_account_record(self, request, account_id: int, account_model: AccountUpdateRequestModel) -> Dict[str, Any]:
+        company_id = get_company_from_headers(request)
+        if not isinstance(company_id, int):
+                return company_id
+        
+        account_service = AccountService(request.env)
+        is_valid, error_message = account_service.validate_account(account_id, company_id)
+        if not is_valid:
+            return APIResponse.error_response(message=f'Invalid account: {error_message}', errors=f'Invalid account_id: {account_id}')
+
+        account_vals = account_model.update_account_vals(request)
+
+        cursor = request.env.cr
+        try:
+            with cursor.savepoint():
+                account = AccountService(request.env).browse(account_id)
+                account.write(account_vals)
+                return self._prepare_success_response(account)
+        except Exception as e:
+            cursor.rollback()
+            logger.error(f"Failed to update account: {str(e)}")
             return APIResponse.error_response(message='Failed to process request',
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )

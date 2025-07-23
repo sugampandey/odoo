@@ -46,7 +46,32 @@ class AccountCreateRequestModel(BaseModel):
             'company_id': company_id,
             'currency_id': currency_id
         }
+    
 
+class AccountUpdateRequestModel(BaseModel):
+    Name: Optional[str] = Field(None, min_length=1, max_length=256)
+    AcctNum: Optional[str] = Field(None, description="Account Number")
+    AccountSubType: Optional[str] = Field(None, description="Sub-type of account")
+    CurrencyRef: Optional[RefModel] = Field(None, description="Currency reference")
+    
+    def update_account_vals(self, request) -> dict:
+        vals = {}
+
+        if self.Name is not None:
+            vals['name'] = self.Name
+            
+        if self.AcctNum is not None:
+            vals['account_number'] = self.AcctNum
+            
+        if self.AccountSubType is not None:
+            vals['sub_type_code'] = self.AccountSubType
+            
+        if self.CurrencyRef is not None:
+            currency_service = CurrencyService(request.env)
+            vals['currency_id'] = currency_service.get_currency_id(self.CurrencyRef.value)
+            
+        return vals
+    
 
 class AccountModel(BaseModel):
     Id: Optional[int] = Field(None, description="Unique identifier for the account")
