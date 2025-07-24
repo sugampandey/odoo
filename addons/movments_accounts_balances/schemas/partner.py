@@ -96,6 +96,7 @@ class BasePartnerUpdateRequestModel(BaseModel):
     PrimaryPhone: Optional[PhoneNumberModel] = Field(None, description="Primary phone number")
     BillAddr: Optional[BillAddrModel] = Field(None, description="Billing address")
     Suffix: Optional[str] = Field(None, description="Name suffix")
+    Active: Optional[bool] = Field(None, description="Active status")
 
     class Config:
         from_attributes = True
@@ -135,6 +136,9 @@ class BasePartnerUpdateRequestModel(BaseModel):
             
         if self.GivenName is not None:
             contact_vals['name'] = self.GivenName
+
+        if self.Active is not None:
+            contact_vals['active'] = self.Active
             
         return contact_vals
 

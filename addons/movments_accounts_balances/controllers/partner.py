@@ -213,15 +213,13 @@ class PartnerAPI(http.Controller):
         tags=['Vendors'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
-    def delete_vendor(self, vendor_id, **kwargs):
-        cursor = request.env.cr
+    def delete_vendor(self, vendor_id: int, company_id: int, **kwargs) -> Dict[str, Any]:
+        logger.info(f"Processing delete vendor request for vendor_id: {vendor_id}")    
         try:
-            with cursor.savepoint():
-                self.delete_partner(vendor_id)
-                return APIResponse.success_response({'message':'Venodr deleted successfully'})
+            return self.delete_partner(vendor_id, company_id, True)
         except Exception as e:
-            cursor.rollback()  
-            return APIResponse.error_response(message='An error occurred while deleting the vendor', errors=str(e), status=500)
+            logger.error(f"Failed to delete vendor: {str(e)}")
+            return APIResponse.error_response(message='An error occurred while deleting the vendor', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
     @http.route('/api/v1/vendors/<int:vendor_id>', type='http', auth='public', methods=['PUT'], csrf=False, cors="*")
     @validate_token_middleware
@@ -280,16 +278,13 @@ class PartnerAPI(http.Controller):
         tags=['Customers'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
-    def delete_customer(self, customer_id, **kwargs):
-        cursor = request.env.cr
+    def delete_customer(self, customer_id: int, company_id: int, **kwargs) -> Dict[str, Any]:
+        logger.info(f"Processing delete customer request for customer_id: {customer_id}")
         try:
-            with cursor.savepoint():
-                self.delete_partner(customer_id)
-                return APIResponse.success_response({'message':'Customer deleted successfully'})
+            return self.delete_partner(customer_id, company_id, False)
         except Exception as e:
-            cursor.rollback()  
-            return APIResponse.error_response(message='An error occurred while deleting the customer', errors=str(e), status=500)
-        
+            logger.error(f"Failed to delete customer: {str(e)}")
+            return APIResponse.error_response(message='An error occurred while deleting the customer', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
 
     def _create_partner_record(self, request, partner_model: Union[CustomerCreateRequestModel, VendorCreateRequestModel], is_vendor: bool) -> Dict[str, Any]:
@@ -310,7 +305,7 @@ class PartnerAPI(http.Controller):
         try:
             with cursor.savepoint():
                 partner = self._save_partner(request, partner_vals)
-                return self._prepare_success_response(partner, is_vendor)
+                return self._prepare_success_response(partner, is_vendor, status=HTTPStatus.CREATED)
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create partner: {str(e)}")
@@ -324,9 +319,9 @@ class PartnerAPI(http.Controller):
             return company_id
         
         partner_service = PartnerService(request.env)
-        is_valid, error_message = partner_service.validate_partner(vendor_id, company_id)
-        if not is_valid:
-            return APIResponse.error_response(message=f'Invalid vendor: {error_message}', errors=f'Invalid vendor_id: {vendor_id}')
+        # is_valid, error_message = partner_service.validate_partner(vendor_id, company_id)
+        # if not is_valid:
+        #     return APIResponse.error_response(message=f'Invalid vendor: {error_message}', errors=f'Invalid vendor_id: {vendor_id}')
 
         vendor_vals = vendor_model.update_vendor_vals()
 
@@ -349,9 +344,9 @@ class PartnerAPI(http.Controller):
             return company_id
         
         partner_service = PartnerService(request.env)
-        is_valid, error_message = partner_service.validate_partner(customer_id, company_id)
-        if not is_valid:
-            return APIResponse.error_response(message=f'Invalid customer: {error_message}', errors=f'Invalid customer_id: {customer_id}')
+        # is_valid, error_message = partner_service.validate_partner(customer_id, company_id)
+        # if not is_valid:
+        #     return APIResponse.error_response(message=f'Invalid customer: {error_message}', errors=f'Invalid customer_id: {customer_id}')
 
         customer_vals = customer_model.update_customer_vals()
 
@@ -373,13 +368,13 @@ class PartnerAPI(http.Controller):
         partner = partner_service.create(partner_vals)
         return partner
     
-    def _prepare_success_response(self, partner: Any, is_vendor:bool) -> Dict[str, Any]:
+    def _prepare_success_response(self, partner: Any, is_vendor:bool, status: Optional[Any] = HTTPStatus.OK) -> Dict[str, Any]:
         if is_vendor:
             response_data = VendorResponseModel.create_vendor_response(partner)
         else:
             response_data = CustomerResponseModel.create_customer_response(partner)
         return APIResponse.success_response(response_data.model_dump(mode='json'),
-            status=HTTPStatus.CREATED
+            status=status
         )
 
     def _build_search_domain(self, DisplayName: Optional[str], company_id: int, active: Optional[str], is_vendor: bool
@@ -468,11 +463,31 @@ class PartnerAPI(http.Controller):
         return APIResponse.success_response(response_data.model_dump(mode='json'))
     
 
-    def delete_partner(self, partner_id):
+    def delete_partner(self, partner_id: int, company_id: int, is_vendor: bool):
+        company_service = CompanyService(request.env)
         partner_service = PartnerService(request.env)
-        partner = partner_service.browse(partner_id)
-        if not partner.exists():
-            return APIResponse.error_response(message='Partner not found', errors='Invalid partner_id', status=404)
-            
-        # partner.unlink()  # Delete the partner
-        partner.write({'active': False})
+        
+        # Validate company
+        is_valid, error_message = company_service.validate_company(company_id)
+        if not is_valid:
+            return APIResponse.error_response(message=f'Invalid company: {error_message}',
+                errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+            )
+        
+        # Validate partner
+        partner_type = "vendor" if is_vendor else "customer"
+        is_valid, error_message = partner_service.validate_partner(partner_id, company_id)
+        if not is_valid:
+            return APIResponse.error_response(message=f'Invalid {partner_type}: {error_message}',
+                errors=f'Invalid {partner_type}_id: {partner_id}', status=HTTPStatus.BAD_REQUEST
+            )
+        cursor = request.env.cr
+        try:
+            with cursor.savepoint():
+                partner = partner_service.browse(partner_id)
+                partner.write({'active': False})
+                return APIResponse.success_response({'message':f'{partner_type} deleted successfully'})
+        except Exception as e:
+            cursor.rollback()  
+            return APIResponse.error_response(message=f'An error occurred while deleting the {partner_type}', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+

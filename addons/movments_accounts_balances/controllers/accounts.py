@@ -148,32 +148,38 @@ class AccountAPI(http.Controller):
         tags=['Chart of Accounts'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
-    def delete_account(self, account_id, **kwargs):
+    def delete_account(self, account_id: int, company_id: int) -> Dict[str, Any]:
+        logger.info(f"Processing delete account request for account_id: {account_id}")
+        
+        cursor = request.env.cr
         try:
             company_service = CompanyService(request.env)
             account_service = AccountService(request.env)
-            company_id = int(kwargs.get('company_id')) if kwargs.get('company_id') else kwargs.get('company_id')
-            if not company_id:
-                return APIResponse.error_response(message='Company ID not provided', errors='company_id is required')
             
             # Validate company
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
-                return APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
+                return APIResponse.error_response(message=f'Invalid company: {error_message}',
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                )
             
             # Validate account
             is_valid, error_message = account_service.validate_account(account_id, company_id)
             if not is_valid:
-                return APIResponse.error_response(f'Invalid account: {error_message}', f'Invalid account_id: {account_id}')
+                return APIResponse.error_response(message=f'Invalid account: {error_message}',
+                    errors=f'Invalid account_id: {account_id}', status=HTTPStatus.BAD_REQUEST
+                )
         
-            # Retrieve the account
-            account = account_service.browse(account_id)
-
             # Delete the account
-            account.write({'deprecated': True})
-            return APIResponse.success_response()
+            account = account_service.browse(account_id)
+            with cursor.savepoint():
+                account.write({'deprecated': True})
+            
+            return APIResponse.success_response({'message':'Account deleted successfully'})
         except Exception as e:
-            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=500)
+            cursor.rollback()
+            logger.error(f"Failed to delete account: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
       
     @http.route('/api/v1/account-types', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
@@ -200,7 +206,7 @@ class AccountAPI(http.Controller):
         try:
             with cursor.savepoint():
                 account = self._save_account(request, account_vals, payment_method)
-                return self._prepare_success_response(account)
+                return self._prepare_success_response(account, status=HTTPStatus.CREATED)
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create account: {str(e)}")
@@ -212,11 +218,6 @@ class AccountAPI(http.Controller):
         company_id = get_company_from_headers(request)
         if not isinstance(company_id, int):
                 return company_id
-        
-        account_service = AccountService(request.env)
-        is_valid, error_message = account_service.validate_account(account_id, company_id)
-        if not is_valid:
-            return APIResponse.error_response(message=f'Invalid account: {error_message}', errors=f'Invalid account_id: {account_id}')
 
         account_vals = account_model.update_account_vals(request)
 
@@ -249,10 +250,10 @@ class AccountAPI(http.Controller):
         journal_service.create(journal_vals)
         return account
 
-    def _prepare_success_response(self, account: Any) -> Dict[str, Any]:
+    def _prepare_success_response(self, account: Any, status: Optional[Any] = HTTPStatus.OK) -> Dict[str, Any]:
         response_data = AccountResponseModel.create_account_response(account)
         return APIResponse.success_response(response_data.model_dump(mode='json'),
-            status=HTTPStatus.CREATED
+            status=status
         )
     
     def _build_search_domain(self, name: Optional[str], account_type: Optional[str],

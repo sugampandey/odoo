@@ -53,6 +53,7 @@ class AccountUpdateRequestModel(BaseModel):
     AcctNum: Optional[str] = Field(None, description="Account Number")
     AccountSubType: Optional[str] = Field(None, description="Sub-type of account")
     CurrencyRef: Optional[RefModel] = Field(None, description="Currency reference")
+    Active: Optional[bool] = Field(None, description="Whether the account is active")
     
     def update_account_vals(self, request) -> dict:
         vals = {}
@@ -69,6 +70,9 @@ class AccountUpdateRequestModel(BaseModel):
         if self.CurrencyRef is not None:
             currency_service = CurrencyService(request.env)
             vals['currency_id'] = currency_service.get_currency_id(self.CurrencyRef.value)
+
+        if self.Active is not None:
+            vals['deprecated'] = not self.Active
             
         return vals
     
