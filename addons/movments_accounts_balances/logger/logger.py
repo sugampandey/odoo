@@ -12,7 +12,7 @@ class CustomLogger:
         self.logger.handlers = []
         
         # Create logs directory if it doesn't exist
-        self.log_dir = os.path.join('logs')
+        self.log_dir = os.path.join('../logs')
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
         
