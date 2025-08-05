@@ -7,7 +7,7 @@ from ..middleware.auth_middleware import validate_token_middleware
 from ..utils import APIResponse, get_company_from_headers, validate_request_data, validate_pagination_params
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
-from ..schemas.analytic_account import AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassCreateRequestModel
+from ..schemas.analytic_account import AnalyticClassModel, AnalyticClassListResponseModel, AnalyticClassResponseModel, AnalyticClassCreateRequestModel, AnalyticClassUpdateRequestModel
 from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
 from ..repositories.analytic_account import AnalyticAccountService, AnalyticPlanService
 from ..repositories.company import CompanyService
@@ -136,38 +136,83 @@ class AnalyticAccountAPI(http.Controller):
         tags=['Analytic Classes'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
-    def delete_analytic_account(self, analytic_class_id, **kwargs):
+    def delete_analytic_account(self, analytic_class_id: int, company_id: int) -> Dict[str, Any]:
+        logger.info(f"Processing delete analutic account request for account_id: {analytic_class_id}")
+        
+        cursor = request.env.cr
         try:
             company_service = CompanyService(request.env)
             analytic_account_service = AnalyticAccountService(request.env)
 
-            analytic_account_id = analytic_class_id
-            company_id = int(kwargs.get('company_id')) if kwargs.get('company_id') else kwargs.get('company_id')
-            if not company_id:
-                return APIResponse.error_response(message='Company ID not provided', errors='company_id is required')
-            
             # Validate company
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
-                return APIResponse.error_response(f'Invalid company: {error_message}', f'Invalid company_id: {company_id}')
+                return APIResponse.error_response(message=f'Invalid company: {error_message}',
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                )
+
+            analytic_account_id = analytic_class_id
+            # Validate analytic account
+            is_valid, error_message = analytic_account_service.validate_analytic_account(analytic_account_id, company_id)
+            if not is_valid:
+                return APIResponse.error_response(message=f'Invalid analytic class: {error_message}',
+                    errors=f'Invalid analytic_class_id: {analytic_account_id}', status=HTTPStatus.BAD_REQUEST
+                )
         
-            # Attempt to retrieve the analytic account using the provided ID
-            account = analytic_account_service.browse(analytic_account_id)
-
-            # Check if the analytic account actually exists
-            if not account.exists():
-                raise ValidationError(f"Analytic class with ID {analytic_account_id} does not exist.")
+            # Delete the account
+            analytic_account = analytic_account_service.browse(analytic_account_id)
+            with cursor.savepoint():
+                analytic_account.write({'active': False})
             
-            if account.company_id.id != company_id:
-                return APIResponse.error_response(message='Analytic class does not belong to the specified company', errors=f'Analytic account {analytic_account_id} does not belong to company {company_id}')
-
-            # Delete the analytic account
-            account.write({'active': False})
-
             return APIResponse.success_response({'message':'Analytic class deactivated successfully'})
         except Exception as e:
-            return APIResponse.error_response(message='An error occurred while deactivating the analytic class', errors=str(e), status=500)
+            cursor.rollback()
+            logger.error(f"Failed to delete analytic account: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
+    @http.route('/api/v1/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['PUT'], csrf=False, cors="*")
+    @validate_token_middleware
+    @swagger_gen.swagger_doc(
+        operation='put',
+        resource_name='analytic-account',
+        request_model=AnalyticClassUpdateRequestModel,
+        response_model=AnalyticClassResponseModel,
+        tags=['Analytic Classes'],
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
+    )
+    def update_analytic_account(self, analytic_class_id: int, **kwargs) -> Dict[str, Any]:
+        logger.info(f"Processing update analytic account request for analytic_class_id: {analytic_class_id}")
+        
+        try:
+            # Get and validate request data
+            data = validate_request_data(request, AnalyticClassUpdateRequestModel)
+            if not isinstance(data, AnalyticClassUpdateRequestModel):
+                return data
+                
+            return self._update_analytic_account_record(request, analytic_class_id, data)
+        except Exception as e:
+            logger.error(f"Failed to update analytic account: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def _update_analytic_account_record(self, request, analytic_class_id: int, analytic_account_model: AnalyticClassUpdateRequestModel) -> Dict[str, Any]:
+        company_id = get_company_from_headers(request)
+        if not isinstance(company_id, int):
+            return company_id
+        
+        analytic_account_vals = analytic_account_model.update_analytic_class_vals()
+        cursor = request.env.cr
+        try:
+            with cursor.savepoint():
+                analytic_account = AnalyticAccountService(request.env).browse(analytic_class_id)
+                analytic_account.write(analytic_account_vals)
+                return self._prepare_success_response(analytic_account)
+        except Exception as e:
+            cursor.rollback()
+            logger.error(f"Failed to update analytic account: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request',
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
+            )
+
     def _create_analytic_account_record(self, request, analytic_account_model: AnalyticClassCreateRequestModel) -> Dict[str, Any]:
         company_id = get_company_from_headers(request)
         if not isinstance(company_id, int):  # If error response
@@ -179,7 +224,7 @@ class AnalyticAccountAPI(http.Controller):
         try:
             with cursor.savepoint():
                 analytic_account = self._save_analytic_account(request, analytic_account_vals)
-                return self._prepare_success_response(analytic_account)
+                return self._prepare_success_response(analytic_account, status=HTTPStatus.CREATED)
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create Analytic Class: {str(e)}")
@@ -200,10 +245,10 @@ class AnalyticAccountAPI(http.Controller):
         analytic_account = analytic_account_service.create(analytic_account_vals)
         return analytic_account
     
-    def _prepare_success_response(self, analytic_account: Any) -> Dict[str, Any]:
+    def _prepare_success_response(self, analytic_account: Any, status: Optional[Any] = HTTPStatus.OK) -> Dict[str, Any]:
         response_data = AnalyticClassResponseModel.create_analytic_class_response(analytic_account)
         return APIResponse.success_response(response_data.model_dump(mode='json'),
-            status=HTTPStatus.CREATED
+            status=status
         )
         
     def _build_search_domain(self, company_id: int, active: Optional[str]

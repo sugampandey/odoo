@@ -128,32 +128,61 @@ class JournalEntryAPI(http.Controller):
         tags=['Journal Entries'],
         additional_headers=ACCESS_TOKEN_HEADER
     )
-    def delete_journal_entry(self, journal_entry_id, **kwargs):
+    def delete_journal_entry(self, journal_entry_id: int, company_id: int):
         """
         Deletes a specific journal entry by its ID.
-
-        :param request: The HTTP request object containing the journal entry ID.
-        :return: A dictionary containing a success message or an error message.
         """
         cursor = request.env.cr
         try:
+            company_service = CompanyService(request.env)
+            account_move_service = AccountMoveService(request.env)
+
+            # Validate company
+            is_valid, error_message = company_service.validate_company(company_id)
+            if not is_valid:
+                return APIResponse.error_response(message=f'Invalid company: {error_message}',
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                )
+            
+            # Validate account move
+            is_valid, error_message = account_move_service.validate_journal_entry(journal_entry_id, company_id)
+            if not is_valid:
+                return APIResponse.error_response(message=f'Invalid Journal Entry: {error_message}',
+                    errors=f'Invalid journal_entry_id: {journal_entry_id}', status=HTTPStatus.BAD_REQUEST
+                )
+            
             with cursor.savepoint():
-                account_move_service = AccountMoveService(request.env)
                 move = account_move_service.browse(int(journal_entry_id))
                 if not move.exists():
                     return APIResponse.error_response(message='Journal entry not found', errors='Journal entry not found', status=404)
 
                 # Check the state of the journal entry
                 if move.state == 'posted':
-                    # Reset to draft first
-                    move.button_draft()
-                    # Then delete
-                    move.with_context(send_webhook=True).unlink()
-                    return APIResponse.success_response(message="Journal entry deleted successfully", data=None)
+                    # Check if this is already a reversal entry
+                    if move.reversed_entry_id:
+                        return APIResponse.error_response(
+                            message='Cannot reverse a reversal entry', 
+                            errors=f'Journal entry {journal_entry_id} is already a reversal of entry {move.reversed_entry_id.id}', 
+                        )
+                    # Check if already reversed (find if any entry has this as reversed_entry_id)
+                    existing_reversal = account_move_service.search([('reversed_entry_id', '=', journal_entry_id)], limit=1)
+                    if existing_reversal:
+                        return APIResponse.error_response(
+                            message='Journal entry already reversed', 
+                            errors=f'Journal entry {journal_entry_id} was already reversed by entry {existing_reversal.id}', 
+                        )
+                    reversal = move._reverse_moves()
+                    reversal.action_post()
+                    return APIResponse.success_response({
+                        "message": "Journal entry reversed", 
+                        "original_entry_id": journal_entry_id,
+                        "reversed_entry_id": reversal.id, 
+                        "reversed_name": reversal.name
+                    })
                 elif move.state == 'draft':
                     # If in draft state, can delete directly
                     move.with_context(send_webhook=True).unlink()
-                    return APIResponse.success_response(message="Journal entry deleted successfully", data=None)
+                    return APIResponse.success_response({"message":"DRAFT - Journal entry deleted successfully"})
                 else:
                     return APIResponse.error_response(message=f'Cannot delete journal entry in {move.state} state', errors=f'Invalid journal entry state: {move.state}')
         except Exception as e:
@@ -220,7 +249,7 @@ class JournalEntryAPI(http.Controller):
         return journal_entry
 
     def _prepare_success_response(self, journal_entry: Any) -> Dict[str, Any]:
-        response_data = JournalEntryResponseModel.create_journal_entry_response(journal_entry)
+        response_data = JournalEntryResponseModel.create_journal_entry_response(request, journal_entry)
         return APIResponse.success_response(response_data.model_dump(mode='json'),
             status=HTTPStatus.CREATED
         )
@@ -281,7 +310,7 @@ class JournalEntryAPI(http.Controller):
         )
 
     def _prepare_list_response(self, journal_entries: Any, total_count: int, start_position: int) -> Dict[str, Any]:
-        journal_entry_data = [JournalEntryModel.journal_entry_object(journal_entry) for journal_entry in journal_entries]
+        journal_entry_data = [JournalEntryModel.journal_entry_object(request, journal_entry) for journal_entry in journal_entries]
         
         response_data = JournalEntryListResponseModel.list_journal_entry_response(
             journal_entry_data, total_count, start_position, len(journal_entries)

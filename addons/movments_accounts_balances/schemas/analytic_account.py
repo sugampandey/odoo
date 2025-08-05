@@ -25,6 +25,21 @@ class AnalyticClassCreateRequestModel(BaseModel):
             "company_id": company_id
         }
 
+class AnalyticClassUpdateRequestModel(BaseModel):
+    Name: Optional[str] = Field(None, min_length=1, max_length=256)
+    Active: Optional[bool] = None
+
+    class Config:
+        from_attributes = True
+
+    def update_analytic_class_vals(self) -> dict:
+        vals = {}
+        if self.Name is not None:
+            vals["name"] = self.Name
+        if self.Active is not None:
+            vals["active"] = self.Active
+        return vals
+
 
 class AnalyticClassModel(BaseModel):
     Name: str = Field(..., min_length=1, max_length=256)

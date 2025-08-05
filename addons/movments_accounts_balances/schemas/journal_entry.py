@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Union
 from .common import MetaDataModel, PaginationResponseModel, RefModel
 from ..enums import PostingType, DetailType
-from ..repositories.journal import JournalService
+from ..repositories.account_move import AccountMoveService
 
 # description = ref
 # account_ref ={name-name, value-id}
@@ -225,6 +225,15 @@ class LineResponseModel(BaseModel):
         return move_line.debit if move_line.debit != 0 else move_line.credit
 
 
+class ReversalInfoModel(BaseModel):
+    Type: str = Field(..., description="Type: 'reversed_by' or 'reversal_of'")
+    Id: Optional[int] = Field(None, description="Related entry ID")
+    Name: Optional[str] = Field(None, description="Related entry name")
+    
+    class Config:
+        from_attributes = True
+
+
 class JournalEntryModel(BaseModel):
     Line: List[LineResponseModel] = Field(..., description="Journal entry lines")
     SyncToken: Optional[str] = Field(None, description="Sync token")
@@ -235,6 +244,7 @@ class JournalEntryModel(BaseModel):
     Id: Optional[int] = Field(None, description="Journal entry ID")
     TxnTaxDetail: Optional[dict] = Field(None, description="Transaction tax details")
     MetaData: Optional[MetaDataModel] = Field(None, description="Metadata")
+    ReversalInfo: Optional[ReversalInfoModel] = Field(None, description="Reversal relationship info")
 
     class Config:
         json_encoders = {
@@ -243,7 +253,7 @@ class JournalEntryModel(BaseModel):
         from_attributes = True
 
     @classmethod
-    def journal_entry_object(cls, journal_entry):
+    def journal_entry_object(cls, request, journal_entry):
         # description = ref
         # account_ref ={name-name, value-id}
         # class_ref ={name-name, value-id}
@@ -257,11 +267,35 @@ class JournalEntryModel(BaseModel):
                 CreateTime=journal_entry.create_date,
                 LastUpdatedTime=journal_entry.write_date
             )
+            # Determine reversal relationship
+            reversal_info = None
+            
+            # Check if this entry was reversed by another entry
+            account_move_service = AccountMoveService(request.env)
+            reversed_by_entry = account_move_service.search([
+                ('reversed_entry_id', '=', journal_entry.id)
+            ], limit=1)
+            
+            if reversed_by_entry:
+                # This is an original entry that was reversed
+                reversal_info = ReversalInfoModel(
+                    Type="reversed_by",
+                    Id=reversed_by_entry.id,
+                    Name=reversed_by_entry.name
+                )
+            elif journal_entry.reversed_entry_id:
+                # This is a reversal entry
+                reversal_info = ReversalInfoModel(
+                    Type="reversal_of", 
+                    Id=journal_entry.reversed_entry_id.id,
+                    Name=journal_entry.reversed_entry_id.name
+                )
             return cls(
                 Line=LineResponseModel.create_journal_lines(journal_entry),
                 MetaData=meta_data,
                 Id=journal_entry.id,
-                TxnDate=journal_entry.date
+                TxnDate=journal_entry.date,
+                ReversalInfo=reversal_info
             )
         except Exception as e:
             raise ValueError(f"Error converting: {str(e)}")
@@ -278,9 +312,9 @@ class JournalEntryResponseModel(BaseModel):
         from_attributes = True
 
     @classmethod
-    def create_journal_entry_response(cls, journal_entry: JournalEntryModel) -> "JournalEntryResponseModel":
+    def create_journal_entry_response(cls, request, journal_entry: JournalEntryModel) -> "JournalEntryResponseModel":
         return cls(
-            JournalEntry=JournalEntryModel.journal_entry_object(journal_entry),
+            JournalEntry=JournalEntryModel.journal_entry_object(request, journal_entry),
             time=datetime.now(timezone.utc)
         )
     
