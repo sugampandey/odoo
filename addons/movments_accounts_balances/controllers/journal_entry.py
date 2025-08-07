@@ -1,14 +1,15 @@
 from datetime import datetime
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
+from ..enums import DetailType, PostingType
 from odoo import http
 from odoo.http import request
 from ..middleware.auth_middleware import validate_token_middleware
 from ..utils import APIResponse, get_company_from_headers, validate_request_data, validate_pagination_params
 from ..logger.logger import logger
 from ..swagger.swagger_generator import swagger_gen
-from ..schemas.journal_entry import (JournalEntryRequestModel, JournalEntryModel, JournalEntryResponseModel, JournalEntryListResponseModel, JournalEntryUpdateRequestModel)
-from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS
+from ..schemas.journal_entry import (EntityModel, JournalEntryLineDetailModel, JournalEntryRequestModel, JournalEntryModel, JournalEntryResponseModel, JournalEntryListResponseModel, JournalEntryUpdateRequestModel, LineRequestModel)
+from ..schemas.common import ACCESS_TOKEN_HEADER, COMPANY_HEADERS, RefModel
 from ..repositories.account_move import AccountMoveService
 from ..repositories.company import CompanyService
 from ..repositories.journal import JournalService
@@ -263,7 +264,7 @@ class JournalEntryAPI(http.Controller):
                     )
 
                 # Merge update data with original entry
-                merged_data = journal_entry_model.merge_with_original(original_move)
+                merged_data = self.merge_update_with_original(journal_entry_model, original_move)
                 
                 # Reverse and create new entry
                 reversal = original_move._reverse_moves()
@@ -283,6 +284,48 @@ class JournalEntryAPI(http.Controller):
             cursor.rollback()
             logger.error(f"Failed to update journal entry: {str(e)}")
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+        
+    def merge_update_with_original(self, update_model: JournalEntryUpdateRequestModel, original_entry) -> JournalEntryRequestModel:
+        """Merge update data with original entry data"""
+        merged_lines = []
+        
+        for original_line in original_entry.line_ids:
+            # Find if this line has updates
+            update_line = None
+            if update_model.Line:
+                update_line = next((line for line in update_model.Line if line.Id == original_line.id), None)
+            
+            # Create merged line data
+            if update_line:                
+                merged_detail = JournalEntryLineDetailModel(
+                    PostingType=update_line.JournalEntryLineDetail.PostingType if update_line.JournalEntryLineDetail and update_line.JournalEntryLineDetail.PostingType else (PostingType.DEBIT if original_line.debit != 0 else PostingType.CREDIT),
+                    AccountRef=update_line.JournalEntryLineDetail.AccountRef if update_line.JournalEntryLineDetail and update_line.JournalEntryLineDetail.AccountRef else RefModel(name=original_line.account_id.name, value=str(original_line.account_id.id)),
+                    ClassRef=update_line.JournalEntryLineDetail.ClassRef if update_line.JournalEntryLineDetail and update_line.JournalEntryLineDetail.ClassRef else (RefModel(name=original_line.analytic_line_ids.account_id.name, value=str(original_line.analytic_line_ids.account_id.id)) if original_line.analytic_line_ids else None),
+                    Entity=update_line.JournalEntryLineDetail.Entity if update_line.JournalEntryLineDetail and update_line.JournalEntryLineDetail.Entity else (EntityModel(Type=original_line.partner_id.category_id.name if original_line.partner_id and original_line.partner_id.category_id else None, EntityRef=RefModel(name=original_line.partner_id.name, value=str(original_line.partner_id.id))) if original_line.partner_id else None)
+                )
+                
+                merged_line = LineRequestModel(
+                    JournalEntryLineDetail=merged_detail,
+                    DetailType=DetailType.JOURNAL_ENTRY,
+                    Amount=update_line.Amount if update_line.Amount is not None else (original_line.debit if original_line.debit != 0 else original_line.credit),
+                    Description=update_line.Description if update_line.Description is not None else (original_line.ref if original_line.ref else None),
+                )
+            else:
+                # Keep original line data
+                merged_detail = JournalEntryLineDetailModel.create_from_move_line(original_line)
+                merged_line = LineRequestModel(
+                    JournalEntryLineDetail=merged_detail,
+                    DetailType=DetailType.JOURNAL_ENTRY,
+                    Amount=original_line.debit if original_line.debit != 0 else original_line.credit,
+                    Description=original_line.ref if original_line.ref else None,
+                )
+            
+            merged_lines.append(merged_line)
+        
+        return JournalEntryRequestModel(
+            Line=merged_lines,
+            TxnDate=update_model.TxnDate if update_model.TxnDate else original_entry.date
+        )
         
 
     def _create_account_move_record(self, request, journal_entry_model: JournalEntryRequestModel) -> Dict[str, Any]:

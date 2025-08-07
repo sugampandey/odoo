@@ -212,54 +212,6 @@ class JournalEntryUpdateRequestModel(BaseModel):
     class Config:
         from_attributes = True
 
-    def merge_with_original(self, original_entry) -> 'JournalEntryRequestModel':
-        """Merge update data with original entry data"""
-        # Start with original data
-        merged_lines = []
-        
-        for original_line in original_entry.line_ids:
-            # Find if this line has updates
-            update_line = None
-            if self.Line:
-                update_line = next((line for line in self.Line if line.Id == original_line.id), None)
-            
-            # Create merged line data
-            if update_line:
-                # Merge updated fields with original
-                merged_detail = JournalEntryLineDetailModel(
-                    PostingType=update_line.JournalEntryLineDetail.PostingType if update_line.JournalEntryLineDetail and update_line.JournalEntryLineDetail.PostingType else (PostingType.DEBIT if original_line.debit != 0 else PostingType.CREDIT),
-                    AccountRef=update_line.JournalEntryLineDetail.AccountRef if update_line.JournalEntryLineDetail and update_line.JournalEntryLineDetail.AccountRef else RefModel(name=original_line.account_id.name, value=str(original_line.account_id.id)),
-                    ClassRef=update_line.JournalEntryLineDetail.ClassRef if update_line.JournalEntryLineDetail and update_line.JournalEntryLineDetail.ClassRef else (RefModel(name=original_line.analytic_line_ids.account_id.name, value=str(original_line.analytic_line_ids.account_id.id)) if original_line.analytic_line_ids else None),
-                    Entity=update_line.JournalEntryLineDetail.Entity if update_line.JournalEntryLineDetail and update_line.JournalEntryLineDetail.Entity else (EntityModel(Type=original_line.partner_id.category_id.name if original_line.partner_id and original_line.partner_id.category_id else None, EntityRef=RefModel(name=original_line.partner_id.name, value=str(original_line.partner_id.id))) if original_line.partner_id else None)
-                )
-                
-                merged_line = LineRequestModel(
-                    JournalEntryLineDetail=merged_detail,
-                    DetailType=update_line.DetailType if update_line.DetailType else DetailType.JOURNAL_ENTRY,
-                    Amount=update_line.Amount if update_line.Amount is not None else (original_line.debit if original_line.debit != 0 else original_line.credit),
-                    Description=update_line.Description if update_line.Description is not None else (original_line.ref if original_line.ref else None),
-                    Id=original_line.id
-                )
-            else:
-                # Keep original line data
-                merged_detail = JournalEntryLineDetailModel.create_from_move_line(original_line)
-                merged_line = LineRequestModel(
-                    JournalEntryLineDetail=merged_detail,
-                    DetailType=DetailType.JOURNAL_ENTRY,
-                    Amount=original_line.debit if original_line.debit != 0 else original_line.credit,
-                    Description=original_line.ref if original_line.ref else None,
-                    Id=original_line.id
-                )
-            
-            merged_lines.append(merged_line)
-        
-        # Create merged request model
-        return JournalEntryRequestModel(
-            Line=merged_lines,
-            CurrencyRef=self.CurrencyRef,
-            TxnDate=self.TxnDate if self.TxnDate else original_entry.date
-        )
-
 
 class DescriptionLineDetailModel(BaseModel):
     TaxCodeRef: Optional[RefModel] = Field(None, description="Tax code reference")
