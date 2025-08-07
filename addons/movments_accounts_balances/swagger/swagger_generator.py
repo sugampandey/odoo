@@ -26,7 +26,9 @@ class SwaggerGenerator:
                 # Register all definitions as separate schemas
                 for def_name, def_schema in value.items():
                     if def_name not in self.schemas:
-                        self.schemas[def_name] = self._process_schema(def_schema)
+                        # self.schemas[def_name] = self._process_schema(def_schema)
+                        processed_def = self._process_schema(def_schema)
+                        self.schemas[def_name] = processed_def
                 continue
                 
             elif isinstance(value, dict):
