@@ -34,43 +34,36 @@ class SwaggerGenerator:
             elif isinstance(value, dict):
                 if '$ref' in value:
                     # Transform reference
-                    ref = value['$ref'].split('/')[-1]
+                    ref_path = value['$ref']
+                    ref = ref_path.split('/')[-1]
                     processed_schema[key] = {'$ref': f'#/components/schemas/{ref}'}
                     # Preserve additional properties if they exist
                     for k, v in value.items():
                         if k != '$ref':
                             processed_schema[key][k] = v
                 elif 'anyOf' in value:
-                    # Check if this is a nullable reference pattern
-                    refs = [item for item in value['anyOf'] if '$ref' in item]
-                    null_types = [item for item in value['anyOf'] if item.get('type') == 'null']
-                    
-                    if len(refs) == 1 and len(null_types) == 1:
-                        # Convert to nullable reference
-                        ref = refs[0]['$ref'].split('/')[-1]
-                        processed_schema[key] = {
-                            '$ref': f'#/components/schemas/{ref}',
-                            'nullable': True
-                        }
-                        # Preserve description and default if present
-                        if 'description' in value:
-                            processed_schema[key]['description'] = value['description']
-                        if 'default' in value:
-                            processed_schema[key]['default'] = value['default']
-                    else:
-                        # Process anyOf references that aren't simple nullable patterns
-                        processed_anyof = []
-                        for item in value['anyOf']:
+                    processed_anyof = []
+                    for item in value['anyOf']:
+                        if isinstance(item, dict):
                             if '$ref' in item:
                                 ref = item['$ref'].split('/')[-1]
                                 processed_anyof.append({'$ref': f'#/components/schemas/{ref}'})
+                            elif 'items' in item and isinstance(item['items'], dict) and '$ref' in item['items']:
+                                # Handle array items with $ref
+                                ref = item['items']['$ref'].split('/')[-1]
+                                processed_item = item.copy()
+                                processed_item['items'] = {'$ref': f'#/components/schemas/{ref}'}
+                                processed_anyof.append(processed_item)
                             else:
-                                processed_anyof.append(item)
-                        processed_schema[key] = {'anyOf': processed_anyof}
-                        if 'default' in value:
-                            processed_schema[key]['default'] = value['default']
-                        if 'description' in value:
-                            processed_schema[key]['description'] = value['description']
+                                processed_anyof.append(self._process_schema(item) if isinstance(item, dict) else item)
+                        else:
+                            processed_anyof.append(item)
+                    
+                    processed_schema[key] = {'anyOf': processed_anyof}
+                    if 'default' in value:
+                        processed_schema[key]['default'] = value['default']
+                    if 'description' in value:
+                        processed_schema[key]['description'] = value['description']
                 elif 'items' in value:
                     # Process array items
                     processed_items = {}
@@ -112,9 +105,23 @@ class SwaggerGenerator:
             return
 
         self._registered_models.add(model)
-        schema = model.model_json_schema()
-        processed_schema = self._process_schema(schema)
-        self.schemas[model.__name__] = processed_schema
+        try:
+            schema = model.model_json_schema()
+            # First, extract and register all $defs as separate schemas
+            if '$defs' in schema:
+                for def_name, def_schema in schema['$defs'].items():
+                    if def_name not in self.schemas:
+                        processed_def = self._process_schema(def_schema)
+                        self.schemas[def_name] = processed_def
+            processed_schema = self._process_schema(schema)
+            self.schemas[model.__name__] = processed_schema
+        except Exception as e:
+            print(f"Error registering model {model.__name__}: {e}")
+            # Fallback to simple schema
+            self.schemas[model.__name__] = {
+                'type': 'object',
+                'description': f'Schema for {model.__name__} (processing error)'
+            }
 
 
     @staticmethod
