@@ -26,22 +26,20 @@ class SwaggerGenerator:
                 # Register all definitions as separate schemas
                 for def_name, def_schema in value.items():
                     if def_name not in self.schemas:
-                        # self.schemas[def_name] = self._process_schema(def_schema)
-                        processed_def = self._process_schema(def_schema)
-                        self.schemas[def_name] = processed_def
+                        self.schemas[def_name] = self._process_schema(def_schema)
                 continue
                 
             elif isinstance(value, dict):
                 if '$ref' in value:
                     # Transform reference
-                    ref_path = value['$ref']
-                    ref = ref_path.split('/')[-1]
+                    ref = value['$ref'].split('/')[-1]
                     processed_schema[key] = {'$ref': f'#/components/schemas/{ref}'}
                     # Preserve additional properties if they exist
                     for k, v in value.items():
                         if k != '$ref':
                             processed_schema[key][k] = v
                 elif 'anyOf' in value:
+                    # Process anyOf references
                     processed_anyof = []
                     for item in value['anyOf']:
                         if isinstance(item, dict):
@@ -59,11 +57,27 @@ class SwaggerGenerator:
                         else:
                             processed_anyof.append(item)
                     
-                    processed_schema[key] = {'anyOf': processed_anyof}
-                    if 'default' in value:
-                        processed_schema[key]['default'] = value['default']
-                    if 'description' in value:
-                        processed_schema[key]['description'] = value['description']
+                    # Check if this is a simple nullable reference pattern
+                    refs = [item for item in processed_anyof if isinstance(item, dict) and '$ref' in item]
+                    null_types = [item for item in processed_anyof if isinstance(item, dict) and item.get('type') == 'null']
+                    
+                    if len(refs) == 1 and len(null_types) == 1:
+                        # Convert to nullable reference
+                        processed_schema[key] = {
+                            '$ref': refs[0]['$ref'],
+                            'nullable': True
+                        }
+                        # Preserve description and default if present
+                        if 'description' in value:
+                            processed_schema[key]['description'] = value['description']
+                        if 'default' in value:
+                            processed_schema[key]['default'] = value['default']
+                    else:
+                        processed_schema[key] = {'anyOf': processed_anyof}
+                        if 'default' in value:
+                            processed_schema[key]['default'] = value['default']
+                        if 'description' in value:
+                            processed_schema[key]['description'] = value['description']
                 elif 'items' in value:
                     # Process array items
                     processed_items = {}
@@ -105,23 +119,9 @@ class SwaggerGenerator:
             return
 
         self._registered_models.add(model)
-        try:
-            schema = model.model_json_schema()
-            # First, extract and register all $defs as separate schemas
-            if '$defs' in schema:
-                for def_name, def_schema in schema['$defs'].items():
-                    if def_name not in self.schemas:
-                        processed_def = self._process_schema(def_schema)
-                        self.schemas[def_name] = processed_def
-            processed_schema = self._process_schema(schema)
-            self.schemas[model.__name__] = processed_schema
-        except Exception as e:
-            print(f"Error registering model {model.__name__}: {e}")
-            # Fallback to simple schema
-            self.schemas[model.__name__] = {
-                'type': 'object',
-                'description': f'Schema for {model.__name__} (processing error)'
-            }
+        schema = model.model_json_schema()
+        processed_schema = self._process_schema(schema)
+        self.schemas[model.__name__] = processed_schema
 
 
     @staticmethod
