@@ -195,7 +195,7 @@ class JournalEntryLineDetailUpdateModel(BaseModel):
         return v
 
 class LineUpdateRequestModel(BaseModel):
-    JournalEntryLineDetail: Optional[JournalEntryLineDetailUpdateModel] = Field(None)
+    JournalEntryLineDetail: Optional[JournalEntryLineDetailUpdateModel] = Field(None, description="Journal entry line detail")
     DetailType: Optional[str] = Field(None, description="Type of detail")
     Amount: Optional[float] = Field(None, description="Transaction amount")
     Description: Optional[str] = Field(None, description="Line item description")
