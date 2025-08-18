@@ -127,14 +127,17 @@ class JournalEntryAPI(http.Controller):
         operation='delete',
         resource_name='journal-entry',
         tags=['Journal Entries'],
-        additional_headers=ACCESS_TOKEN_HEADER
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
-    def delete_journal_entry(self, journal_entry_id: int, company_id: int):
+    def delete_journal_entry(self, journal_entry_id: int):
         """
         Deletes a specific journal entry by its ID.
         """
         cursor = request.env.cr
         try:
+            company_id = get_company_from_headers(request)
+            if not isinstance(company_id, int):
+                return company_id
             company_service = CompanyService(request.env)
             account_move_service = AccountMoveService(request.env)
 

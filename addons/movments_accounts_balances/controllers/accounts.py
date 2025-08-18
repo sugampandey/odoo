@@ -146,13 +146,16 @@ class AccountAPI(http.Controller):
         operation='delete',
         resource_name='account',
         tags=['Chart of Accounts'],
-        additional_headers=ACCESS_TOKEN_HEADER
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
-    def delete_account(self, account_id: int, company_id: int) -> Dict[str, Any]:
+    def delete_account(self, account_id: int) -> Dict[str, Any]:
         logger.info(f"Processing delete account request for account_id: {account_id}")
         
         cursor = request.env.cr
         try:
+            company_id = get_company_from_headers(request)
+            if not isinstance(company_id, int):
+                return company_id
             company_service = CompanyService(request.env)
             account_service = AccountService(request.env)
             

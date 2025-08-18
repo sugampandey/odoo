@@ -211,11 +211,14 @@ class PartnerAPI(http.Controller):
         operation='delete',
         resource_name='vendor',
         tags=['Vendors'],
-        additional_headers=ACCESS_TOKEN_HEADER
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
-    def delete_vendor(self, vendor_id: int, company_id: int, **kwargs) -> Dict[str, Any]:
+    def delete_vendor(self, vendor_id: int) -> Dict[str, Any]:
         logger.info(f"Processing delete vendor request for vendor_id: {vendor_id}")    
         try:
+            company_id = get_company_from_headers(request)
+            if not isinstance(company_id, int):
+                return company_id
             return self.delete_partner(vendor_id, company_id, True)
         except Exception as e:
             logger.error(f"Failed to delete vendor: {str(e)}")
@@ -276,11 +279,14 @@ class PartnerAPI(http.Controller):
         operation='delete',
         resource_name='customer',
         tags=['Customers'],
-        additional_headers=ACCESS_TOKEN_HEADER
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
-    def delete_customer(self, customer_id: int, company_id: int, **kwargs) -> Dict[str, Any]:
+    def delete_customer(self, customer_id: int) -> Dict[str, Any]:
         logger.info(f"Processing delete customer request for customer_id: {customer_id}")
         try:
+            company_id = get_company_from_headers(request)
+            if not isinstance(company_id, int):
+                return company_id
             return self.delete_partner(customer_id, company_id, False)
         except Exception as e:
             logger.error(f"Failed to delete customer: {str(e)}")

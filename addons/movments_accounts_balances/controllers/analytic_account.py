@@ -134,9 +134,9 @@ class AnalyticAccountAPI(http.Controller):
         operation='delete',
         resource_name='analytic-account',
         tags=['Analytic Classes'],
-        additional_headers=ACCESS_TOKEN_HEADER
+        additional_headers=ACCESS_TOKEN_HEADER + COMPANY_HEADERS
     )
-    def delete_analytic_account(self, analytic_class_id: int, company_id: int) -> Dict[str, Any]:
+    def delete_analytic_account(self, analytic_class_id: int) -> Dict[str, Any]:
         logger.info(f"Processing delete analutic account request for account_id: {analytic_class_id}")
         
         cursor = request.env.cr
@@ -144,6 +144,9 @@ class AnalyticAccountAPI(http.Controller):
             company_service = CompanyService(request.env)
             analytic_account_service = AnalyticAccountService(request.env)
 
+            company_id = get_company_from_headers(request)
+            if not isinstance(company_id, int):
+                return company_id
             # Validate company
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
