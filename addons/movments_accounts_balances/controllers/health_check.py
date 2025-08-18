@@ -1,6 +1,5 @@
 import json
 import time
-import psutil
 from datetime import datetime
 from odoo import http, api, SUPERUSER_ID
 from odoo.http import request
@@ -22,9 +21,6 @@ class HealthCheckController(http.Controller):
         try:
             # RDS (Database) health check
             health_status['checks']['rds'] = self._check_rds()
-            
-            # EC2 (System resources) health check
-            health_status['checks']['ec2'] = self._check_ec2()
             
             # API health check
             health_status['checks']['api'] = self._check_api()
@@ -90,55 +86,6 @@ class HealthCheckController(http.Controller):
                 
         except Exception as e:
             logger.error(f"RDS health check failed: {str(e)}")
-            return {
-                'status': 'fail',
-                'error': str(e)
-            }
-    
-    def _check_ec2(self):
-        """Check EC2 instance resources"""
-        try:
-            # CPU usage
-            cpu_percent = psutil.cpu_percent(interval=1)
-            
-            # Memory usage
-            memory = psutil.virtual_memory()
-            memory_percent = memory.percent
-            
-            # Disk usage
-            disk = psutil.disk_usage('/')
-            disk_percent = disk.percent
-            
-            # Status determination
-            status = 'pass'
-            warnings = []
-            
-            if cpu_percent > 80:
-                status = 'fail'
-                warnings.append(f'High CPU: {cpu_percent}%')
-            
-            if memory_percent > 85:
-                status = 'fail'
-                warnings.append(f'High memory: {memory_percent}%')
-            
-            if disk_percent > 90:
-                status = 'fail'
-                warnings.append(f'High disk: {disk_percent}%')
-            
-            return {
-                'status': status,
-                'details': {
-                    'cpu_percent': cpu_percent,
-                    'memory_percent': memory_percent,
-                    'disk_percent': disk_percent,
-                    'memory_available_gb': round(memory.available / (1024**3), 2),
-                    'disk_free_gb': round(disk.free / (1024**3), 2)
-                },
-                'warnings': warnings if warnings else None
-            }
-            
-        except Exception as e:
-            logger.error(f"EC2 health check failed: {str(e)}")
             return {
                 'status': 'fail',
                 'error': str(e)
