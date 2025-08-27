@@ -1,0 +1,34 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: "us-west-2"
+    IMAGE_REPO_NAME: "odoo16"
+  # Increase ephemeral storage if your build needs it
+  # (Console: CodeBuild project -> Additional configuration -> 50-100 GB)
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - REPOSITORY_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${REPOSITORY_URI}
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+  build:
+    commands:
+      - echo Build started on `date`
+      - docker build -t ${REPOSITORY_URI}:${IMAGE_TAG} .
+      - docker tag ${REPOSITORY_URI}:${IMAGE_TAG} ${REPOSITORY_URI}:latest
+  post_build:
+    commands:
+      - echo Pushing images...
+      - docker push ${REPOSITORY_URI}:${IMAGE_TAG}
+      - docker push ${REPOSITORY_URI}:latest
+      - echo Writing imagedefinitions.json for ECS deploy...
+      # IMPORTANT: "name" must match the **container name** in your task definition (we used "odoo16")
+      - printf '[{"name":"odoo16","imageUri":"%s"}]' ${REPOSITORY_URI}:${IMAGE_TAG} > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
