@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  odoo:
+    build: .
+    container_name: odoo16
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo_data:/var/lib/odoo        # persistent filestore
+      - ./logs:/var/log/odoo          # persistent logs (dev)
+      # Mount addons for fast local development
+      - ./addons:/opt/odoo/addons
+    env_file:
+      - .env
+    environment:
+      # dev or prod DB variables
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+
+volumes:
+  odoo_data:
