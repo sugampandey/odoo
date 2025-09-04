@@ -78,7 +78,7 @@ class ReportsAPI(http.Controller):
         additional_headers=ACCESS_TOKEN_HEADER
     )
     def get_account_balance(self, company_id, start_date=None, end_date=None, partner_id=None, 
-                           account_id=None, analytic_class_id=None, **kwargs):
+                           account_id=None, analytic_class_id=None, summarize_column_by=None, **kwargs):
         try:
             # Validate parameters
             is_valid, result = self.validate_report_request_params(company_id, start_date, end_date, partner_id, account_id, analytic_class_id)
@@ -100,7 +100,7 @@ class ReportsAPI(http.Controller):
                 return APIResponse.error_response(message=str(e))
 
             balance_sheet = prepare_account_balance_response(
-                request, start_date, end_date, int(company_id), domain
+                request, start_date, end_date, int(company_id), domain, None, summarize_column_by
             )
 
             return APIResponse.success_response(balance_sheet.model_dump(mode='json'))
@@ -180,6 +180,12 @@ class ReportsAPI(http.Controller):
                 return True, (start_date, end_date)
             except ValueError as e:
                 return False, str(e)
+        elif not start_date and not end_date:
+            # Set year-to-date if no dates provided
+            from datetime import date
+            today = date.today()
+            ytd_start = date(today.year, 1, 1)
+            return True, (ytd_start, today)
         
         return True, None
     
@@ -207,4 +213,4 @@ class ReportsAPI(http.Controller):
             ('account_id', '=', analytic_account_id)
         ])
         return analytic_lines.mapped('move_line_id').ids if analytic_lines else []
-    
+
