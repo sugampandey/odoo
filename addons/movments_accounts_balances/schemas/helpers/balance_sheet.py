@@ -4,7 +4,7 @@ from ...enums import ClassificationType
 from ...schemas.reports import DataRowModel
 from ...repositories.account import AccountService
 from ...repositories.account_move import AccountMoveLineService
-from .common import create_multi_col_data_row, create_section_multi_col, prepare_report_with_summarization
+from .common import create_multi_col_data_row, create_multi_col_data_row_bs, create_section_multi_col, prepare_report_with_summarization, get_summarized_data
 
 
 def prepare_account_balance_response(
@@ -25,11 +25,16 @@ def prepare_account_balance_response(
     ])
     domain.append(('account_id', 'in', accounts.ids))
 
+    # Get Balance Sheet specific data (running balances, no total column)
+    columns, balance_data = get_summarized_data(account_move_line_service, domain, start_date, end_date, summarize_column_by, "BS")
+
     return prepare_report_with_summarization(
         account_move_line_service, accounts, domain, start_date, end_date,
         "BalanceSheet", currency, summarize_column_by,
-        group_balance_sheet_accounts, build_balance_sheet_sections
+        group_balance_sheet_accounts, build_balance_sheet_sections,
+        columns, balance_data  # Pass pre-fetched data
     )
+
 
 def group_balance_sheet_accounts(accounts, balance_data):
     """Group accounts by internal_group and account_type for balance sheet."""
@@ -41,15 +46,17 @@ def group_balance_sheet_accounts(accounts, balance_data):
     }
 
     for account in accounts:
-        amounts, col_data = create_multi_col_data_row(account.id, account.name, balance_data)
+        # Use balance sheet specific function that handles empty strings
+        amounts, col_data = create_multi_col_data_row_bs(account.id, account.name, balance_data)
         
         if account.account_type not in totals[account.internal_group]['types']:
             totals[account.internal_group]['types'][account.account_type] = [0] * len(balance_data)
         
         for i, amount in enumerate(amounts):
-            val = float(amount)
-            totals[account.internal_group]['types'][account.account_type][i] += val
-            totals[account.internal_group]['total'][i] += val
+            if amount != "":  # Only add non-empty values to totals
+                val = float(amount)
+                totals[account.internal_group]['types'][account.account_type][i] += val
+                totals[account.internal_group]['total'][i] += val
 
         data_row = DataRowModel(ColData=col_data, type="Data")
         
@@ -72,11 +79,23 @@ def build_balance_sheet_sections(account_groups, totals, balance_data):
 
         for acc_type, accounts_list in type_data.items():
             if accounts_list:
-                total_amounts = [str(round(amt, 2)) for amt in totals[internal_group]['types'][acc_type]]
+                # Handle empty strings in totals
+                total_amounts = []
+                for amt in totals[internal_group]['types'][acc_type]:
+                    if amt == 0.0:
+                        total_amounts.append("")
+                    else:
+                        total_amounts.append(str(round(amt, 2)))
                 type_section = create_section_multi_col(acc_type.upper(), accounts_list, total_amounts)
                 type_sections.append(type_section)
 
-        total_amounts = [str(round(amt, 2)) for amt in totals[internal_group]['total']]
+        # Handle empty strings in main totals
+        total_amounts = []
+        for amt in totals[internal_group]['total']:
+            if amt == 0.0:
+                total_amounts.append("")
+            else:
+                total_amounts.append(str(round(amt, 2)))
         main_section = create_section_multi_col(group_name, type_sections, total_amounts)
         main_sections.append(main_section)
 

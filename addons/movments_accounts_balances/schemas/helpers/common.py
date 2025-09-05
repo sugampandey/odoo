@@ -85,18 +85,34 @@ def create_summary_section(title: str, amount: str, group: str) -> SectionRowMod
     )
 
 
-def get_summarized_data(service, domain, start_date, end_date, summarize_column_by):
+def get_summarized_data(service, domain, start_date, end_date, summarize_column_by, report_type="PL"):
     """Common function to get columns and balance data based on summarize_column_by."""
     
     if summarize_column_by in ["Month", "Week"]:
-        return get_time_data(service, domain, start_date, end_date, summarize_column_by)
+        columns, balance_data = get_time_data(service, domain, start_date, end_date, summarize_column_by, report_type)
+        
+        # Add Total column only for P&L reports
+        if report_type == "PL":
+            columns.Column.append(ColumnModel(
+                ColType="Money", 
+                ColTitle="Total",
+                MetaData=[MetaDataModel(Name="ColKey", Value="total")]
+            ))
+            
+            # Calculate totals for each account
+            total_balances = {}
+            for account_id in set().union(*[period_data.keys() for period_data in balance_data]):
+                total_balances[account_id] = sum(period_data.get(account_id, 0.0) for period_data in balance_data)
+            balance_data.append(total_balances)
+        
+        return columns, balance_data
     else:
         balances = service.read_group(domain=domain, fields=['account_id', 'balance'], groupby=['account_id'])
         balance_dict = {group['account_id'][0]: group['balance'] for group in balances}
         return create_column_definition(), [balance_dict]
 
 
-def get_time_data(service, domain, start_date, end_date, period_type):
+def get_time_data(service, domain, start_date, end_date, period_type, report_type="PL"):
     """Get time-based data with single query and limits."""
     
     start = start_date if isinstance(start_date, date) else datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -159,6 +175,7 @@ def get_time_data(service, domain, start_date, end_date, period_type):
         balance = result['balance']
         
         result_dt = parse_odoo_date(result_date)
+        period_key = None  # Initialize period_key
             
         if period_type == "Month":
             period_key = result_dt.strftime("%b %Y")
@@ -170,11 +187,12 @@ def get_time_data(service, domain, start_date, end_date, period_type):
                     period_key = period['key']
                     break
         
-        if account_id not in account_period_balances:
-            account_period_balances[account_id] = {}
-        account_period_balances[account_id][period_key] = balance
+        if period_key:
+            if account_id not in account_period_balances:
+                account_period_balances[account_id] = {}
+            account_period_balances[account_id][period_key] = balance
     
-    # Create columns and balance data
+    # Create columns
     columns = [ColumnModel(ColType="Account", ColTitle="", MetaData=[MetaDataModel(Name="ColKey", Value="account")])]
     for period in expected_periods:
         columns.append(ColumnModel(
@@ -187,12 +205,48 @@ def get_time_data(service, domain, start_date, end_date, period_type):
             ]
         ))
     
+    # Create balance data based on report type
     balance_data = []
-    for period in expected_periods:
-        period_balances = {account_id: period_data.get(period['key'], 0.0) for account_id, period_data in account_period_balances.items()}
-        balance_data.append(period_balances)
+    if report_type == "BS":  # Balance Sheet - Running balances
+        for i, period in enumerate(expected_periods):
+            period_balances = {}
+            for account_id, period_data in account_period_balances.items():
+                # Calculate running balance up to this period
+                running_balance = 0.0
+                has_activity = False
+                
+                for j in range(i + 1):  # Include current and all previous periods
+                    period_key = expected_periods[j]['key']
+                    if period_key in period_data:
+                        running_balance += period_data[period_key]
+                        has_activity = True
+                
+                # Use empty string if no activity from start, otherwise show running balance
+                period_balances[account_id] = running_balance if has_activity else ""
+            
+            balance_data.append(period_balances)
+    else:  # P&L - Period totals
+        for period in expected_periods:
+            period_balances = {account_id: period_data.get(period['key'], 0.0) 
+                             for account_id, period_data in account_period_balances.items()}
+            balance_data.append(period_balances)
     
     return ColumnsModel(Column=columns), balance_data
+
+
+def create_multi_col_data_row_bs(account_id, account_name, balance_data):
+    """Create data row with multiple columns for Balance Sheet (handles empty strings)."""
+    amounts = []
+    for i in range(len(balance_data)):
+        value = balance_data[i].get(account_id, "")
+        if value == "":
+            amounts.append("")
+        else:
+            amounts.append(str(round(float(value), 2)))
+    
+    col_data = [ColDataModel(id=str(account_id), value=account_name)]
+    col_data.extend([ColDataModel(value=amt) for amt in amounts])
+    return amounts, col_data
 
 
 def create_multi_col_data_row(account_id, account_name, balance_data):
@@ -246,17 +300,19 @@ def parse_odoo_date(result_date):
 
 def prepare_report_with_summarization(service, accounts, domain, start_date, end_date, 
                                     report_name, currency, summarize_column_by, 
-                                    account_grouping_func, section_builder_func):
+                                    account_grouping_func, section_builder_func,
+                                    columns=None, balance_data=None):
     """Generic function for reports with summarization support."""
     
-    # Get columns and balance data
-    if summarize_column_by in ["Month", "Week"]:
-        columns, balance_data = get_summarized_data(service, domain, start_date, end_date, summarize_column_by)
-    else:
-        account_balances = service.read_group(domain=domain, fields=['account_id', 'balance'], groupby=['account_id'])
-        balance_dict = {group['account_id'][0]: group['balance'] for group in account_balances}
-        columns = create_column_definition()
-        balance_data = [balance_dict]
+    # Get columns and balance data if not provided
+    if columns is None or balance_data is None:
+        if summarize_column_by in ["Month", "Week"]:
+            columns, balance_data = get_summarized_data(service, domain, start_date, end_date, summarize_column_by)
+        else:
+            account_balances = service.read_group(domain=domain, fields=['account_id', 'balance'], groupby=['account_id'])
+            balance_dict = {group['account_id'][0]: group['balance'] for group in account_balances}
+            columns = create_column_definition()
+            balance_data = [balance_dict]
 
     # Group accounts and calculate totals using provided function
     account_groups, totals = account_grouping_func(accounts, balance_data)
@@ -269,3 +325,4 @@ def prepare_report_with_summarization(service, accounts, domain, start_date, end
     main_sections = section_builder_func(account_groups, totals, balance_data)
 
     return ReportResponseModel(Header=header, Columns=columns, Rows=RowsModel(Row=main_sections))
+
