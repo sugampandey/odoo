@@ -122,7 +122,7 @@ class ReportsAPI(http.Controller):
         description='Get profit and loss report with optional filters for date range, partner, account, and analytic class',
         additional_headers=ACCESS_TOKEN_HEADER
     )
-    def get_profit_loss(self, company_id, start_date=None, end_date=None, **kwargs):
+    def get_profit_loss(self, company_id, start_date=None, end_date=None, summarize_column_by=None, **kwargs):
         try:
             # Validate parameters
             is_valid, result = self.validate_report_request_params(company_id, start_date, end_date)
@@ -136,7 +136,7 @@ class ReportsAPI(http.Controller):
             domain = self.build_report_domain(company_id, start_date, end_date)
 
             profit_loss = prepare_profit_loss_response(
-                request, start_date, end_date, int(company_id), domain
+                request, start_date, end_date, int(company_id), domain, None, summarize_column_by
             )
 
             return APIResponse.success_response(profit_loss.model_dump(mode='json'))

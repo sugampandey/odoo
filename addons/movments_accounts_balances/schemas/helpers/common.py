@@ -203,15 +203,6 @@ def create_multi_col_data_row(account_id, account_name, balance_data):
     return amounts, col_data
 
 
-def format_period(period, period_type):
-    """Format period for display."""
-    if period_type == "Month":
-        return period.replace(" ", " ")
-    elif period_type == "Week":
-        return f"Week {period.split('/')[1]} {period.split('/')[0]}"
-    return str(period)
-
-
 def create_section_multi_col(title, data_rows, total_amounts):
     """Create section with multiple columns."""
     header_cols = [ColDataModel(value=title)] + [ColDataModel(value="") for _ in total_amounts]
