@@ -13,6 +13,8 @@ from ..repositories.partner import PartnerService
 from ..repositories.account import AccountService
 from ..repositories.company import CompanyService
 from ..repositories.account_move import AccountMoveLineService
+from ..logger.logger import logger
+
 
 
 class ReportsAPI(http.Controller):
@@ -92,6 +94,7 @@ class ReportsAPI(http.Controller):
             domain = self.build_report_domain(
                 company_id, start_date, end_date, partner_id, account_id)
             
+            logger.info(f"get_account_balance called Domain: {domain}")
             try:
                 move_line_ids = self.get_analytic_move_line_ids(analytic_class_id)
                 if move_line_ids is not None:
@@ -134,6 +137,7 @@ class ReportsAPI(http.Controller):
             
             # Build search domain
             domain = self.build_report_domain(company_id, start_date, end_date)
+            logger.info(f"get_profit_loss called Domain: {domain}")
 
             profit_loss = prepare_profit_loss_response(
                 request, start_date, end_date, int(company_id), domain, None, summarize_column_by
