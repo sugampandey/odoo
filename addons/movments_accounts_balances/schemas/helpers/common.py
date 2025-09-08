@@ -66,7 +66,7 @@ def create_section(title: str, data_rows: List[Union[SectionRowModel, DataRowMod
         group=group,
         Summary=SummaryModel(
             ColData=[
-                ColDataModel(value=f"TOTAL {title}"),
+                ColDataModel(value=f"Total {title}"),
                 ColDataModel(value=total_value)
             ]
         )
@@ -263,7 +263,7 @@ def create_multi_col_data_row(account_id, account_name, balance_data):
 def create_section_multi_col(title, data_rows, group, total_amounts):
     """Create section with multiple columns."""
     header_cols = [ColDataModel(value=title)] + [ColDataModel(value="") for _ in total_amounts]
-    summary_cols = [ColDataModel(value=f"TOTAL {title}")] + [ColDataModel(value=amt) for amt in total_amounts]
+    summary_cols = [ColDataModel(value=f"Total {title}")] + [ColDataModel(value=amt) for amt in total_amounts]
     
     return SectionRowModel(
         Header=SectionHeaderModel(ColData=header_cols),

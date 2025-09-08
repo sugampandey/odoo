@@ -91,38 +91,38 @@ def prepare_profit_loss_response(
             income_accounts = []
             for accounts_list in account_types['income'].values():
                 income_accounts.extend(accounts_list)
-            main_sections.append(create_section("INCOME", income_accounts, "TotalIncome", str(round(totals['income'][0], 2))))
+            main_sections.append(create_section("Income", income_accounts, "TotalIncome", str(round(totals['income'][0], 2))))
         
         if account_types['expense_direct_cost']:
             direct_cost_accounts = []
             for accounts_list in account_types['expense_direct_cost'].values():
                 direct_cost_accounts.extend(accounts_list)
-            main_sections.append(create_section("COST OF GOODS SOLD", direct_cost_accounts, "TotalCostofGoodsSold", str(round(totals['expense_direct_cost'][0], 2))))
+            main_sections.append(create_section("Cost of Goods Sold", direct_cost_accounts, "TotalCostofGoodsSold", str(round(totals['expense_direct_cost'][0], 2))))
         
-        main_sections.append(create_summary_section("GROSS PROFIT", str(round(gross_profit, 2)), "GrossProfit"))
+        main_sections.append(create_summary_section("Gross Profit", str(round(gross_profit, 2)), "GrossProfit"))
         
         if account_types['expense']:
             expense_accounts = []
             for accounts_list in account_types['expense'].values():
                 expense_accounts.extend(accounts_list)
-            main_sections.append(create_section("EXPENSES", expense_accounts, "TotalExpenses", str(round(totals['expense'][0], 2))))
+            main_sections.append(create_section("Expenses", expense_accounts, "TotalExpenses", str(round(totals['expense'][0], 2))))
         
         if account_types['expense_depreciation']:
             depreciation_accounts = []
             for accounts_list in account_types['expense_depreciation'].values():
                 depreciation_accounts.extend(accounts_list)
-            main_sections.append(create_section("OTHER EXPENSES", depreciation_accounts, "TotalOtherExpense", str(round(totals['expense_depreciation'][0], 2))))
+            main_sections.append(create_section("Other Expenses", depreciation_accounts, "TotalOtherExpense", str(round(totals['expense_depreciation'][0], 2))))
         
-        main_sections.append(create_summary_section("NET OPERATING INCOME", str(round(net_operating_income, 2)), "NetOperatingIncome"))
+        main_sections.append(create_summary_section("Net Operating Income", str(round(net_operating_income, 2)), "NetOperatingIncome"))
         
         if account_types['income_other']:
             other_income_accounts = []
             for accounts_list in account_types['income_other'].values():
                 other_income_accounts.extend(accounts_list)
-            main_sections.append(create_section("OTHER INCOME", other_income_accounts, "TotalOtherIncome", str(round(totals['income_other'][0], 2))))
+            main_sections.append(create_section("Other Income", other_income_accounts, "TotalOtherIncome", str(round(totals['income_other'][0], 2))))
         
-        main_sections.append(create_summary_section("NET OTHER INCOME", str(round(totals['income_other'][0], 2)), "NetOtherIncome"))
-        main_sections.append(create_summary_section("NET INCOME", str(round(net_income, 2)), "NetIncome"))
+        main_sections.append(create_summary_section("Net Other Income", str(round(totals['income_other'][0], 2)), "NetOtherIncome"))
+        main_sections.append(create_summary_section("Net Income", str(round(net_income, 2)), "NetIncome"))
     else:
         # Multi-column sections with all calculated metrics        
         if account_types['income']:
@@ -130,18 +130,18 @@ def prepare_profit_loss_response(
             for accounts_list in account_types['income'].values():
                 income_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['income'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("INCOME", income_accounts, "TotalIncome", total_amounts))
+            main_sections.append(create_section_multi_col("Income", income_accounts, "TotalIncome", total_amounts))
         
         if account_types['expense_direct_cost']:
             direct_cost_accounts = []
             for accounts_list in account_types['expense_direct_cost'].values():
                 direct_cost_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['expense_direct_cost'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("COST OF GOODS SOLD", direct_cost_accounts, "TotalCostofGoodsSold", total_amounts))
+            main_sections.append(create_section_multi_col("Cost of Goods Sold", direct_cost_accounts, "TotalCostofGoodsSold", total_amounts))
 
         # Gross Profit summary
         gross_amounts = [str(round(gross_profit[i], 2)) for i in range(len(balance_data))]
-        summary_cols = [ColDataModel(value="GROSS PROFIT")] + [ColDataModel(value=amt) for amt in gross_amounts]
+        summary_cols = [ColDataModel(value="Gross Profit")] + [ColDataModel(value=amt) for amt in gross_amounts]
         main_sections.append(SectionRowModel(type="Section", group="GrossProfit", Summary=SummaryModel(ColData=summary_cols)))
         
         if account_types['expense']:
@@ -149,18 +149,18 @@ def prepare_profit_loss_response(
             for accounts_list in account_types['expense'].values():
                 expense_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['expense'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("EXPENSES", expense_accounts, "TotalExpenses", total_amounts))
+            main_sections.append(create_section_multi_col("Expenses", expense_accounts, "TotalExpenses", total_amounts))
         
         if account_types['expense_depreciation']:
             depreciation_accounts = []
             for accounts_list in account_types['expense_depreciation'].values():
                 depreciation_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['expense_depreciation'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("OTHER EXPENSES", depreciation_accounts, "TotalOtherExpense", total_amounts))
+            main_sections.append(create_section_multi_col("Other Expenses", depreciation_accounts, "TotalOtherExpense", total_amounts))
         
         # Net Operating Income summary
         net_op_amounts = [str(round(net_operating_income[i], 2)) for i in range(len(balance_data))]
-        summary_cols = [ColDataModel(value="NET OPERATING INCOME")] + [ColDataModel(value=amt) for amt in net_op_amounts]
+        summary_cols = [ColDataModel(value="Net Operating Income")] + [ColDataModel(value=amt) for amt in net_op_amounts]
         main_sections.append(SectionRowModel(type="Section", group="NetOperatingIncome", Summary=SummaryModel(ColData=summary_cols)))
         
         if account_types['income_other']:
@@ -168,16 +168,16 @@ def prepare_profit_loss_response(
             for accounts_list in account_types['income_other'].values():
                 other_income_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['income_other'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("OTHER INCOME", other_income_accounts, "TotalOtherIncome", total_amounts))
+            main_sections.append(create_section_multi_col("Other Income", other_income_accounts, "TotalOtherIncome", total_amounts))
 
         # Net Other Income summary
         net_other_amounts = [str(round(totals['income_other'][i], 2)) for i in range(len(balance_data))]
-        summary_cols = [ColDataModel(value="NET OTHER INCOME")] + [ColDataModel(value=amt) for amt in net_other_amounts]
+        summary_cols = [ColDataModel(value="Net Other Income")] + [ColDataModel(value=amt) for amt in net_other_amounts]
         main_sections.append(SectionRowModel(type="Section", group="NetOtherIncome", Summary=SummaryModel(ColData=summary_cols)))
         
         # Net Income summary
         net_income_amounts = [str(round(net_income[i], 2)) for i in range(len(balance_data))]
-        summary_cols = [ColDataModel(value="NET INCOME")] + [ColDataModel(value=amt) for amt in net_income_amounts]
+        summary_cols = [ColDataModel(value="Net Income")] + [ColDataModel(value=amt) for amt in net_income_amounts]
         main_sections.append(SectionRowModel(type="Section", group="NetIncome", Summary=SummaryModel(ColData=summary_cols)))
 
     # Create header with summarization
