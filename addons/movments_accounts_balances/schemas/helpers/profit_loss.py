@@ -6,6 +6,7 @@ from ...repositories.account_move import AccountMoveLineService
 from .common import (create_header, create_column_definition, get_summarized_data, 
                     create_multi_col_data_row, create_section_multi_col, create_data_row, 
                     create_section, create_summary_section)
+from ...logger.logger import logger
 
 
 def prepare_profit_loss_response(
@@ -25,6 +26,7 @@ def prepare_profit_loss_response(
         ('internal_group', 'in', [ClassificationType.INCOME, ClassificationType.EXPENSE])
     ])
     domain.append(('account_id', 'in', accounts.ids))
+    logger.info(('account_id', 'in', accounts.ids))
 
     # Get P&L specific data (period totals, with total column)
     columns, balance_data = get_summarized_data(account_move_line_service, domain, start_date, end_date, summarize_column_by, "PL")
@@ -66,6 +68,8 @@ def prepare_profit_loss_response(
             for i, amt in enumerate(amounts):
                 totals[account_type][i] += float(amt)
 
+    logger.info(f"account_types: {account_types}")
+    logger.info(f"totals: {totals}")
     # Calculate metrics
     if summarize_column_by == "Total":
         total_income = totals['income'][0] + totals['income_other'][0]

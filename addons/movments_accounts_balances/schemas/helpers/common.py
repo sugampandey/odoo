@@ -4,6 +4,7 @@ from ...schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataM
                                MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
                                SectionHeaderModel, NestedRowsModel, SectionRowModel, 
                                ReportResponseModel, RowsModel)
+from ...logger.logger import logger
 
 
 
@@ -166,6 +167,7 @@ def get_time_data(service, domain, start_date, end_date, period_type, report_typ
     
     # Single DB call with date grouping
     results = service.read_group(domain=domain, fields=['account_id', 'balance', 'date'], groupby=['account_id', date_group], lazy=False)
+    logger.info(f"Results: {results}")
     
     # Map results to expected periods
     account_period_balances = {}
@@ -230,6 +232,7 @@ def get_time_data(service, domain, start_date, end_date, period_type, report_typ
             period_balances = {account_id: period_data.get(period['key'], 0.0) 
                              for account_id, period_data in account_period_balances.items()}
             balance_data.append(period_balances)
+    logger.info(f"Balance data: {balance_data}")
     
     return ColumnsModel(Column=columns), balance_data
 
