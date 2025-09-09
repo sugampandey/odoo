@@ -130,14 +130,14 @@ def prepare_profit_loss_response(
             for accounts_list in account_types['income'].values():
                 income_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['income'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("Income", income_accounts, "TotalIncome", total_amounts))
+            main_sections.append(create_section_multi_col("Income", income_accounts, total_amounts, "TotalIncome"))
         
         if account_types['expense_direct_cost']:
             direct_cost_accounts = []
             for accounts_list in account_types['expense_direct_cost'].values():
                 direct_cost_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['expense_direct_cost'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("Cost of Goods Sold", direct_cost_accounts, "TotalCostofGoodsSold", total_amounts))
+            main_sections.append(create_section_multi_col("Cost of Goods Sold", direct_cost_accounts, total_amounts, "TotalCostofGoodsSold"))
 
         # Gross Profit summary
         gross_amounts = [str(round(gross_profit[i], 2)) for i in range(len(balance_data))]
@@ -149,14 +149,14 @@ def prepare_profit_loss_response(
             for accounts_list in account_types['expense'].values():
                 expense_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['expense'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("Expenses", expense_accounts, "TotalExpenses", total_amounts))
+            main_sections.append(create_section_multi_col("Expenses", expense_accounts, total_amounts, "TotalExpenses"))
         
         if account_types['expense_depreciation']:
             depreciation_accounts = []
             for accounts_list in account_types['expense_depreciation'].values():
                 depreciation_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['expense_depreciation'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("Other Expenses", depreciation_accounts, "TotalOtherExpense", total_amounts))
+            main_sections.append(create_section_multi_col("Other Expenses", depreciation_accounts, total_amounts, "TotalOtherExpense"))
         
         # Net Operating Income summary
         net_op_amounts = [str(round(net_operating_income[i], 2)) for i in range(len(balance_data))]
@@ -168,7 +168,7 @@ def prepare_profit_loss_response(
             for accounts_list in account_types['income_other'].values():
                 other_income_accounts.extend(accounts_list)
             total_amounts = [str(round(totals['income_other'][i], 2)) for i in range(len(balance_data))]
-            main_sections.append(create_section_multi_col("Other Income", other_income_accounts, "TotalOtherIncome", total_amounts))
+            main_sections.append(create_section_multi_col("Other Income", other_income_accounts, total_amounts, "TotalOtherIncome"))
 
         # Net Other Income summary
         net_other_amounts = [str(round(totals['income_other'][i], 2)) for i in range(len(balance_data))]

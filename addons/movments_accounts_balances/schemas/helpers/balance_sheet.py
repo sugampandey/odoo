@@ -7,33 +7,7 @@ from ...repositories.account_move import AccountMoveLineService
 from .common import create_multi_col_data_row, create_multi_col_data_row_bs, create_section_multi_col, prepare_report_with_summarization, get_summarized_data
 
 
-def prepare_account_balance_response(
-        request: Any, 
-        start_date: Any, 
-        end_date: Any,
-        company_id: int,
-        domain: List[Any],
-        currency: str = None,
-        summarize_column_by: str = "Total"
-        ):    
-    account_service = AccountService(request.env)
-    account_move_line_service = AccountMoveLineService(request.env)
 
-    accounts = account_service.search([
-        ('company_id', '=', company_id),
-        ('internal_group', 'in', [ClassificationType.ASSET, ClassificationType.LIABILITY, ClassificationType.EQUITY])
-    ])
-    domain.append(('account_id', 'in', accounts.ids))
-
-    # Get Balance Sheet specific data (running balances, no total column)
-    columns, balance_data = get_summarized_data(account_move_line_service, domain, start_date, end_date, summarize_column_by, "BS")
-
-    return prepare_report_with_summarization(
-        account_move_line_service, accounts, domain, start_date, end_date,
-        "BalanceSheet", currency, summarize_column_by,
-        group_balance_sheet_accounts, build_balance_sheet_sections,
-        columns, balance_data  # Pass pre-fetched data
-    )
 
 
 def group_balance_sheet_accounts(accounts, balance_data):
@@ -100,3 +74,31 @@ def build_balance_sheet_sections(account_groups, totals, balance_data):
         main_sections.append(main_section)
 
     return main_sections
+
+def prepare_account_balance_response(
+        request: Any, 
+        start_date: Any, 
+        end_date: Any,
+        company_id: int,
+        domain: List[Any],
+        currency: str = None,
+        summarize_column_by: str = "Total"
+        ):    
+    account_service = AccountService(request.env)
+    account_move_line_service = AccountMoveLineService(request.env)
+
+    accounts = account_service.search([
+        ('company_id', '=', company_id),
+        ('internal_group', 'in', [ClassificationType.ASSET, ClassificationType.LIABILITY, ClassificationType.EQUITY])
+    ])
+    domain.append(('account_id', 'in', accounts.ids))
+
+    # Get Balance Sheet specific data (running balances, no total column)
+    columns, balance_data = get_summarized_data(account_move_line_service, domain, start_date, end_date, summarize_column_by, "BS")
+
+    return prepare_report_with_summarization(
+        account_move_line_service, accounts, domain, start_date, end_date,
+        "BalanceSheet", currency, summarize_column_by,
+        group_balance_sheet_accounts, build_balance_sheet_sections,
+        columns, balance_data  # Pass pre-fetched data
+    )
