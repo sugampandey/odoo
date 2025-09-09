@@ -165,8 +165,21 @@ def get_time_data(service, domain, start_date, end_date, period_type, report_typ
             })
             current += timedelta(days=7)
     
-    # Single DB call with date grouping
-    results = service.read_group(domain=domain, fields=['account_id', 'balance', 'date'], groupby=['account_id', date_group], lazy=False)
+    # For Balance Sheet, get opening balances (before start date) + period data
+    if report_type == "BS":
+        # Get opening balances (all transactions before start date)
+        opening_domain = [item for item in domain if not (isinstance(item, tuple) and len(item) == 3 and item[0] == 'date')]
+        opening_domain.append(('date', '<', start))
+        opening_balances = service.read_group(domain=opening_domain, fields=['account_id', 'balance'], groupby=['account_id'])
+        opening_dict = {group['account_id'][0]: group['balance'] for group in opening_balances}
+        
+        # Get period data
+        results = service.read_group(domain=domain, fields=['account_id', 'balance', 'date'], groupby=['account_id', date_group], lazy=False)
+    else:
+        # For P&L, just get period data
+        results = service.read_group(domain=domain, fields=['account_id', 'balance', 'date'], groupby=['account_id', date_group], lazy=False)
+        opening_dict = {}
+    
     logger.info(f"Results: {results}")
     
     # Map results to expected periods
@@ -177,7 +190,7 @@ def get_time_data(service, domain, start_date, end_date, period_type, report_typ
         balance = result['balance']
         
         result_dt = parse_odoo_date(result_date)
-        period_key = None  # Initialize period_key
+        period_key = None
             
         if period_type == "Month":
             period_key = result_dt.strftime("%b %Y")
@@ -209,22 +222,25 @@ def get_time_data(service, domain, start_date, end_date, period_type, report_typ
     
     # Create balance data based on report type
     balance_data = []
-    if report_type == "BS":  # Balance Sheet - Running balances
+    if report_type == "BS":  # Balance Sheet - Cumulative balances with opening
         for i, period in enumerate(expected_periods):
             period_balances = {}
-            for account_id, period_data in account_period_balances.items():
-                # Calculate running balance up to this period
-                running_balance = 0.0
-                has_activity = False
+            for account_id in set(list(opening_dict.keys()) + list(account_period_balances.keys())):
+                # Start with opening balance
+                cumulative_balance = opening_dict.get(account_id, 0.0)
                 
-                for j in range(i + 1):  # Include current and all previous periods
-                    period_key = expected_periods[j]['key']
-                    if period_key in period_data:
-                        running_balance += period_data[period_key]
-                        has_activity = True
+                # Add period activity up to current period
+                if account_id in account_period_balances:
+                    for j in range(i + 1):  # Include current and all previous periods
+                        period_key = expected_periods[j]['key']
+                        if period_key in account_period_balances[account_id]:
+                            cumulative_balance += account_period_balances[account_id][period_key]
                 
-                # Use empty string if no activity from start, otherwise show running balance
-                period_balances[account_id] = running_balance if has_activity else ""
+                # Show balance if there's any activity (opening or period)
+                if cumulative_balance != 0.0 or account_id in account_period_balances:
+                    period_balances[account_id] = cumulative_balance
+                else:
+                    period_balances[account_id] = ""
             
             balance_data.append(period_balances)
     else:  # P&L - Period totals
@@ -233,7 +249,7 @@ def get_time_data(service, domain, start_date, end_date, period_type, report_typ
                              for account_id, period_data in account_period_balances.items()}
             balance_data.append(period_balances)
     logger.info(f"Balance data: {balance_data}")
-    
+
     return ColumnsModel(Column=columns), balance_data
 
 
@@ -260,7 +276,7 @@ def create_multi_col_data_row(account_id, account_name, balance_data):
     return amounts, col_data
 
 
-def create_section_multi_col(title, data_rows, group, total_amounts):
+def create_section_multi_col(title, data_rows, total_amounts, group : Optional[str] = None):
     """Create section with multiple columns."""
     header_cols = [ColDataModel(value=title)] + [ColDataModel(value="") for _ in total_amounts]
     summary_cols = [ColDataModel(value=f"Total {title}")] + [ColDataModel(value=amt) for amt in total_amounts]
