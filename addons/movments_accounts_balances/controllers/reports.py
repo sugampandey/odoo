@@ -14,7 +14,7 @@ from ..repositories.account import AccountService
 from ..repositories.company import CompanyService
 from ..repositories.account_move import AccountMoveLineService
 from ..logger.logger import logger
-
+from datetime import date
 
 
 class ReportsAPI(http.Controller):
@@ -181,14 +181,20 @@ class ReportsAPI(http.Controller):
 
         if start_date and end_date:
             try:
+                today = date.today()
+            
                 start_date = fields.Date.from_string(start_date)
                 end_date = fields.Date.from_string(end_date)
+                
+                # Cap end_date to today if it's in the future
+                if end_date > today:
+                    end_date = today
+                    
                 return True, (start_date, end_date)
             except ValueError as e:
                 return False, str(e)
         elif not start_date and not end_date:
             # Set year-to-date if no dates provided
-            from datetime import date
             today = date.today()
             ytd_start = date(today.year, 1, 1)
             return True, (ytd_start, today)
