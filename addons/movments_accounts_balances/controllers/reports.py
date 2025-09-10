@@ -180,16 +180,9 @@ class ReportsAPI(http.Controller):
                         return False, error_message
 
         if start_date and end_date:
-            try:
-                today = date.today()
-            
+            try:            
                 start_date = fields.Date.from_string(start_date)
                 end_date = fields.Date.from_string(end_date)
-                
-                # Cap end_date to today if it's in the future
-                if end_date > today:
-                    end_date = today
-                    
                 return True, (start_date, end_date)
             except ValueError as e:
                 return False, str(e)
