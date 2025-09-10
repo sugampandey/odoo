@@ -131,7 +131,7 @@ def get_column_value(entry: Any, col: str, split_acc: str, split_id: str,
         case GLReportColumns.DOC_NUM.column_name:
             return ColDataModel(value=entry.move_name)
         case GLReportColumns.NAME.column_name:
-            return ColDataModel(value=entry.partner_id.name, id= str(entry.partner_id.id))
+            return ColDataModel(value=entry.partner_id.name or "", id= str(entry.partner_id.id or ""))
         case GLReportColumns.MEMO.column_name:
             return ColDataModel(value=entry.ref or "")
         case GLReportColumns.SPLIT_ACC.column_name:
@@ -143,9 +143,9 @@ def get_column_value(entry: Any, col: str, split_acc: str, split_id: str,
         case GLReportColumns.ACCOUNT_NAME.column_name:
             return ColDataModel(value=entry.account_id.name, id= str(entry.account_id.id))
         case GLReportColumns.VEND_NAME.column_name:
-            return ColDataModel(value=entry.partner_id.name, id= str(entry.partner_id.id))
+            return ColDataModel(value=entry.partner_id.name or "", id= str(entry.partner_id.id or ""))
         case GLReportColumns.KLASS_NAME.column_name:
-            return ColDataModel(value=klass_name, id= klass_id)
+            return ColDataModel(value=klass_name, id= str(klass_id))
         case _:
             return ColDataModel(value="")
 
