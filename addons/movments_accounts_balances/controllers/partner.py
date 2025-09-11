@@ -35,6 +35,7 @@ class PartnerAPI(http.Controller):
             data = validate_request_data(request, CustomerCreateRequestModel)
             if not isinstance(data, CustomerCreateRequestModel):  # If error response
                 return data
+            logger.info(f"Creating customer: {data}")
 
             return self._create_partner_record(request, data, False)
         except Exception as e:
@@ -60,6 +61,7 @@ class PartnerAPI(http.Controller):
             data = validate_request_data(request, VendorCreateRequestModel)
             if not isinstance(data, VendorCreateRequestModel):  # If error response
                 return data
+            logger.info(f"Creating vendor: {data}")
 
             return self._create_partner_record(request, data, True)
         except Exception as e:
@@ -79,6 +81,7 @@ class PartnerAPI(http.Controller):
     )
     def get_customer(self, customer_id: int, company_id: int):
         try:
+            logger.info(f"Fetching customer with customer_id: {customer_id}, company_id : {company_id}")
             company_service = CompanyService(request.env)
             partner_category_service = PartnerCategoryService(request.env)
             domain = [('id', '=', customer_id)]
@@ -113,6 +116,7 @@ class PartnerAPI(http.Controller):
     )
     def get_vendor(self, vendor_id: int, company_id: int):
         try:
+            logger.info(f"Fetching vendor with vendor_id: {vendor_id}, company_id : {company_id}")
             company_service = CompanyService(request.env)
             partner_category_service = PartnerCategoryService(request.env)
             domain = [('id', '=', vendor_id)]
@@ -160,6 +164,7 @@ class PartnerAPI(http.Controller):
             )
             if error_response:
                 return error_response
+            logger.info(f"Fetching vendors with domain: {domain}")
 
             return self._fetch_partners(
                 domain, int(startposition), int(maxresults), True
@@ -194,6 +199,7 @@ class PartnerAPI(http.Controller):
             )
             if error_response:
                 return error_response
+            logger.info(f"Fetching customers with domain: {domain}")
 
             return self._fetch_partners(
                 domain, int(startposition), int(maxresults), False

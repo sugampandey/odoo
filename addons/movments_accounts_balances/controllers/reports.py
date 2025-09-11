@@ -32,6 +32,16 @@ class ReportsAPI(http.Controller):
     def get_general_ledger(self, company_id, columns, start_date=None, end_date=None, partner_id=None, 
                            account_id=None, analytic_class_id=None, sort_by=None, sort_order=None, **kwargs):
         try:
+            logger.info(f"Fetching general ledger with parameters: "
+                f"company_id={company_id}, "
+                f"start_date={start_date}, "
+                f"end_date={end_date}, "
+                f"partner_id={partner_id}, "
+                f"account_id={account_id}, "
+                f"analytic_class_id={analytic_class_id}, "
+                f"sort_by={sort_by}, "
+                f"sort_order={sort_order}"
+            )
             account_move_line_service = AccountMoveLineService(request.env)
             # Validate parameters
             is_valid, result = self.validate_report_request_params(company_id, start_date, end_date, partner_id, account_id, analytic_class_id)
@@ -66,6 +76,7 @@ class ReportsAPI(http.Controller):
 
             return APIResponse.success_response(response_data.model_dump(mode='json'))
         except Exception as e:
+            logger.error(f"Error in get_general_ledger: {str(e)}")
             return APIResponse.error_response(message=f'Error retrieving general ledger: {str(e)}', status=500)
 
 
@@ -82,6 +93,15 @@ class ReportsAPI(http.Controller):
     def get_account_balance(self, company_id, start_date=None, end_date=None, partner_id=None, 
                            account_id=None, analytic_class_id=None, summarize_column_by=None, **kwargs):
         try:
+            logger.info(f"Fetching account balance with parameters: "
+                f"company_id={company_id}, "
+                f"start_date={start_date}, "
+                f"end_date={end_date}, "
+                f"partner_id={partner_id}, "
+                f"account_id={account_id}, "
+                f"analytic_class_id={analytic_class_id}, "
+                f"summarize_column_by={summarize_column_by}"
+            )
             # Validate parameters
             is_valid, result = self.validate_report_request_params(company_id, start_date, end_date, partner_id, account_id, analytic_class_id)
             if not is_valid:
@@ -110,6 +130,7 @@ class ReportsAPI(http.Controller):
             return APIResponse.success_response(balance_sheet.model_dump(mode='json'))
 
         except Exception as e:
+            logger.error(f"Error in get_account_balance: {str(e)}")
             return APIResponse.error_response(
                 message='Error generating balance sheet',
                 errors=str(e),
@@ -128,6 +149,12 @@ class ReportsAPI(http.Controller):
     )
     def get_profit_loss(self, company_id, start_date=None, end_date=None, summarize_column_by=None, **kwargs):
         try:
+            logger.info(f"Fetching profit and loss with parameters: "
+                f"company_id={company_id}, "
+                f"start_date={start_date}, "
+                f"end_date={end_date}, "
+                f"summarize_column_by={summarize_column_by}"
+            )
             # Validate parameters
             is_valid, result = self.validate_report_request_params(company_id, start_date, end_date)
             if not is_valid:
@@ -148,6 +175,7 @@ class ReportsAPI(http.Controller):
             return APIResponse.success_response(profit_loss.model_dump(mode='json'))
 
         except Exception as e:
+            logger.error(f"Error in get_profit_loss: {str(e)}")
             return APIResponse.error_response(
                 message='Error generating profit and loss statement',
                 errors=str(e),

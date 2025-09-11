@@ -95,6 +95,7 @@ class AccountAPI(http.Controller):
     )
     def get_account(self, account_id: int, company_id: int) -> Dict[str, Any]:
         try:
+            logger.info(f"Fetching account with account_id: {account_id}")
             domain = [('id', '=', account_id)]
             company_service = CompanyService(request.env)
             

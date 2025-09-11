@@ -35,6 +35,7 @@ class CompanyAPI(http.Controller):
             # Create company
             return self._create_company_record(request, data)
         except Exception as e:
+            logger.error(f"Error in create_company: {str(e)}")
             cursor.rollback()
             return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
         
