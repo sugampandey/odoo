@@ -2,6 +2,8 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 from odoo import http
 from odoo.http import request
+from odoo.exceptions import UserError, ValidationError, MissingError
+from psycopg2 import IntegrityError
 from ..middleware.auth_middleware import validate_token_middleware
 from ..utils import APIResponse, validate_request_data, validate_pagination_params
 from ..logger.logger import logger
@@ -34,10 +36,22 @@ class CompanyAPI(http.Controller):
             
             # Create company
             return self._create_company_record(request, data)
+        except UserError as e:
+            logger.error(f"User error in create company: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except ValidationError as e:
+            logger.error(f"Validation error in create company: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in create company: {str(e)}")
+            if 'unique constraint' in str(e).lower():
+                return APIResponse.error_response(message="Company name already exists", errors=str(e), status=HTTPStatus.CONFLICT)
+            elif 'foreign key constraint' in str(e).lower():
+                return APIResponse.error_response(message="Invalid reference ID", errors=str(e), status=HTTPStatus.BAD_REQUEST)
+            return APIResponse.error_response(message="Database constraint violation", errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Error in create_company: {str(e)}")
-            cursor.rollback()
-            return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
+            return APIResponse.error_response(message="Failed to process request", errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
     
     @http.route('/api/v1/companies/<int:company_id>', type='http', auth='public', methods=['GET'], csrf=False)
@@ -60,14 +74,15 @@ class CompanyAPI(http.Controller):
             company = company_service.browse(company_id)
             if not company.exists():
                 return APIResponse.error_response(message='Company not found',
-                errors='Invalid company_id', status=HTTPStatus.BAD_REQUEST
+                errors='Invalid company_id', status=HTTPStatus.NOT_FOUND
                 )
             
             # Prepare response data
             response_data = CompanyResponseModel.create_company_response(company)
             return APIResponse.success_response(response_data.model_dump(mode='json'))
         except Exception as e:
-            return APIResponse.error_response(message="An error occurred", errors=str(e), status=500)
+            logger.error(f"Error in get_company: {str(e)}")
+            return APIResponse.error_response(message="Failed to process request", errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     
     @http.route('/api/v1/companies', type='http', auth='public', methods=['GET'], csrf=False)
@@ -97,10 +112,10 @@ class CompanyAPI(http.Controller):
                 domain, int(startposition), int(maxresults)
             )
         except Exception as e:
-            logger.error(f"Error in list_accounts: {str(e)}")
-            return APIResponse.error_response(message=f'An error occurred: {str(e)}',
+            logger.error(f"Error in list_companies: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request',
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )        
+            )       
 
     @http.route('/api/v1/companies/<int:company_id>', type='http', auth='public', methods=['DELETE'], csrf=False, cors="*")
     @validate_token_middleware
@@ -116,6 +131,7 @@ class CompanyAPI(http.Controller):
         Args:
             company_id: The unique identifier of the company to delete
         """
+        cursor = request.env.cr
         try:
             company_service = CompanyService(request.env)
             company = company_service.browse(company_id)
@@ -126,8 +142,20 @@ class CompanyAPI(http.Controller):
             company.write({'active': False}) 
 
             return APIResponse.success_response({'message':'Company deactivated successfully'})
+        except UserError as e:
+            cursor.rollback()
+            logger.error(f"User error in delete company: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except IntegrityError as e:
+            cursor.rollback()
+            logger.error(f"Database integrity error in delete company: {str(e)}")
+            return APIResponse.error_response(message="Cannot delete: company is referenced elsewhere", 
+                errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
-            return APIResponse.error_response(message='An error occurred while deleting the company', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            cursor.rollback()
+            logger.error(f"Error in delete_company: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request', 
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
 
 
@@ -143,64 +171,78 @@ class CompanyAPI(http.Controller):
         )
     
     def _create_company_record(self, request, company_model: CompanyCreateRequestModel) -> Dict[str, Any]:
-        product_service = ProductTemplateService(request.env)
-        company_vals = company_model.create_company_vals(request)
+        cursor = request.env.cr
         try:
-            cursor = request.env.cr
             with cursor.savepoint():
+                product_service = ProductTemplateService(request.env)
+                company_vals = company_model.create_company_vals(request)
                 company = self._save_company(request, company_vals)
                 product_service.create_default_product(company.id)
                 return self._prepare_success_response(company)
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create company: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',
-                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )
+            raise 
 
     def _build_search_domain(self, name: Optional[str], active: Optional[str]
                              ) -> Tuple[List[Tuple], Optional[Dict[str, Any]]]:
-        domain = []
-        # Add active status filter
-        if active is not None:
-            active = active.lower() == 'true'
-            domain.append(('active', '=', active))
-            logger.debug(f"Added active filter: {active}")
+        try:
+            domain = []
+            # Add active status filter
+            if active is not None:
+                if active.lower() not in ['true', 'false']:
+                    return [], APIResponse.error_response(message='Invalid active parameter',
+                        errors='active parameter must be "true" or "false"', status=HTTPStatus.BAD_REQUEST)
+                active = active.lower() == 'true'
+                domain.append(('active', '=', active))
+                logger.debug(f"Added active filter: {active}")
 
-        # Add name filter
-        if name:
-            domain.append(('name', 'ilike', name))
-            logger.debug(f"Added name filter: {name}")
+            # Add name filter
+            if name:
+                domain.append(('name', 'ilike', name))
+                logger.debug(f"Added name filter: {name}")
 
-        logger.debug(f"Final search domain: {domain}")
-        return domain, None
+            logger.debug(f"Final search domain: {domain}")
+            return domain, None
+        except Exception as e:
+            logger.error(f"Error building search domain: {str(e)}")
+            return [], APIResponse.error_response(message="Failed to build search criteria", 
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
     def _fetch_companies(self, domain: List[Tuple], start_position: int, max_results: int) -> Dict[str, Any]:
-        # Get total count
-        company_service = CompanyService(request.env)
-        total_count = company_service.search_count(domain)
-        logger.info(f"Total matching companies: {total_count}")
+        try:
+            # Get total count
+            company_service = CompanyService(request.env)
+            total_count = company_service.search_count(domain)
+            logger.info(f"Total matching companies: {total_count}")
 
-        # Search for companies
-        companies = company_service.search(
-            domain,
-            limit=max_results,
-            offset=(start_position-1),
-            order='id DESC'
-        )
-        logger.info(f"Retrieved {len(companies)} companies")
+            # Search for companies
+            companies = company_service.search(
+                domain,
+                limit=max_results,
+                offset=(start_position-1),
+                order='id DESC'
+            )
+            logger.info(f"Retrieved {len(companies)} companies")
 
-        return self._prepare_list_response(
-            companies, total_count, start_position
-        )
+            return self._prepare_list_response(companies, total_count, start_position)
+        except Exception as e:
+            logger.error(f"Error fetching companies: {str(e)}")
+            return APIResponse.error_response(message="Failed to fetch companies", 
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
     def _prepare_list_response(self, companies: Any, total_count: int, start_position: int) -> Dict[str, Any]:
-        companies_data = [CompanyModel.company_object(company) for company in companies]
-        
-        response_data = CompanyListResponseModel.list_company_response(
-            companies_data, total_count, start_position, len(companies)
-        )
-        
-        return APIResponse.success_response(response_data.model_dump(mode='json'))
+        try:
+            companies_data = [CompanyModel.company_object(company) for company in companies]
+            
+            response_data = CompanyListResponseModel.list_company_response(
+                companies_data, total_count, start_position, len(companies)
+            )
+            
+            return APIResponse.success_response(response_data.model_dump(mode='json'), status=HTTPStatus.OK)
+        except Exception as e:
+            logger.error(f"Error preparing list response: {str(e)}")
+            return APIResponse.error_response(message="Failed to prepare response", 
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
 

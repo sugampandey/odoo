@@ -2,7 +2,9 @@ from typing import Any, Dict, List, Optional, Tuple
 from odoo import http
 from http import HTTPStatus
 from odoo.http import request
-from pydantic import ValidationError
+from odoo.exceptions import UserError, ValidationError, MissingError
+from psycopg2 import IntegrityError
+from pydantic import ValidationError as PydanticValidationError
 from ..middleware.auth_middleware import validate_token_middleware
 from ..utils import APIResponse, get_company_from_headers, validate_request_data, validate_pagination_params
 from ..logger.logger import logger
@@ -41,9 +43,22 @@ class AnalyticAccountAPI(http.Controller):
                 return data
             
             return self._create_analytic_account_record(request, data)
+        except UserError as e:
+            logger.error(f"User error in create analytic account: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except ValidationError as e:
+            logger.error(f"Validation error in create analytic account: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in create analytic account: {str(e)}")
+            if 'unique constraint' in str(e).lower():
+                return APIResponse.error_response(message="Analytic class name already exists", errors=str(e), status=HTTPStatus.CONFLICT)
+            elif 'foreign key constraint' in str(e).lower():
+                return APIResponse.error_response(message="Invalid reference ID", errors=str(e), status=HTTPStatus.BAD_REQUEST)
+            return APIResponse.error_response(message="Database constraint violation", errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Failed to create Analytic Class: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
     @http.route('/api/v1/analytic-class', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @validate_token_middleware
@@ -83,9 +98,10 @@ class AnalyticAccountAPI(http.Controller):
             
         except Exception as e:
             logger.error(f"Error in list_analytic_accounts: {str(e)}")
-            return APIResponse.error_response(message=f'An error occurred: {str(e)}',
+            return APIResponse.error_response(message='Failed to process request',
                 errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
             )
+        
     
     @http.route('/api/v1/analytic-class/<int:analytic_class_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
     @validate_token_middleware
@@ -110,15 +126,14 @@ class AnalyticAccountAPI(http.Controller):
         ValidationError: If the analytic account does not exist.
         """
         company_service = CompanyService(request.env)
-        analytic_account_id = analytic_class_id
         try:
-            domain = [('id', '=', int(analytic_account_id))]
+            domain = [('id', '=', int(analytic_class_id))]
             
             # Validate and add company filter
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
                 )
             domain.append(('company_id', '=', int(company_id)))
             return self._fetch_single_analytic_account(domain)
@@ -151,7 +166,7 @@ class AnalyticAccountAPI(http.Controller):
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
                 )
 
             analytic_account_id = analytic_class_id
@@ -159,7 +174,7 @@ class AnalyticAccountAPI(http.Controller):
             is_valid, error_message = analytic_account_service.validate_analytic_account(analytic_account_id, company_id)
             if not is_valid:
                 return APIResponse.error_response(message=f'Invalid analytic class: {error_message}',
-                    errors=f'Invalid analytic_class_id: {analytic_account_id}', status=HTTPStatus.BAD_REQUEST
+                    errors=f'Invalid analytic_class_id: {analytic_account_id}', status=HTTPStatus.NOT_FOUND
                 )
         
             # Delete the account
@@ -168,6 +183,15 @@ class AnalyticAccountAPI(http.Controller):
                 analytic_account.write({'active': False})
             
             return APIResponse.success_response({'message':'Analytic class deactivated successfully'})
+        except UserError as e:
+            cursor.rollback()
+            logger.error(f"User error in delete analytic account: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except IntegrityError as e:
+            cursor.rollback()
+            logger.error(f"Database integrity error in delete analytic account: {str(e)}")
+            return APIResponse.error_response(message="Cannot delete: analytic class is referenced elsewhere", 
+                errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to delete analytic account: {str(e)}")
@@ -193,6 +217,19 @@ class AnalyticAccountAPI(http.Controller):
                 return data
                 
             return self._update_analytic_account_record(request, analytic_class_id, data)
+        except UserError as e:
+            logger.error(f"User error in update analytic account: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except ValidationError as e:
+            logger.error(f"Validation error in update analytic account: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in update analytic account: {str(e)}")
+            if 'unique constraint' in str(e).lower():
+                return APIResponse.error_response(message="Analytic class name already exists", errors=str(e), status=HTTPStatus.CONFLICT)
+            elif 'foreign key constraint' in str(e).lower():
+                return APIResponse.error_response(message="Invalid reference ID", errors=str(e), status=HTTPStatus.BAD_REQUEST)
+            return APIResponse.error_response(message="Database constraint violation", errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Failed to update analytic account: {str(e)}")
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
@@ -202,19 +239,24 @@ class AnalyticAccountAPI(http.Controller):
         if not isinstance(company_id, int):
             return company_id
         
-        analytic_account_vals = analytic_account_model.update_analytic_class_vals()
+        
         cursor = request.env.cr
         try:
             with cursor.savepoint():
-                analytic_account = AnalyticAccountService(request.env).browse(analytic_class_id)
+                analytic_account_service = AnalyticAccountService(request.env)
+                is_valid, error_message = analytic_account_service.validate_analytic_account(analytic_class_id, company_id)
+                if not is_valid:
+                    return APIResponse.error_response(message=f'Invalid analytic class: {error_message}',
+                        errors=f'Invalid analytic_class_id: {analytic_class_id}', status=HTTPStatus.NOT_FOUND
+                    )
+                analytic_account = analytic_account_service.browse(analytic_class_id)
+                analytic_account_vals = analytic_account_model.update_analytic_class_vals()
                 analytic_account.write(analytic_account_vals)
                 return self._prepare_success_response(analytic_account)
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to update analytic account: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',
-                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )
+            raise
 
     def _create_analytic_account_record(self, request, analytic_account_model: AnalyticClassCreateRequestModel) -> Dict[str, Any]:
         company_id = get_company_from_headers(request)
@@ -231,9 +273,7 @@ class AnalyticAccountAPI(http.Controller):
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create Analytic Class: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',
-                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )
+            raise
     
     def _save_analytic_account(self, request, analytic_account_vals: Dict[str, Any]) -> Any:
         analytic_plan_service = AnalyticPlanService(request.env)
@@ -264,13 +304,16 @@ class AnalyticAccountAPI(http.Controller):
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return [], APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
                 )
             domain.append(('company_id', '=', int(company_id)))
             logger.debug(f"Added company_id filter: {company_id}")
 
         # Add active status filter
         if active is not None:
+            if active.lower() not in ['true', 'false']:
+                return [], APIResponse.error_response(message='Invalid active parameter',
+                    errors='active parameter must be "true" or "false"', status=HTTPStatus.BAD_REQUEST)
             active = active.lower() == 'true'
             domain.append(('active', '=', active))
             logger.debug(f"Added active filter: {active}")

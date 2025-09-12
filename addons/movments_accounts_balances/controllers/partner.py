@@ -2,6 +2,8 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple, Union
 from odoo import http
 from odoo.http import request
+from odoo.exceptions import UserError, ValidationError, MissingError
+from psycopg2 import IntegrityError
 from ..middleware.auth_middleware import validate_token_middleware
 from ..logger.logger import logger
 from ..utils import APIResponse, get_company_from_headers, validate_request_data, validate_pagination_params
@@ -11,7 +13,6 @@ from ..schemas.partner import (CustomerModel, CustomerCreateRequestModel, Custom
 from ..repositories.partner import PartnerService, PartnerCategoryService
 from ..repositories.company import CompanyService
 from ..swagger.swagger_generator import swagger_gen
-
 
 
 class PartnerAPI(http.Controller):
@@ -38,9 +39,22 @@ class PartnerAPI(http.Controller):
             logger.info(f"Creating customer: {data}")
 
             return self._create_partner_record(request, data, False)
+        except UserError as e:
+            logger.error(f"User error in create customer: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except ValidationError as e:
+            logger.error(f"Validation error in create customer: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in create customer: {str(e)}")
+            if 'unique constraint' in str(e).lower():
+                return APIResponse.error_response(message="Customer name already exists", errors=str(e), status=HTTPStatus.CONFLICT)
+            elif 'foreign key constraint' in str(e).lower():
+                return APIResponse.error_response(message="Invalid reference ID", errors=str(e), status=HTTPStatus.BAD_REQUEST)
+            return APIResponse.error_response(message="Database constraint violation", errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Failed to create customer: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
     @http.route('/api/v1/vendors', type='http', auth='public', methods=['POST'], csrf=False, cors="*")
     @validate_token_middleware
@@ -64,9 +78,22 @@ class PartnerAPI(http.Controller):
             logger.info(f"Creating vendor: {data}")
 
             return self._create_partner_record(request, data, True)
+        except UserError as e:
+            logger.error(f"User error in create vendor: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except ValidationError as e:
+            logger.error(f"Validation error in create vendor: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in create vendor: {str(e)}")
+            if 'unique constraint' in str(e).lower():
+                return APIResponse.error_response(message="Vendor name already exists", errors=str(e), status=HTTPStatus.CONFLICT)
+            elif 'foreign key constraint' in str(e).lower():
+                return APIResponse.error_response(message="Invalid reference ID", errors=str(e), status=HTTPStatus.BAD_REQUEST)
+            return APIResponse.error_response(message="Database constraint violation", errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Failed to create vendor: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
 
     
@@ -88,17 +115,15 @@ class PartnerAPI(http.Controller):
             category_id = partner_category_service.get_default_customer_category()
             domain.append(('category_id', 'child_of', int(category_id)))
             
-            
             # Validate and add company filter
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
                 )
             domain.append(('company_id', '=', int(company_id)))
 
             return self._fetch_single_partner(domain, False)
-
         except Exception as e:
             logger.error(f"Error in get_customer: {str(e)}")
             return APIResponse.error_response(message='Failed to process request',
@@ -126,13 +151,12 @@ class PartnerAPI(http.Controller):
             # Validate and add company filter
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
-                return [], APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                return APIResponse.error_response(message=f'Invalid company: {error_message}',
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
                 )
             domain.append(('company_id', '=', int(company_id)))
 
             return self._fetch_single_partner(domain, True)
-
         except Exception as e:
             logger.error(f"Error in get_customer: {str(e)}")
             return APIResponse.error_response(message='Failed to process request',
@@ -226,9 +250,16 @@ class PartnerAPI(http.Controller):
             if not isinstance(company_id, int):
                 return company_id
             return self.delete_partner(vendor_id, company_id, True)
+        except UserError as e:
+            logger.error(f"User error in delete vendor: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in delete vendor: {str(e)}")
+            return APIResponse.error_response(message="Cannot delete: vendor is referenced elsewhere", 
+                errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Failed to delete vendor: {str(e)}")
-            return APIResponse.error_response(message='An error occurred while deleting the vendor', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
     @http.route('/api/v1/vendors/<int:vendor_id>', type='http', auth='public', methods=['PUT'], csrf=False, cors="*")
     @validate_token_middleware
@@ -250,6 +281,19 @@ class PartnerAPI(http.Controller):
                 return data
                 
             return self._update_vendor_record(request, vendor_id, data)
+        except UserError as e:
+            logger.error(f"User error in update vendor: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except ValidationError as e:
+            logger.error(f"Validation error in update vendor: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in update vendor: {str(e)}")
+            if 'unique constraint' in str(e).lower():
+                return APIResponse.error_response(message="Vendor name already exists", errors=str(e), status=HTTPStatus.CONFLICT)
+            elif 'foreign key constraint' in str(e).lower():
+                return APIResponse.error_response(message="Invalid reference ID", errors=str(e), status=HTTPStatus.BAD_REQUEST)
+            return APIResponse.error_response(message="Database constraint violation", errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Failed to update vendor: {str(e)}")
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
@@ -274,6 +318,19 @@ class PartnerAPI(http.Controller):
                 return data
                 
             return self._update_customer_record(request, customer_id, data)
+        except UserError as e:
+            logger.error(f"User error in update customer: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except ValidationError as e:
+            logger.error(f"Validation error in update customer: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in update customer: {str(e)}")
+            if 'unique constraint' in str(e).lower():
+                return APIResponse.error_response(message="Customer name already exists", errors=str(e), status=HTTPStatus.CONFLICT)
+            elif 'foreign key constraint' in str(e).lower():
+                return APIResponse.error_response(message="Invalid reference ID", errors=str(e), status=HTTPStatus.BAD_REQUEST)
+            return APIResponse.error_response(message="Database constraint violation", errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Failed to update customer: {str(e)}")
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
@@ -294,9 +351,16 @@ class PartnerAPI(http.Controller):
             if not isinstance(company_id, int):
                 return company_id
             return self.delete_partner(customer_id, company_id, False)
+        except UserError as e:
+            logger.error(f"User error in delete customer: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in delete customer: {str(e)}")
+            return APIResponse.error_response(message="Cannot delete: customer is referenced elsewhere", 
+                errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Failed to delete customer: {str(e)}")
-            return APIResponse.error_response(message='An error occurred while deleting the customer', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
 
     def _create_partner_record(self, request, partner_model: Union[CustomerCreateRequestModel, VendorCreateRequestModel], is_vendor: bool) -> Dict[str, Any]:
@@ -305,66 +369,63 @@ class PartnerAPI(http.Controller):
         if not isinstance(company_id, int):  # If error response
                 return company_id
         
-        if is_vendor:
-            category_id = partner_category_service.get_default_vendor_category()
-            partner_vals = partner_model.create_vendor_vals(company_id)
-            partner_vals['category_id'] = [(6, 0, [category_id])]
-        else:
-            category_id = partner_category_service.get_default_customer_category()
-            partner_vals = partner_model.create_customer_vals(company_id)
-            partner_vals['category_id'] = [(6, 0, [category_id])]
+        
         cursor = request.env.cr
         try:
             with cursor.savepoint():
+                if is_vendor:
+                    category_id = partner_category_service.get_default_vendor_category()
+                    partner_vals = partner_model.create_vendor_vals(company_id)
+                    partner_vals['category_id'] = [(6, 0, [category_id])]
+                else:
+                    category_id = partner_category_service.get_default_customer_category()
+                    partner_vals = partner_model.create_customer_vals(company_id)
+                    partner_vals['category_id'] = [(6, 0, [category_id])]
                 partner = self._save_partner(request, partner_vals)
                 return self._prepare_success_response(partner, is_vendor, status=HTTPStatus.CREATED)
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create partner: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',
-                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )
+            raise
         
     def _update_vendor_record(self, request, vendor_id: int, vendor_model: VendorUpdateRequestModel) -> Dict[str, Any]:
         company_id = get_company_from_headers(request)
         if not isinstance(company_id, int):
             return company_id
-        
-        partner_service = PartnerService(request.env)
-        # is_valid, error_message = partner_service.validate_partner(vendor_id, company_id)
-        # if not is_valid:
-        #     return APIResponse.error_response(message=f'Invalid vendor: {error_message}', errors=f'Invalid vendor_id: {vendor_id}')
-
-        vendor_vals = vendor_model.update_vendor_vals()
 
         cursor = request.env.cr
         try:
             with cursor.savepoint():
+                partner_service = PartnerService(request.env)
+                is_valid, error_message = partner_service.validate_partner(vendor_id, company_id)
+                if not is_valid:
+                    return APIResponse.error_response(message=f'Invalid vendor: {error_message}', errors=f'Invalid vendor_id: {vendor_id}',
+                                                    status=HTTPStatus.NOT_FOUND)
+
+                vendor_vals = vendor_model.update_vendor_vals()
                 vendor = partner_service.browse(vendor_id)
                 vendor.write(vendor_vals)
                 return self._prepare_success_response(vendor, True)
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to update vendor: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',
-                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )
+            raise
 
     def _update_customer_record(self, request, customer_id: int, customer_model: CustomerUpdateRequestModel) -> Dict[str, Any]:
         company_id = get_company_from_headers(request)
         if not isinstance(company_id, int):
             return company_id
         
-        partner_service = PartnerService(request.env)
-        # is_valid, error_message = partner_service.validate_partner(customer_id, company_id)
-        # if not is_valid:
-        #     return APIResponse.error_response(message=f'Invalid customer: {error_message}', errors=f'Invalid customer_id: {customer_id}')
-
-        customer_vals = customer_model.update_customer_vals()
-
         cursor = request.env.cr
         try:
             with cursor.savepoint():
+                partner_service = PartnerService(request.env)
+                is_valid, error_message = partner_service.validate_partner(customer_id, company_id)
+                if not is_valid:
+                    return APIResponse.error_response(message=f'Invalid customer: {error_message}', errors=f'Invalid customer_id: {customer_id}',
+                                                    status=HTTPStatus.NOT_FOUND)
+
+                customer_vals = customer_model.update_customer_vals()
                 customer = partner_service.browse(customer_id)
                 customer.write(customer_vals)
                 return self._prepare_success_response(customer, False)
@@ -391,88 +452,107 @@ class PartnerAPI(http.Controller):
 
     def _build_search_domain(self, DisplayName: Optional[str], company_id: int, active: Optional[str], is_vendor: bool
                              ) -> Tuple[List[Tuple], Optional[Dict[str, Any]]]:
-        domain = []
-        company_service = CompanyService(request.env)
-        partner_category_service = PartnerCategoryService(request.env)
+        try:
+            domain = []
+            company_service = CompanyService(request.env)
+            partner_category_service = PartnerCategoryService(request.env)
 
-        # Validate and add company filter
-        if company_id:
-            is_valid, error_message = company_service.validate_company(company_id)
-            if not is_valid:
-                return [], APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
-                )
-            domain.append(('company_id', '=', int(company_id)))
-            logger.debug(f"Added company_id filter: {company_id}")
+            # Validate and add company filter
+            if company_id:
+                is_valid, error_message = company_service.validate_company(company_id)
+                if not is_valid:
+                    return [], APIResponse.error_response(message=f'Invalid company: {error_message}',
+                        errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
+                    )
+                domain.append(('company_id', '=', int(company_id)))
+                logger.debug(f"Added company_id filter: {company_id}")
 
-        # Add active status filter
-        if active is not None:
-            active = active.lower() == 'true'
-            domain.append(('active', '=', active))
-            logger.debug(f"Added active filter: {active}")
+            # Add active status filter
+            if active is not None:
+                if active.lower() not in ['true', 'false']:
+                    return [], APIResponse.error_response(message='Invalid active parameter',
+                        errors='active parameter must be "true" or "false"', status=HTTPStatus.BAD_REQUEST)
+                active = active.lower() == 'true'
+                domain.append(('active', '=', active))
+                logger.debug(f"Added active filter: {active}")
 
-        # Add name filter
-        if DisplayName:
-            domain.append(('name', 'ilike', DisplayName))
-            logger.debug(f"Added name filter: {DisplayName}")
-        
-        category_id = partner_category_service.get_default_vendor_category() if is_vendor else partner_category_service.get_default_customer_category()
-        domain.append(('category_id', 'child_of', int(category_id)))
+            # Add name filter
+            if DisplayName:
+                domain.append(('name', 'ilike', DisplayName))
+                logger.debug(f"Added name filter: {DisplayName}")
+            
+            category_id = partner_category_service.get_default_vendor_category() if is_vendor else partner_category_service.get_default_customer_category()
+            domain.append(('category_id', 'child_of', int(category_id)))
 
-        logger.debug(f"Final search domain: {domain}")
-        return domain, None
+            logger.debug(f"Final search domain: {domain}")
+            return domain, None
+        except Exception as e:
+            logger.error(f"Error building search domain: {str(e)}")
+            return [], APIResponse.error_response(message="Failed to build search criteria", 
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
     def _fetch_partners(self, domain: List[Tuple], start_position: int, max_results: int, is_vendor: bool) -> Dict[str, Any]:
-        # Get total count
-        partner_service = PartnerService(request.env)
-        total_count = partner_service.search_count(domain)
-        logger.info(f"Total matching partners: {total_count}")
+        try:
+            # Get total count
+            partner_service = PartnerService(request.env)
+            total_count = partner_service.search_count(domain)
+            logger.info(f"Total matching partners: {total_count}")
 
-        # Search for partners
-        partners = partner_service.search(
-            domain,
-            limit=max_results,
-            offset=(start_position-1),
-            order='id DESC'
-        )
-        logger.info(f"Retrieved {len(partners)} partners")
+            # Search for partners
+            partners = partner_service.search(
+                domain,
+                limit=max_results,
+                offset=(start_position-1),
+                order='id DESC'
+            )
+            logger.info(f"Retrieved {len(partners)} partners")
 
-        return self._prepare_list_response(
-            partners, total_count, start_position, is_vendor
-        )
+            return self._prepare_list_response(
+                partners, total_count, start_position, is_vendor
+            )
+        except Exception as e:
+            logger.error(f"Error fetching partners: {str(e)}")
+            return APIResponse.error_response(message="Failed to fetch partners", 
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def _prepare_list_response(self, partners: Any, total_count: int, start_position: int, is_vendor: bool) -> Dict[str, Any]:
-        if is_vendor:
-            vendor_data = [VendorModel.vendor_object(partner) for partner in partners]
-            response_data = VendorListResponseModel.list_vendor_response(
-                vendor_data, total_count, start_position, len(partners)
-            )
-        else:
-            customer_data = [CustomerModel.customer_object(partner) for partner in partners]
-            response_data = CustomerListResponseModel.list_customer_response(
-                customer_data, total_count, start_position, len(partners)
-            )
-        
-        return APIResponse.success_response(response_data.model_dump(mode='json'))
+        try:
+            if is_vendor:
+                vendor_data = [VendorModel.vendor_object(partner) for partner in partners]
+                response_data = VendorListResponseModel.list_vendor_response(
+                    vendor_data, total_count, start_position, len(partners)
+                )
+            else:
+                customer_data = [CustomerModel.customer_object(partner) for partner in partners]
+                response_data = CustomerListResponseModel.list_customer_response(
+                    customer_data, total_count, start_position, len(partners)
+                )
+            
+            return APIResponse.success_response(response_data.model_dump(mode='json'))
+        except Exception as e:
+            logger.error(f"Error preparing list response: {str(e)}")
+            return APIResponse.error_response(message="Failed to prepare response", 
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
 
     def _fetch_single_partner(self, domain: List[Tuple], is_vendor: bool) -> Dict[str, Any]:
-        partner_service = PartnerService(request.env)
-        partner = partner_service.search(domain, limit=1)
-        
-        if is_vendor:
+        try:
+            partner_service = PartnerService(request.env)
+            partner = partner_service.search(domain, limit=1)
             if not partner.exists():
-                return APIResponse.error_response(message='Vendor not found',
-                    errors='Invalid vendor_id', status=HTTPStatus.BAD_REQUEST
+                partner_type = "Vendor" if is_vendor else "Customer"
+                return APIResponse.error_response(message=f'{partner_type} not found',
+                    errors=f'{partner_type} not found', status=HTTPStatus.NOT_FOUND
                 )
-            response_data = VendorResponseModel.create_vendor_response(partner)
-        else:
-            if not partner.exists():
-                return APIResponse.error_response(message='Customer not found',
-                    errors='Invalid customer_id', status=HTTPStatus.BAD_REQUEST
-                )
-            response_data = CustomerResponseModel.create_customer_response(partner)
-        return APIResponse.success_response(response_data.model_dump(mode='json'))
+            if is_vendor:
+                response_data = VendorResponseModel.create_vendor_response(partner)
+            else:
+                response_data = CustomerResponseModel.create_customer_response(partner)
+            return APIResponse.success_response(response_data.model_dump(mode='json'))
+        except Exception as e:
+            logger.error(f"Error fetching single partner: {str(e)}")
+            return APIResponse.error_response(message="Failed to fetch partner", 
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
     
 
     def delete_partner(self, partner_id: int, company_id: int, is_vendor: bool):
@@ -483,7 +563,7 @@ class PartnerAPI(http.Controller):
         is_valid, error_message = company_service.validate_company(company_id)
         if not is_valid:
             return APIResponse.error_response(message=f'Invalid company: {error_message}',
-                errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
             )
         
         # Validate partner
@@ -491,7 +571,7 @@ class PartnerAPI(http.Controller):
         is_valid, error_message = partner_service.validate_partner(partner_id, company_id)
         if not is_valid:
             return APIResponse.error_response(message=f'Invalid {partner_type}: {error_message}',
-                errors=f'Invalid {partner_type}_id: {partner_id}', status=HTTPStatus.BAD_REQUEST
+                errors=f'Invalid {partner_type}_id: {partner_id}', status=HTTPStatus.NOT_FOUND
             )
         cursor = request.env.cr
         try:

@@ -137,7 +137,7 @@ def get_column_value(entry: Any, col: str, split_acc: str, split_id: str,
         case GLReportColumns.SPLIT_ACC.column_name:
             return ColDataModel(value=split_acc, id= split_id)
         case GLReportColumns.SUBT_NAT_AMOUNT.column_name:
-            return ColDataModel(value=float(entry.debit if entry.debit != 0 else entry.credit))
+            return ColDataModel(value=float(entry.debit if entry.debit != 0 else (-entry.credit)))
         case GLReportColumns.RBAL_NAT_AMOUNT.column_name:
             return ColDataModel(value=float(entry.balance))
         case GLReportColumns.ACCOUNT_NAME.column_name:

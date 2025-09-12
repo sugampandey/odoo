@@ -2,6 +2,8 @@ from datetime import datetime
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 from ..enums import DetailType, PostingType
+from odoo.exceptions import UserError, ValidationError, MissingError
+from psycopg2 import IntegrityError
 from odoo import http
 from odoo.http import request
 from ..middleware.auth_middleware import validate_token_middleware
@@ -40,9 +42,20 @@ class JournalEntryAPI(http.Controller):
             
             # Create account move
             return self._create_account_move_record(request, data)
+        except UserError as e:
+            logger.error(f"User error in create journal entry: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except ValidationError as e:
+            logger.error(f"Validation error in create journal entry: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in create journal entry: {str(e)}")
+            if 'foreign key constraint' in str(e):
+                return APIResponse.error_response(message="Invalid reference ID", errors=str(e), status=HTTPStatus.BAD_REQUEST)
+            return APIResponse.error_response(message="Database constraint violation", errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
-            logger.error(f"Failed to create account move record: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            logger.error(f"Failed to create journal entry: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
         
     
     @http.route('/api/v1/journal-entries/<int:journal_entry_id>', type='http', auth='public', methods=['GET'], csrf=False, cors="*")
@@ -68,7 +81,7 @@ class JournalEntryAPI(http.Controller):
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
                 )
             domain.append(('company_id', '=', int(company_id)))
             return self._fetch_single_journal_entry(domain)
@@ -111,7 +124,7 @@ class JournalEntryAPI(http.Controller):
             if error_response:
                 return error_response
             
-            return self._fetch_accounts(
+            return self._fetch_journal_entries(
                 domain, int(startposition), int(maxresults)
             )
         except Exception as e:
@@ -145,20 +158,20 @@ class JournalEntryAPI(http.Controller):
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
                 )
             
             # Validate account move
             is_valid, error_message = account_move_service.validate_journal_entry(journal_entry_id, company_id)
             if not is_valid:
                 return APIResponse.error_response(message=f'Invalid Journal Entry: {error_message}',
-                    errors=f'Invalid journal_entry_id: {journal_entry_id}', status=HTTPStatus.BAD_REQUEST
+                    errors=f'Invalid journal_entry_id: {journal_entry_id}', status=HTTPStatus.NOT_FOUND
                 )
             
             with cursor.savepoint():
                 move = account_move_service.browse(int(journal_entry_id))
                 if not move.exists():
-                    return APIResponse.error_response(message='Journal entry not found', errors='Journal entry not found', status=404)
+                    return APIResponse.error_response(message='Journal entry not found', errors='Journal entry not found', status=HTTPStatus.NOT_FOUND)
 
                 # Check the state of the journal entry
                 if move.state == 'posted':
@@ -167,6 +180,7 @@ class JournalEntryAPI(http.Controller):
                         return APIResponse.error_response(
                             message='Cannot reverse a reversal entry', 
                             errors=f'Journal entry {journal_entry_id} is already a reversal of entry {move.reversed_entry_id.id}', 
+                            status=HTTPStatus.CONFLICT
                         )
                     # Check if already reversed (find if any entry has this as reversed_entry_id)
                     existing_reversal = account_move_service.search([('reversed_entry_id', '=', journal_entry_id)], limit=1)
@@ -174,8 +188,11 @@ class JournalEntryAPI(http.Controller):
                         return APIResponse.error_response(
                             message='Journal entry already reversed', 
                             errors=f'Journal entry {journal_entry_id} was already reversed by entry {existing_reversal.id}', 
+                            status=HTTPStatus.CONFLICT
                         )
-                    reversal = move._reverse_moves()
+                    move_date = move.date
+                    # reversal = move._reverse_moves()
+                    reversal = move._reverse_moves(default_values_list=[{'date': move_date}])
                     reversal.action_post()
                     return APIResponse.success_response({
                         "message": "Journal entry reversed", 
@@ -188,10 +205,22 @@ class JournalEntryAPI(http.Controller):
                     move.with_context(send_webhook=True).unlink()
                     return APIResponse.success_response({"message":"DRAFT - Journal entry deleted successfully"})
                 else:
-                    return APIResponse.error_response(message=f'Cannot delete journal entry in {move.state} state', errors=f'Invalid journal entry state: {move.state}')
+                    return APIResponse.error_response(message=f'Cannot delete journal entry in {move.state} state', errors=f'Invalid journal entry state: {move.state}',
+                                                      status=HTTPStatus.CONFLICT)
+        except UserError as e:
+            cursor.rollback()
+            logger.error(f"User error in delete journal entry: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except IntegrityError as e:
+            cursor.rollback()
+            logger.error(f"Database integrity error in delete journal entry: {str(e)}")
+            return APIResponse.error_response(message="Cannot delete: record is referenced elsewhere", 
+                errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             cursor.rollback()
-            return APIResponse.error_response(message='An error occurred while deleting journal entry', errors=str(e), status=500)
+            logger.error(f"Error in delete journal entry: {str(e)}")
+            return APIResponse.error_response(message='Failed to process request', 
+                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
    
 
     @http.route('/api/v1/journal-entries/<int:journal_entry_id>', type='http', auth='public', methods=['PUT'], csrf=False, cors="*")
@@ -217,6 +246,17 @@ class JournalEntryAPI(http.Controller):
                 return data
             
             return self._update_journal_entry_record(request, journal_entry_id, data)
+        except UserError as e:
+            logger.error(f"User error in update journal entry: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.BAD_REQUEST)
+        except ValidationError as e:
+            logger.error(f"Validation error in update journal entry: {str(e)}")
+            return APIResponse.error_response(message=str(e), errors=str(e), status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        except IntegrityError as e:
+            logger.error(f"Database integrity error in update journal entry: {str(e)}")
+            if 'foreign key constraint' in str(e):
+                return APIResponse.error_response(message="Invalid reference ID", errors=str(e), status=HTTPStatus.BAD_REQUEST)
+            return APIResponse.error_response(message="Database constraint violation", errors=str(e), status=HTTPStatus.CONFLICT)
         except Exception as e:
             logger.error(f"Failed to update journal entry: {str(e)}")
             return APIResponse.error_response(message='Failed to process request', errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR)
@@ -236,7 +276,7 @@ class JournalEntryAPI(http.Controller):
                 is_valid, error_message = company_service.validate_company(company_id)
                 if not is_valid:
                     return APIResponse.error_response(message=f'Invalid company: {error_message}',
-                        errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                        errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
                     )
                 
                 # Get and validate original entry
@@ -251,26 +291,29 @@ class JournalEntryAPI(http.Controller):
                 
                 if original_move.state != 'posted':
                     return APIResponse.error_response(message='Can only update posted journal entries',
-                        errors=f'Journal entry state is {original_move.state}'
+                        errors=f'Journal entry state is {original_move.state}', status=HTTPStatus.CONFLICT
                     )
                 
                 if original_move.reversed_entry_id:
                     return APIResponse.error_response(message='Cannot update reversal entry',
-                        errors=f'Journal entry {journal_entry_id} is a reversal entry'
+                        errors=f'Journal entry {journal_entry_id} is a reversal entry', status=HTTPStatus.CONFLICT
                     )
                 
                 # Check if already reversed
                 existing_reversal = account_move_service.search([('reversed_entry_id', '=', journal_entry_id)], limit=1)
                 if existing_reversal:
                     return APIResponse.error_response(message='Cannot update already reversed entry',
-                        errors=f'Journal entry {journal_entry_id} was already reversed by entry {existing_reversal.id}'
+                        errors=f'Journal entry {journal_entry_id} was already reversed by entry {existing_reversal.id}',
+                        status=HTTPStatus.CONFLICT
                     )
 
                 # Merge update data with original entry
                 merged_data = self.merge_update_with_original(journal_entry_model, original_move)
                 
                 # Reverse and create new entry
-                reversal = original_move._reverse_moves()
+                move_date = original_move.date
+                # reversal = original_move._reverse_moves()
+                reversal = original_move._reverse_moves(default_values_list=[{'date': move_date}])
                 reversal.action_post()
                 
                 new_entry = self._save_journal_entry(request, merged_data.create_journal_entry_vals(company_id))
@@ -346,9 +389,7 @@ class JournalEntryAPI(http.Controller):
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create Journal Entry: {str(e)}")
-            return APIResponse.error_response(message='Failed to process request',
-                errors=str(e), status=HTTPStatus.INTERNAL_SERVER_ERROR
-            )
+            raise
         
     def _save_journal_entry(self, request, journal_entry_vals: Dict[str, Any]) -> Any:
         account_move_service = AccountMoveService(request.env)
@@ -378,7 +419,7 @@ class JournalEntryAPI(http.Controller):
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return [], APIResponse.error_response(message=f'Invalid company: {error_message}',
-                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.UNPROCESSABLE_ENTITY
+                    errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
                 )
             domain.append(('company_id', '=', int(company_id)))
             logger.debug(f"Added company_id filter: {company_id}")
@@ -391,14 +432,13 @@ class JournalEntryAPI(http.Controller):
         if journal_id:  
             is_valid, error_message = journal_service.validate_journal(journal_id, company_id)
             if not is_valid:
-                return [], APIResponse.error_response(f'Invalid journal: {error_message}', f'Invalid journal_id: {journal_id}')
+                return [], APIResponse.error_response(f'Invalid journal: {error_message}', f'Invalid journal_id: {journal_id}', status=HTTPStatus.NOT_FOUND)
             domain.append(('journal_id', '=', int(journal_id)))
-
 
         logger.debug(f"Final search domain: {domain}")
         return domain, None
     
-    def _fetch_accounts(self, domain: List[Tuple], start_position: int, max_results: int) -> Dict[str, Any]:
+    def _fetch_journal_entries(self, domain: List[Tuple], start_position: int, max_results: int) -> Dict[str, Any]:
         # Get total count
         account_move_service = AccountMoveService(request.env)
         total_count = account_move_service.search_count(domain)
@@ -432,8 +472,8 @@ class JournalEntryAPI(http.Controller):
         
         if not journal_entry.exists():
             return APIResponse.error_response(message='Journal Entry not found',
-                errors='Invalid journal_entry_id', status=HTTPStatus.BAD_REQUEST
+                errors='Invalid journal_entry_id', status=HTTPStatus.NOT_FOUND
             )
 
-        response_data = JournalEntryResponseModel.create_journal_entry_response(journal_entry)
+        response_data = JournalEntryResponseModel.create_journal_entry_response(request, journal_entry)
         return APIResponse.success_response(response_data.model_dump(mode='json'))

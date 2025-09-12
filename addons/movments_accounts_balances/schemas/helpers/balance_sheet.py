@@ -7,9 +7,6 @@ from ...repositories.account_move import AccountMoveLineService
 from .common import create_multi_col_data_row, create_multi_col_data_row_bs, create_section_multi_col, prepare_report_with_summarization, get_summarized_data
 
 
-
-
-
 def group_balance_sheet_accounts(accounts, balance_data):
     """Group accounts by internal_group and account_type for balance sheet."""
     account_types = {ClassificationType.ASSET: {}, ClassificationType.LIABILITY: {}, ClassificationType.EQUITY: {}}
