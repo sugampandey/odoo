@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, date, timedelta
 from typing import Any, List, Optional, Union, Tuple
+from odoo.exceptions import UserError
 from ...schemas.reports import (HeaderModel, ColumnModel, ColumnsModel, ColDataModel, 
                                MetaDataModel, OptionModel, DataRowModel, SummaryModel, 
                                SectionHeaderModel, NestedRowsModel, SectionRowModel, 
@@ -122,7 +123,7 @@ def get_time_data(service, domain, start_date, end_date, period_type, report_typ
     if period_type == "Month":
         months = (end.year - start.year) * 12 + end.month - start.month + 1
         if months > 24:
-            raise ValueError("Month range cannot exceed 24 months")
+            raise UserError("Month range cannot exceed 24 months")
         date_group = "date:month"
         
         # Generate expected month periods
@@ -141,7 +142,7 @@ def get_time_data(service, domain, start_date, end_date, period_type, report_typ
     elif period_type == "Week":
         weeks = (end - start).days // 7 + 1
         if weeks > 52:
-            raise ValueError("Week range cannot exceed 52 weeks")
+            raise UserError("Week range cannot exceed 52 weeks")
         date_group = "date:week"
         
         # Generate expected week periods

@@ -113,12 +113,18 @@ class AccountAPI(http.Controller):
             logger.info(f"Fetching account with account_id: {account_id}")
             domain = [('id', '=', account_id)]
             company_service = CompanyService(request.env)
+            account_service = AccountService(request.env)
             
             # Validate and add company filter
             is_valid, error_message = company_service.validate_company(company_id)
             if not is_valid:
                 return APIResponse.error_response(message=f'Invalid company: {error_message}',
                     errors=f'Invalid company_id: {company_id}', status=HTTPStatus.NOT_FOUND
+                )
+            is_valid, error_message = account_service.validate_account(account_id, company_id)
+            if not is_valid:
+                return APIResponse.error_response(message=f'Invalid account: {error_message}',
+                    errors=f'Invalid account_id: {account_id}', status=HTTPStatus.NOT_FOUND
                 )
             domain.append(('company_id', '=', int(company_id)))
 
@@ -262,12 +268,13 @@ class AccountAPI(http.Controller):
         try:
             with cursor.savepoint():
                 account_service = AccountService(request.env)
-                is_valid, error_message = account_service.validate_account(account_id, company_id)
-                if not is_valid:
-                    return APIResponse.error_response(message=f'Invalid account: {error_message}',
-                        errors=f'Invalid account_id: {account_id}', status=HTTPStatus.NOT_FOUND
-                    )
                 account = account_service.browse(account_id)
+                if not account.exists():
+                    return APIResponse.error_response(message="Account does not exist",
+                        errors="Account does not exist", status=HTTPStatus.NOT_FOUND)
+                if account.company_id.id != int(company_id):
+                    return APIResponse.error_response(message="Account belongs to different company",
+                        errors="Account belongs to different company", status=HTTPStatus.BAD_REQUEST)
                 account_vals = account_model.update_account_vals(request)
                 account.write(account_vals)
                 return self._prepare_success_response(account)
@@ -400,7 +407,7 @@ class AccountAPI(http.Controller):
             
             if not account.exists():
                 return APIResponse.error_response(message='Account not found',
-                    errors='Invalid account_id', status=HTTPStatus.BAD_REQUEST
+                    errors='Invalid account_id', status=HTTPStatus.NOT_FOUND
                 )
 
             response_data = AccountResponseModel.create_account_response(account)

@@ -1,5 +1,6 @@
 from odoo import http, fields
 from odoo.http import request
+from odoo.exceptions import UserError
 from ..middleware.auth_middleware import validate_token_middleware
 from ..utils import APIResponse, get_general_ledger_report_order
 from ..swagger.swagger_generator import swagger_gen
@@ -212,13 +213,29 @@ class ReportsAPI(http.Controller):
                 start_date = fields.Date.from_string(start_date)
                 end_date = fields.Date.from_string(end_date)
                 return True, (start_date, end_date)
-            except ValueError as e:
+            except (ValueError, UserError) as e:
                 return False, str(e)
         elif not start_date and not end_date:
             # Set year-to-date if no dates provided
             today = date.today()
             ytd_start = date(today.year, 1, 1)
             return True, (ytd_start, today)
+        elif start_date and not end_date:
+            # Only start date provided - use end of that year
+            try:
+                start_date = fields.Date.from_string(start_date)
+                end_date = date(start_date.year, 12, 31)
+                return True, (start_date, end_date)
+            except (ValueError, UserError) as e:
+                return False, str(e)
+        elif end_date and not start_date:
+            # Only end date provided - use start of that year
+            try:
+                end_date = fields.Date.from_string(end_date)
+                start_date = date(end_date.year, 1, 1)
+                return True, (start_date, end_date)
+            except (ValueError, UserError) as e:
+                return False, str(e)
         
         return True, None
     

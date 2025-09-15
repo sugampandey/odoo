@@ -397,13 +397,12 @@ class PartnerAPI(http.Controller):
         try:
             with cursor.savepoint():
                 partner_service = PartnerService(request.env)
-                is_valid, error_message = partner_service.validate_partner(vendor_id, company_id)
-                if not is_valid:
-                    return APIResponse.error_response(message=f'Invalid vendor: {error_message}', errors=f'Invalid vendor_id: {vendor_id}',
-                                                    status=HTTPStatus.NOT_FOUND)
-
-                vendor_vals = vendor_model.update_vendor_vals()
                 vendor = partner_service.browse(vendor_id)
+                if not vendor.exists():
+                    return APIResponse.error_response(message="Vendor does not exist", errors="Vendor does not exist", status=HTTPStatus.NOT_FOUND)
+                if vendor.company_id and vendor.company_id.id != int(company_id):
+                    return APIResponse.error_response(message="Vendor is not associated with the provided company", errors="Vendor is not associated with the provided company", status=HTTPStatus.NOT_FOUND)
+                vendor_vals = vendor_model.update_vendor_vals()
                 vendor.write(vendor_vals)
                 return self._prepare_success_response(vendor, True)
         except Exception as e:
@@ -420,13 +419,12 @@ class PartnerAPI(http.Controller):
         try:
             with cursor.savepoint():
                 partner_service = PartnerService(request.env)
-                is_valid, error_message = partner_service.validate_partner(customer_id, company_id)
-                if not is_valid:
-                    return APIResponse.error_response(message=f'Invalid customer: {error_message}', errors=f'Invalid customer_id: {customer_id}',
-                                                    status=HTTPStatus.NOT_FOUND)
-
-                customer_vals = customer_model.update_customer_vals()
                 customer = partner_service.browse(customer_id)
+                if not customer.exists():
+                    return APIResponse.error_response(message="Customer does not exist", errors="Customer does not exist", status=HTTPStatus.NOT_FOUND)
+                if customer.company_id and customer.company_id.id != int(company_id):
+                    return APIResponse.error_response(message="Customer is not associated with the provided company", errors="Customer is not associated with the provided company", status=HTTPStatus.NOT_FOUND)
+                customer_vals = customer_model.update_customer_vals()
                 customer.write(customer_vals)
                 return self._prepare_success_response(customer, False)
         except Exception as e:
@@ -478,7 +476,7 @@ class PartnerAPI(http.Controller):
 
             # Add name filter
             if DisplayName:
-                domain.append(('name', 'ilike', DisplayName))
+                domain.append(('display_name', 'ilike', DisplayName))
                 logger.debug(f"Added name filter: {DisplayName}")
             
             category_id = partner_category_service.get_default_vendor_category() if is_vendor else partner_category_service.get_default_customer_category()
