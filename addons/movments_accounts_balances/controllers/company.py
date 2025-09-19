@@ -174,15 +174,16 @@ class CompanyAPI(http.Controller):
         cursor = request.env.cr
         try:
             with cursor.savepoint():
-                product_service = ProductTemplateService(request.env)
+                company_service = CompanyService(request.env)
                 company_vals = company_model.create_company_vals(request)
                 company = self._save_company(request, company_vals)
-                product_service.create_default_product(company.id)
+                company_service.create_default_setup(company.id)
                 return self._prepare_success_response(company)
         except Exception as e:
             cursor.rollback()
             logger.error(f"Failed to create company: {str(e)}")
-            raise 
+            raise
+
 
     def _build_search_domain(self, name: Optional[str], active: Optional[str]
                              ) -> Tuple[List[Tuple], Optional[Dict[str, Any]]]:

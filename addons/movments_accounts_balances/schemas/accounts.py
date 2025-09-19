@@ -27,7 +27,8 @@ class AccountCreateRequestModel(BaseModel):
             raise ValueError(f"{info.field_name} cannot be empty or contain only whitespace")
         return v
 
-    def get_unique_account_code(self, account_type: str) -> str:
+    @staticmethod
+    def get_unique_account_code(account_type: str) -> str:
         type_prefix = TYPE_PREFIX_MAPPING.get(account_type, 'GN')  # GN as default prefix
         unique_id = str(uuid.uuid4()).replace('-', '.')
         # Format: PREFIX-UUID (e.g., AR.550e8400.e29b.41d4.a716.446655440000)

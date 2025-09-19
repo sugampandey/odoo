@@ -1,6 +1,9 @@
 from odoo import models
 from .base import BaseOdooService
-    
+from .account import AccountService
+from .partner import PartnerService
+from .product import ProductTemplateService
+
 
 class CompanyService(BaseOdooService):
     def _get_model(self) -> models.Model:
@@ -22,4 +25,9 @@ class CompanyService(BaseOdooService):
             return False, "Company is not active"
         return True, ""
     
-    
+    def create_default_setup(self, company_id):
+        """Orchestrate creation of all default company setup"""
+        ProductTemplateService(self.env).create_default_product(company_id)
+        AccountService(self.env).create_default_accounts(company_id)
+        PartnerService(self.env).create_default_partners(company_id)
+
