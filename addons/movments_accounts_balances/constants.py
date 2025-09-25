@@ -8,17 +8,20 @@ CONSTANTS = {
         {
             'name': 'Uncategorized Expense',
             'account_number': '5000',
-            'account_type': 'expense'
+            'account_type': 'expense',
+            'sub_type_code': 'Other Miscellaneous Service Cost'
         },
         {
             'name': 'Uncategorized Income',
             'account_number': '4000',
-            'account_type': 'income'
+            'account_type': 'income',
+            'sub_type_code': 'Other Primary Income'
         },
         {
             'name': 'Opening Balance Equity',
             'account_number': '3000',
-            'account_type': 'equity'
+            'account_type': 'equity',
+            'sub_type_code': 'Opening Balance Equity'
         }
     ],
     'DEFAULT_VENDOR_NAME': 'Miscellaneous Vendor',
