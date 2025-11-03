@@ -127,7 +127,7 @@ def get_column_value(entry: Any, col: str, split_acc: str, split_id: str,
         case GLReportColumns.TX_DATE.column_name:
             return ColDataModel(value=entry.date)
         case GLReportColumns.TXN_TYPE.column_name:
-            return ColDataModel(value=MOVE_TYPE_MAPPING.get(entry.move_type))
+            return ColDataModel(value=MOVE_TYPE_MAPPING.get(entry.move_type), id=str(entry.move_id.id))
         case GLReportColumns.DOC_NUM.column_name:
             return ColDataModel(value=entry.move_name)
         case GLReportColumns.NAME.column_name:
